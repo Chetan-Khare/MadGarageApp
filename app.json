@@ -25,6 +25,17 @@
     },
     "web": {
       "favicon": "./assets/favicon.png"
-    }
+    },
+    "plugins": [
+      "expo-secure-store",
+      "expo-font",
+      [
+        "expo-image-picker",
+        {
+          "photosPermission": "Mad Garage AI needs access to your photos to analyse vehicle parts.",
+          "cameraPermission": "Mad Garage AI needs camera access to photograph parts or damage."
+        }
+      ]
+    ]
   }
 }
