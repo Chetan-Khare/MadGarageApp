@@ -4,7 +4,7 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import ModernDropdown from '../components/ModernDropdown';
 import { Ionicons } from '@expo/vector-icons';
 import { NativeStackNavigationProp } from '@react-navigation/native-stack';
-import { RootStackParamList } from '../../App';
+import { RootStackParamList } from '../types';
 import * as ImagePicker from 'expo-image-picker';
 import apiClient from '../services/apiClient';
 
@@ -199,7 +199,7 @@ export default function AddProductScreen({ navigation }: Props) {
                     setUploading(false);
                     return;
                 }
-                
+
                 vehicleIds = selectedFitments.map(f => f.id);
 
                 // Add current pending selection if valid
@@ -394,6 +394,7 @@ export default function AddProductScreen({ navigation }: Props) {
                             />
                         </View>
 
+
                         <View style={styles.inputGroup}>
                             <Text style={[styles.label, { color: T.subText }]}>Fitment Type</Text>
                             <View style={styles.fitmentToggleRow}>
@@ -488,8 +489,8 @@ export default function AddProductScreen({ navigation }: Props) {
                                     />
                                 </View>
 
-                                <TouchableOpacity 
-                                    style={[styles.addFitmentBtn, { borderColor: T.primary }]} 
+                                <TouchableOpacity
+                                    style={[styles.addFitmentBtn, { borderColor: T.primary }]}
                                     onPress={handleAddFitment}
                                 >
                                     <Ionicons name="add-circle-outline" size={20} color={T.primary} />

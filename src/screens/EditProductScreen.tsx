@@ -5,7 +5,7 @@ import ModernDropdown from '../components/ModernDropdown';
 import { Ionicons } from '@expo/vector-icons';
 import { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import { RouteProp, useRoute } from '@react-navigation/native';
-import { RootStackParamList } from '../../App';
+import { Product, RootStackParamList } from '../types';
 import * as ImagePicker from 'expo-image-picker';
 import apiClient from '../services/apiClient';
 
@@ -59,6 +59,8 @@ export default function EditProductScreen({ navigation }: Props) {
     const [isUniversal, setIsUniversal] = useState(product.fitmentCategory === 'UNIVERSAL');
     const [imageUris, setImageUris] = useState<string[]>([]);
     const [uploading, setUploading] = useState(false);
+    const [isManualRating, setIsManualRating] = useState(product.isManualRating || false);
+    const [rating, setRating] = useState(product.rating ? String(product.rating) : '4.5');
     const [guideUri, setGuideUri] = useState<string | null>(null);
 
     const [selectedFitments, setSelectedFitments] = useState<any[]>([]);
@@ -272,7 +274,9 @@ export default function EditProductScreen({ navigation }: Props) {
                 vehicleIds,
                 base64Images, // Will be empty if they kept existing images
                 base64Guide,
-                guideExtension: guideExt
+                guideExtension: guideExt,
+                isManualRating,
+                rating: parseFloat(rating)
             };
 
             await apiClient.put(`/seller/inventory/${product.id}/base64`, payload);
@@ -419,6 +423,27 @@ export default function EditProductScreen({ navigation }: Props) {
                                 value={description}
                                 onChangeText={setDescription}
                             />
+                        </View>
+
+                        <View style={styles.inputGroup}>
+                            <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 8 }}>
+                                <Text style={[styles.label, { color: T.subText, marginBottom: 0 }]}>Admin Quality Override</Text>
+                                <TouchableOpacity 
+                                    onPress={() => setIsManualRating(!isManualRating)}
+                                    style={{ width: 44, height: 24, borderRadius: 12, backgroundColor: isManualRating ? '#DF2324' : '#333', padding: 2 }}
+                                >
+                                    <View style={{ width: 20, height: 20, borderRadius: 10, backgroundColor: '#FFF', marginLeft: isManualRating ? 20 : 0 }} />
+                                </TouchableOpacity>
+                            </View>
+                            <TextInput
+                                style={[styles.input, { backgroundColor: T.inputBg, borderColor: T.inputBorder, color: isManualRating ? T.text : T.placeholder, opacity: isManualRating ? 1 : 0.5 }]}
+                                placeholderTextColor={T.placeholder}
+                                keyboardType="numeric"
+                                editable={isManualRating}
+                                value={rating}
+                                onChangeText={setRating}
+                            />
+                            <Text style={{ fontSize: 9, color: T.placeholder, marginTop: 4 }}>Values: 0.0 - 5.0 (Forces this rating over customer feedback)</Text>
                         </View>
 
                         <View style={styles.inputGroup}>

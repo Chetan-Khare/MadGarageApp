@@ -3,7 +3,7 @@ import { View, Text, StyleSheet, FlatList, TouchableOpacity, StatusBar, Activity
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
 import { NativeStackNavigationProp } from '@react-navigation/native-stack';
-import { RootStackParamList } from '../../App';
+import { RootStackParamList } from '../types';
 import { useThemeStore } from '../store/themeStore';
 import apiClient from '../services/apiClient';
 
@@ -21,6 +21,8 @@ export default function AdminInventoryManagementScreen({ navigation }: Props) {
     const [editPrice, setEditPrice] = useState('');
     const [editStock, setEditStock] = useState('');
     const [editDescription, setEditDescription] = useState('');
+    const [editIsManualRating, setEditIsManualRating] = useState(false);
+    const [editRating, setEditRating] = useState('');
 
     // Flagging State
     const [flaggingItem, setFlaggingItem] = useState<any>(null);
@@ -90,17 +92,25 @@ export default function AdminInventoryManagementScreen({ navigation }: Props) {
         if (!editItem) return;
         setLoading(true);
         try {
-            await apiClient.put(`/admin/inventory/${editItem.id}`, {
-                ...editItem,
+            // Refined payload: Only send what's needed to avoid 500 errors from strict backend DTOs
+            await apiClient.put(`/seller/inventory/${editItem.id}/base64`, {
+                id: editItem.id,
                 partName: editName,
                 price: parseFloat(editPrice) || 0,
                 stockQuantity: parseInt(editStock) || 0,
                 description: editDescription,
+                isManualRating: editIsManualRating,
+                rating: parseFloat(editRating) || 4.5,
+                category: editItem.category,
+                condition: editItem.condition,
+                brand: editItem.brand || 'MAD GARAGE',
+                base64Images: [], 
             });
             setEditItem(null);
             fetchInventory();
         } catch (error: any) {
             Alert.alert("Error", error.response?.data || "Failed to update product.");
+        } finally {
             setLoading(false);
         }
     };
@@ -123,6 +133,11 @@ export default function AdminInventoryManagementScreen({ navigation }: Props) {
                 <Text style={[styles.productName, { color: textPrimary }]} numberOfLines={1}>{item?.partName || 'Unknown Part'}</Text>
                 <Text style={[styles.productCategory, { color: textMuted }]}>{item?.category || item?.fitmentCategory || 'GENERAL'}</Text>
                 <Text style={styles.productPrice}>₹{item?.price ? item.price.toFixed(2) : '0.00'}</Text>
+                <View style={{ flexDirection: 'row', alignItems: 'center', gap: 4, marginTop: 4 }}>
+                    <Ionicons name="star" size={12} color="#FFD700" />
+                    <Text style={{ fontSize: 12, fontWeight: '900', color: textMuted }}>{item.rating || '4.5'}</Text>
+                    {item.isManualRating && <Ionicons name="checkmark-circle" size={12} color="#4A90E2" />}
+                </View>
                 {item.flagged && item.flagReason && (
                     <Text style={[styles.reasonText, { color: '#FF9B3E' }]} numberOfLines={1}>⚠️ {item.flagReason}</Text>
                 )}
@@ -150,6 +165,8 @@ export default function AdminInventoryManagementScreen({ navigation }: Props) {
                         setEditPrice(item.price ? item.price.toString() : '0');
                         setEditStock(item.stockQuantity ? item.stockQuantity.toString() : '0');
                         setEditDescription(item.description || '');
+                        setEditIsManualRating(item.isManualRating || false);
+                        setEditRating(item.rating ? item.rating.toString() : '4.5');
                     }}
                 >
                     <Ionicons name="create-outline" size={20} color={isDark ? '#FFF' : '#121212'} />
@@ -242,6 +259,27 @@ export default function AdminInventoryManagementScreen({ navigation }: Props) {
                                     keyboardType="numeric"
                                 />
                             </View>
+                        </View>
+
+                        <View style={{ marginTop: 20 }}>
+                            <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' }}>
+                                <Text style={[styles.inputLabel, { marginTop: 0, color: textMuted }]}>QUALITY OVERRIDE</Text>
+                                <TouchableOpacity 
+                                    onPress={() => setEditIsManualRating(!editIsManualRating)}
+                                    style={{ width: 44, height: 24, borderRadius: 12, backgroundColor: editIsManualRating ? '#DF2324' : '#333', padding: 2 }}
+                                >
+                                    <View style={{ width: 20, height: 20, borderRadius: 10, backgroundColor: '#FFF', marginLeft: editIsManualRating ? 20 : 0 }} />
+                                </TouchableOpacity>
+                            </View>
+                            <TextInput 
+                                style={[styles.input, { backgroundColor: inputBg, color: editIsManualRating ? textPrimary : textMuted, borderColor: borderSubtle, opacity: editIsManualRating ? 1 : 0.5, marginTop: 10 }]}
+                                value={editRating}
+                                onChangeText={setEditRating}
+                                keyboardType="numeric"
+                                editable={editIsManualRating}
+                                placeholder="4.5"
+                                placeholderTextColor={textMuted}
+                            />
                         </View>
 
                         <TouchableOpacity style={styles.saveBtn} onPress={handleUpdate}>
