@@ -36,6 +36,11 @@
           "cameraPermission": "Mad Garage AI needs camera access to photograph parts or damage."
         }
       ]
-    ]
+    ],
+    "extra": {
+      "eas": {
+        "projectId": "899b4305-5932-4ac9-b3b5-854fa9b6dac8"
+      }
+    }
   }
 }

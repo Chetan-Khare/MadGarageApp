@@ -7,9 +7,22 @@ import {
 import { Ionicons } from '@expo/vector-icons';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import * as ImagePicker from 'expo-image-picker';
-import apiClient from '../services/apiClient';
+import { LinearGradient } from 'expo-linear-gradient';
+import { useNavigation } from '@react-navigation/native';
+import apiClient, { BASE_SERVER_URL } from '../services/apiClient';
 import { useCartStore } from '../store/cartStore';
-import { useThemeStore } from '../store/themeStore';
+import { useThemeStore, DARK_THEME, LIGHT_THEME } from '../store/themeStore';
+import Animated, { 
+    useSharedValue, 
+    useAnimatedStyle, 
+    withRepeat, 
+    withSequence, 
+    withTiming,
+    Easing,
+    FadeInUp,
+    Layout
+} from 'react-native-reanimated';
+import { ModernDashboardHeader } from '../components/ModernDashboardHeader';
 
 interface ChatMessage {
     id: string;
@@ -24,7 +37,7 @@ export default function AntiGravChatScreen() {
         {
             id: '0',
             role: 'ai',
-            text: "Hey there! 👋 I'm your Virtual Mechanic at Mad Garage!\n\nI can help you find the right parts for your vehicle. Just tell me:\n• Your vehicle's Year, Make & Model (e.g. \"2019 Hyundai Creta\")\n• What part you're looking for (e.g. brake pads, air filter)\n\nOr upload a photo of the part or damage and I'll take a look! 🔧",
+            text: "Hey there! 👋 I'm your Virtual Mechanic at MAD GARAGE!\n\nI can help you find the right parts for your vehicle. Just tell me:\n• Your vehicle's Year, Make & Model (e.g. \"2019 Hyundai Creta\")\n• What part you're looking for (e.g. brake pads, air filter)\n\nOr upload a photo of the part or damage and I'll take a look! 🔧",
         }
     ]);
     const [inputText, setInputText] = useState('');
@@ -34,17 +47,38 @@ export default function AntiGravChatScreen() {
     const insets = useSafeAreaInsets();
     const addItem = useCartStore((state) => state.addItem);
     const { isDark } = useThemeStore();
+    const T = isDark ? DARK_THEME : LIGHT_THEME;
+    const navigation = useNavigation();
 
-    const bg = isDark ? '#050505' : '#F0F4FF';
-    const cardBg = isDark ? '#1A1A1A' : '#FFFFFF';
-    const cardBorder = isDark ? '#333' : '#E0E0E0';
-    const textColor = isDark ? '#FFF' : '#1A1A1A';
-    const subText = isDark ? '#888' : '#666';
-    const inputBg = isDark ? '#1A1A1A' : '#FFFFFF';
-    const inputBorder = isDark ? '#333' : '#DDD';
-    const inputBarBg = isDark ? '#111' : '#F5F5F5';
-    const inputBarBorder = isDark ? '#222' : '#DDD';
-    const thinkingBubbleBg = isDark ? '#1A1A1A' : '#FFFFFF';
+    const avatarPulse = useSharedValue(1);
+
+    React.useEffect(() => {
+        avatarPulse.value = withRepeat(
+            withSequence(
+                withTiming(1.2, { duration: 2000, easing: Easing.bezier(0.4, 0, 0.2, 1) }),
+                withTiming(1, { duration: 2000, easing: Easing.bezier(0.4, 0, 0.2, 1) })
+            ),
+            -1,
+            true
+        );
+    }, []);
+
+    const animatedAvatarStyle = useAnimatedStyle(() => ({
+        transform: [{ scale: avatarPulse.value }],
+        opacity: withTiming(avatarPulse.value === 1 ? 0.4 : 0.8),
+    }));
+
+    const bg = isDark ? '#050505' : '#F6F8FF';
+    const cardBg = isDark ? 'rgba(25, 25, 25, 0.8)' : 'rgba(255, 255, 255, 0.9)';
+    const cardBorder = isDark ? 'rgba(223, 35, 36, 0.2)' : 'rgba(0,0,0,0.05)';
+    const textColor = isDark ? '#FFFFFF' : '#1A1A1A';
+    const subText = isDark ? '#AAAAAA' : '#666666';
+    const inputBg = isDark ? 'rgba(255,255,255,0.05)' : '#FFFFFF';
+    const inputBorder = isDark ? 'rgba(223,35,36,0.2)' : '#DDD';
+    const inputBarBg = isDark ? '#121216' : '#FFFFFF';
+    const inputBarBorder = isDark ? 'rgba(255,255,255,0.1)' : '#EEE';
+    const thinkingBubbleBg = isDark ? '#121216' : '#FFFFFF';
+
 
     // ── Pick image from gallery ───────────────────────────────────────────────
     const pickImage = async () => {
@@ -108,7 +142,7 @@ export default function AntiGravChatScreen() {
             const aiMsg: ChatMessage = {
                 id: (Date.now() + 1).toString(),
                 role: 'ai',
-                text: "Hey! 👋 I'm your Virtual Mechanic at Mad Garage!\n\nTell me your vehicle's Year, Make & Model (e.g. \"2019 Hyundai Creta SX\") and what part you need, and I'll find the perfect match for you. 🔧\n\nYou can also upload a photo of the part or damage!",
+                text: "Hey! 👋 I'm your Virtual Mechanic at MAD GARAGE!\n\nTell me your vehicle's Year, Make & Model (e.g. \"2019 Hyundai Creta SX\") and what part you need, and I'll find the perfect match for you. 🔧\n\nYou can also upload a photo of the part or damage!",
             };
             setMessages(prev => [...prev, userMsg, aiMsg]);
             setInputText('');
@@ -128,6 +162,7 @@ export default function AntiGravChatScreen() {
         setIsThinking(true);
 
         try {
+            console.log('Sending chat message to:', '/assistant/chat');
             const formData = new FormData();
             if (text) formData.append('message', text);
 
@@ -136,12 +171,14 @@ export default function AntiGravChatScreen() {
                 const match = /\.(\w+)$/.exec(filename);
                 const type = match ? `image/${match[1]}` : 'image/jpeg';
                 formData.append('image', { uri: imageToSend, name: filename, type } as any);
+                console.log('Attaching image:', filename);
             }
 
             const response = await apiClient.post('/assistant/chat', formData, {
                 headers: { 'Content-Type': 'multipart/form-data' },
             });
 
+            console.log('Chat response received:', response.status);
             const result = response.data;
             const aiMsg: ChatMessage = {
                 id: (Date.now() + 1).toString(),
@@ -150,30 +187,45 @@ export default function AntiGravChatScreen() {
                 products: result.products || [],
             };
             setMessages(prev => [...prev, aiMsg]);
-        } catch (error) {
-            console.error('Chat API error:', error);
+        } catch (error: any) {
+            console.error('Chat API error:', {
+                message: error.message,
+                code: error.code,
+                configUrl: error.config?.url,
+                response: error.response?.data
+            });
             const fallbackMsg: ChatMessage = {
                 id: (Date.now() + 1).toString(),
                 role: 'ai',
-                text: "I'm having trouble connecting to the Mad Garage server right now. Please make sure the Spring Boot backend is running, then try again!",
+                text: `Connection Failure: ${error.message}\n\nPlease check if your backend is running at ${BASE_SERVER_URL} and your device is on the same network.`,
             };
             setMessages(prev => [...prev, fallbackMsg]);
         } finally {
             setIsThinking(false);
         }
+
     }, [inputText, isThinking, pickedImage]);
 
     // ── Render a single message ───────────────────────────────────────────────
     const renderMessage = ({ item }: { item: ChatMessage }) => {
         const isUser = item.role === 'user';
         return (
-            <View style={[styles.msgRow, isUser ? styles.msgRowRight : styles.msgRowLeft]}>
+            <Animated.View 
+                entering={FadeInUp.duration(400)}
+                layout={Layout.springify()}
+                style={[styles.msgRow, isUser ? styles.msgRowRight : styles.msgRowLeft]}
+            >
+
                 {!isUser && (
-                    <View style={[styles.avatar, { backgroundColor: isDark ? '#111' : '#F0F0F0' }]}>
-                        <Ionicons name="car-sport" size={18} color="#FF3333" />
+                    <View style={styles.avatarContainer}>
+                        <Animated.View style={[styles.avatarGlow, animatedAvatarStyle]} />
+                        <View style={[styles.avatar, { backgroundColor: isDark ? '#1A0505' : '#F0F0F0' }]}>
+                            <Ionicons name="car-sport" size={18} color="#DF2324" />
+                        </View>
                     </View>
                 )}
-                <View style={{ maxWidth: '80%' }}>
+                <View style={{ maxWidth: '85%' }}>
+
                     {/* Attached image preview inside message */}
                     {item.imageUri && (
                         <Image
@@ -182,52 +234,97 @@ export default function AntiGravChatScreen() {
                             resizeMode="cover"
                         />
                     )}
-                    <View style={[
-                        styles.bubble,
-                        isUser ? styles.bubbleUser : [styles.bubbleAi, { backgroundColor: cardBg, borderColor: cardBorder }]
-                    ]}>
-                        <Text style={[styles.bubbleText, !isUser && { color: textColor }]}>{item.text}</Text>
+                    {isUser ? (
+                        <LinearGradient
+                            colors={['#DC2626', '#991B1B']}
+                            start={{ x: 0, y: 0 }}
+                            end={{ x: 1, y: 1 }}
+                            style={[styles.bubble, styles.bubbleUser]}
+                        >
+                            <Text style={styles.bubbleText}>{item.text}</Text>
+                        </LinearGradient>
+                    ) : (
+                        <View style={[
+                            styles.bubble,
+                            styles.bubbleAi,
+                            { backgroundColor: isDark ? '#121216' : '#FFFFFF', borderColor: isDark ? 'rgba(255,255,255,0.05)' : '#EEE', borderWidth: 1 }
+                        ]}>
+                            <Text style={[styles.bubbleText, { color: textColor }]}>{item.text}</Text>
 
-                        {/* Product cards */}
-                        {item.products && item.products.length > 0 && (
-                            <View style={styles.productGrid}>
-                                {item.products.map((p: any, i: number) => (
-                                    <View key={i} style={[styles.productCard, { backgroundColor: isDark ? '#111' : '#F5F5F5', borderColor: '#FF333333' }]}>
-                                        <Image source={{ uri: p.imageUrl || 'https://via.placeholder.com/80' }} style={styles.productImage} />
-                                        <View style={styles.productInfo}>
-                                            <Text style={[styles.productName, { color: textColor }]} numberOfLines={2}>{p.partName || p.name}</Text>
-                                            <Text style={styles.productPrice}>${p.price?.toLocaleString() || p.garagePrice}</Text>
-                                            <TouchableOpacity
-                                                style={styles.addBtn}
-                                                onPress={() => addItem({
-                                                    id: p.id?.toString(),
-                                                    deviceName: p.partName || p.name,
-                                                    price: p.price,
-                                                    imageUrl: p.imageUrl,
-                                                    manufacturer: p.brand || 'Mad Garage',
-                                                    quantity: 1
-                                                })}
-                                            >
-                                                <Text style={styles.addBtnText}>ADD TO CART</Text>
-                                            </TouchableOpacity>
-                                        </View>
-                                    </View>
-                                ))}
-                            </View>
-                        )}
-                    </View>
+                            {item.products && item.products.length > 0 && (
+                                <View style={styles.productGrid}>
+                                    {item.products.map((p: any, i: number) => (
+                                        <TouchableOpacity 
+                                            key={i} 
+                                            activeOpacity={0.9}
+                                            style={[styles.productCard, { backgroundColor: isDark ? '#1a1a20' : '#F9F9F9', borderColor: isDark ? 'rgba(255,255,255,0.05)' : '#EEE' }]}
+                                        >
+                                            <View style={styles.productImageWrap}>
+                                                <Image
+                                                    source={{ uri: (p.imageUrl?.startsWith('/') ? `${BASE_SERVER_URL}${p.imageUrl}` : (p.imageUrl || 'https://via.placeholder.com/150')) }}
+                                                    style={styles.productImage}
+                                                />
+                                                <View style={styles.productGradient} />
+                                                <View style={styles.productImageOverlayText}>
+                                                    <Text style={styles.productBrand}>{p.manufacturer || 'OEM Quality'}</Text>
+                                                    <Text style={styles.productNameOverlay} numberOfLines={1}>{p.partName || p.name}</Text>
+                                                </View>
+                                            </View>
+                                            <View style={styles.productInfo}>
+                                                <View style={styles.productFooter}>
+                                                    <View>
+                                                        {p.originalPrice && <Text style={styles.productOriginalPrice}>₹{(p.originalPrice || 0).toLocaleString()}</Text>}
+                                                        <Text style={[styles.productPrice, { color: textColor }]}>₹{(p.garagePrice || p.price || 0).toLocaleString()}</Text>
+                                                    </View>
+                                                    <TouchableOpacity
+                                                        style={styles.addBtn}
+                                                        disabled={(p.stockQuantity ?? 0) <= 0}
+                                                        onPress={() => {
+                                                            addItem({
+                                                                id: p.id?.toString(),
+                                                                deviceName: p.partName || p.name,
+                                                                price: p.price,
+                                                                imageUrl: p.imageUrl,
+                                                                manufacturer: p.manufacturer || p.brand || 'MAD GARAGE',
+                                                                quantity: 1,
+                                                                stockQuantity: p.stockQuantity ?? 0
+                                                            });
+                                                            Alert.alert("Success", "Added to cart.");
+                                                        }}
+                                                    >
+                                                        <Ionicons name="cart-outline" size={20} color="#FFF" />
+                                                    </TouchableOpacity>
+                                                </View>
+                                            </View>
+                                        </TouchableOpacity>
+                                    ))}
+                                </View>
+                            )}
+                        </View>
+                    )}
                 </View>
-            </View>
+            </Animated.View>
         );
     };
 
+
     return (
-        <SafeAreaView style={[styles.safeArea, { backgroundColor: bg }]}>
+        <View style={[styles.safeArea, { backgroundColor: bg }]}>
             <StatusBar barStyle={isDark ? 'light-content' : 'dark-content'} backgroundColor={bg} />
+
+            <ModernDashboardHeader
+                title="MAD GARAGE AI"
+                subtitle="Virtual Mechanic"
+                showThemeToggle={false}
+                profileIcon="chevron-back"
+                onProfilePress={() => navigation.goBack()}
+                logo={require('../../assets/app_logo.png')}
+            />
+
             <KeyboardAvoidingView
                 style={styles.container}
                 behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
-                keyboardVerticalOffset={90}
+                keyboardVerticalOffset={Platform.OS === 'ios' ? 0 : 5}
             >
                 <FlatList
                     ref={flatListRef}
@@ -240,15 +337,19 @@ export default function AntiGravChatScreen() {
 
                 {isThinking && (
                     <View style={styles.thinkingRow}>
-                        <View style={[styles.avatar, { backgroundColor: isDark ? '#111' : '#F0F0F0' }]}>
-                            <Ionicons name="car-sport" size={18} color="#FF3333" />
+                        <View style={styles.avatarContainer}>
+                            <Animated.View style={[styles.avatarGlow, animatedAvatarStyle]} />
+                            <View style={[styles.avatar, { backgroundColor: isDark ? 'rgba(255,255,255,0.05)' : '#F0F0F0', borderColor: isDark ? 'rgba(255,255,255,0.1)' : '#EEE', borderWidth: 1 }]}>
+                                <Ionicons name="car-sport" size={18} color="#DF2324" />
+                            </View>
                         </View>
-                        <View style={[styles.thinkingBubble, { backgroundColor: thinkingBubbleBg, borderColor: cardBorder }]}>
-                            <ActivityIndicator size="small" color="#FF3333" />
-                            <Text style={[styles.thinkingText, { color: subText }]}>Searching parts database...</Text>
+                        <View style={[styles.thinkingBubble, { backgroundColor: thinkingBubbleBg, borderColor: isDark ? 'rgba(255,255,255,0.05)' : '#EEE' }]}>
+                            <ActivityIndicator size="small" color="#DF2324" />
+                            <Text style={[styles.thinkingText, { color: subText }]}>Analyzing Machine...</Text>
                         </View>
                     </View>
                 )}
+
 
                 {/* Picked image preview above input bar */}
                 {pickedImage && (
@@ -256,154 +357,198 @@ export default function AntiGravChatScreen() {
                         <Image source={{ uri: pickedImage }} style={styles.imagePreviewThumb} />
                         <Text style={[styles.imagePreviewLabel, { color: textColor }]}>Image ready to send</Text>
                         <TouchableOpacity onPress={() => setPickedImage(null)} style={styles.removeImageBtn}>
-                            <Ionicons name="close-circle" size={22} color="#FF3333" />
+                            <Ionicons name="close-circle" size={22} color="#DF2324" />
                         </TouchableOpacity>
                     </View>
                 )}
 
-                <View style={[styles.inputBar, { paddingBottom: Math.max(insets.bottom, 8), backgroundColor: inputBarBg, borderTopColor: inputBarBorder }]}>
-                    {/* Attach image button */}
-                    <TouchableOpacity style={styles.attachBtn} onPress={showImageOptions} disabled={isThinking}>
-                        <Ionicons name="image-outline" size={24} color={pickedImage ? '#FF3333' : (isDark ? '#666' : '#AAA')} />
-                    </TouchableOpacity>
+                <View style={[styles.inputBar, { paddingBottom: Math.max(insets.bottom, 12) }]}>
+                    <View style={[styles.floatingInput, { backgroundColor: inputBarBg, borderColor: inputBarBorder }]}>
+                        <TouchableOpacity style={styles.attachBtn} onPress={showImageOptions} disabled={isThinking}>
+                            <Ionicons name="camera-outline" size={22} color={pickedImage ? '#DF2324' : (isDark ? '#555' : '#AAA')} />
+                        </TouchableOpacity>
 
-                    <TextInput
-                        style={[styles.textInput, { color: textColor, backgroundColor: isDark ? '#222' : '#FFFFFF', borderColor: inputBorder }]}
-                        placeholder="e.g. 2019 Hyundai Creta SX brake pads"
-                        placeholderTextColor={isDark ? '#555' : '#AAA'}
-                        value={inputText}
-                        onChangeText={setInputText}
-                        multiline
-                        returnKeyType="send"
-                    />
-                    <TouchableOpacity style={styles.sendBtn} onPress={sendMessage} disabled={isThinking}>
-                        <Ionicons name="send" size={20} color="#FFF" />
-                    </TouchableOpacity>
+                        <TextInput
+                            style={[styles.textInput, { color: textColor }]}
+                            placeholder="Type vehicle model & part..."
+                            placeholderTextColor={isDark ? '#444' : '#AAA'}
+                            value={inputText}
+                            onChangeText={setInputText}
+                            multiline
+                        />
+                        
+                        <TouchableOpacity style={styles.sendBtn} onPress={sendMessage} disabled={isThinking}>
+                            <Ionicons name="arrow-up" size={22} color="#FFF" />
+                        </TouchableOpacity>
+                    </View>
                 </View>
             </KeyboardAvoidingView>
-        </SafeAreaView>
+        </View>
     );
 }
+
 
 const styles = StyleSheet.create({
     safeArea: { flex: 1 },
     container: { flex: 1 },
-    messageList: { padding: 15, paddingBottom: 10 },
-    msgRow: { flexDirection: 'row', marginBottom: 15, alignItems: 'flex-end' },
+    messageList: { padding: 16, paddingBottom: 20 },
+    msgRow: { flexDirection: 'row', marginBottom: 24, alignItems: 'flex-end' },
     msgRowLeft: { justifyContent: 'flex-start' },
     msgRowRight: { justifyContent: 'flex-end' },
-    avatar: {
-        width: 32,
-        height: 32,
-        borderRadius: 16,
-        borderWidth: 1,
-        borderColor: '#FF333333',
+    avatarContainer: {
+        width: 34,
+        height: 34,
+        marginRight: 10,
         justifyContent: 'center',
         alignItems: 'center',
-        marginRight: 8,
-        flexShrink: 0,
     },
-    bubble: { padding: 12, borderRadius: 16 },
-    bubbleUser: {
-        backgroundColor: '#FF3333',
-        borderBottomRightRadius: 4,
-    },
-    bubbleAi: {
-        borderWidth: 1,
-        borderBottomLeftRadius: 4,
-    },
-    bubbleText: { color: '#FFF', fontSize: 15, lineHeight: 22 },
-    attachedImage: {
-        width: '100%',
-        height: 160,
-        borderRadius: 12,
-        marginBottom: 6,
-        backgroundColor: '#222',
-    },
-    productGrid: { marginTop: 12 },
-    productCard: {
-        flexDirection: 'row',
-        borderRadius: 10,
-        overflow: 'hidden',
-        marginTop: 8,
-        borderWidth: 1,
-    },
-    productImage: { width: 70, height: 70 },
-    productInfo: { flex: 1, padding: 8, justifyContent: 'space-between' },
-    productName: { fontSize: 12, fontWeight: 'bold' },
-    productPrice: { color: '#FF3333', fontSize: 14, fontWeight: '900' },
-    addBtn: {
-        backgroundColor: '#FF333322',
-        paddingVertical: 4,
-        borderRadius: 4,
-        borderWidth: 1,
-        borderColor: '#FF3333',
-        alignItems: 'center',
-    },
-    addBtnText: { color: '#FF3333', fontSize: 10, fontWeight: 'bold', letterSpacing: 1 },
-    thinkingRow: { flexDirection: 'row', alignItems: 'center', paddingHorizontal: 15, marginBottom: 10 },
-    thinkingBubble: {
-        flexDirection: 'row',
-        alignItems: 'center',
-        paddingHorizontal: 14,
-        paddingVertical: 10,
-        borderRadius: 16,
-        borderWidth: 1,
-    },
-    thinkingText: { marginLeft: 8, fontSize: 13 },
-    // ── Image preview bar ──
-    imagePreviewBar: {
-        flexDirection: 'row',
-        alignItems: 'center',
-        paddingHorizontal: 15,
-        paddingVertical: 8,
-        borderTopWidth: 1,
-        gap: 10,
-    },
-    imagePreviewThumb: {
-        width: 44,
-        height: 44,
-        borderRadius: 8,
-        backgroundColor: '#333',
-    },
-    imagePreviewLabel: { flex: 1, fontSize: 13, fontWeight: '500' },
-    removeImageBtn: { padding: 4 },
-    // ── Input bar ──
-    inputBar: {
-        flexDirection: 'row',
-        alignItems: 'flex-end',
-        paddingHorizontal: 10,
-        paddingTop: 12,
-        borderTopWidth: 1,
-        gap: 8,
-    },
-    attachBtn: {
+    avatarGlow: {
+        position: 'absolute',
         width: 44,
         height: 44,
         borderRadius: 22,
+        backgroundColor: '#DF2324',
+    },
+    avatar: {
+        width: 34,
+        height: 34,
+        borderRadius: 17,
+        justifyContent: 'center',
+        alignItems: 'center',
+        borderWidth: 1,
+        borderColor: '#DF232444',
+        shadowColor: '#000',
+        shadowOffset: { width: 0, height: 2 },
+        shadowOpacity: 0.2,
+        shadowRadius: 4,
+        elevation: 3,
+    },
+    bubble: { padding: 20, borderRadius: 24, shadowColor: '#000', shadowOffset: { width: 0, height: 15 }, shadowOpacity: 0.3, shadowRadius: 20, elevation: 15 },
+    bubbleUser: {
+        borderTopRightRadius: 0,
+    },
+    bubbleAi: {
+        borderTopLeftRadius: 0,
+    },
+    bubbleText: { color: '#FFF', fontSize: 15, lineHeight: 24, fontWeight: '600' },
+    attachedImage: {
+        width: 260,
+        height: 180,
+        borderRadius: 16,
+        marginBottom: 16,
+        borderWidth: 1,
+        borderColor: 'rgba(255,255,255,0.1)',
+    },
+    productGrid: { marginTop: 24, gap: 16 },
+    productCard: {
+        borderRadius: 24,
+        overflow: 'hidden',
+        borderWidth: 1,
+        shadowColor: '#000',
+        shadowOffset: { width: 0, height: 15 },
+        shadowOpacity: 0.3,
+        shadowRadius: 30,
+        elevation: 10,
+    },
+    productImageWrap: { position: 'relative', width: '100%', height: 160 },
+    productImage: { width: '100%', height: '100%', resizeMode: 'cover' },
+    productGradient: { position: 'absolute', bottom: 0, left: 0, right: 0, height: '100%', backgroundColor: 'rgba(0,0,0,0.6)', justifyContent: 'flex-end', paddingTop: 20 },
+    productImageOverlayText: { position: 'absolute', bottom: 16, left: 16, right: 16 },
+    productBrand: { color: '#DF2324', fontSize: 9, fontWeight: '900', textTransform: 'uppercase', letterSpacing: 2, marginBottom: 2 },
+    productNameOverlay: { color: '#FFFFFF', fontSize: 14, fontWeight: '900', fontStyle: 'italic', textTransform: 'uppercase', letterSpacing: -0.5 },
+    productInfo: { padding: 20 },
+    productFooter: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' },
+    productOriginalPrice: { color: '#AAAAAA', fontSize: 10, fontWeight: '700', textDecorationLine: 'line-through' },
+    productPrice: { fontSize: 18, fontWeight: '900', fontStyle: 'italic', letterSpacing: -0.5 },
+    addBtn: {
+        backgroundColor: '#DF2324',
+        width: 44,
+        height: 44,
+        borderRadius: 22,
+        justifyContent: 'center',
+        alignItems: 'center',
+        shadowColor: '#DF2324',
+        shadowOffset: { width: 0, height: 4 },
+        shadowOpacity: 0.5,
+        shadowRadius: 10,
+        elevation: 10,
+    },
+    thinkingRow: { flexDirection: 'row', alignItems: 'center', paddingHorizontal: 16, marginBottom: 24 },
+    thinkingBubble: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        paddingHorizontal: 22,
+        paddingVertical: 16,
+        borderRadius: 24,
+        borderWidth: 1.5,
+        shadowColor: '#000',
+        shadowOffset: { width: 0, height: 4 },
+        shadowOpacity: 0.1,
+        shadowRadius: 8,
+        elevation: 3,
+    },
+    thinkingText: { marginLeft: 14, fontSize: 13, fontWeight: '800', letterSpacing: 1.2, textTransform: 'uppercase' },
+    imagePreviewBar: {
+        marginHorizontal: 16,
+        marginBottom: 12,
+        flexDirection: 'row',
+        alignItems: 'center',
+        padding: 14,
+        borderRadius: 24,
+        gap: 14,
+        borderWidth: 1,
+        borderColor: 'rgba(255,255,255,0.05)',
+    },
+    imagePreviewThumb: { width: 48, height: 48, borderRadius: 12, borderWidth: 1, borderColor: '#DF232444' },
+    imagePreviewLabel: { flex: 1, fontSize: 14, fontWeight: '800', letterSpacing: 0.5 },
+    removeImageBtn: { padding: 4 },
+    inputBar: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        paddingHorizontal: 16,
+        paddingVertical: 16,
+        gap: 12,
+    },
+    floatingInput: {
+        flex: 1,
+        flexDirection: 'row',
+        alignItems: 'center',
+        borderRadius: 35,
+        paddingHorizontal: 8,
+        paddingVertical: 8,
+        borderWidth: 1.5,
+        shadowColor: '#000',
+        shadowOffset: { width: 0, height: 12 },
+        shadowOpacity: 0.2,
+        shadowRadius: 25,
+        elevation: 15,
+    },
+    attachBtn: {
+        width: 48,
+        height: 48,
+        borderRadius: 24,
         justifyContent: 'center',
         alignItems: 'center',
     },
     textInput: {
         flex: 1,
-        borderRadius: 20,
-        paddingHorizontal: 16,
-        paddingVertical: 10,
-        fontSize: 15,
         maxHeight: 120,
-        borderWidth: 1,
+        paddingHorizontal: 14,
+        fontSize: 16,
+        fontWeight: '700',
     },
     sendBtn: {
-        width: 44,
-        height: 44,
-        borderRadius: 22,
-        backgroundColor: '#FF3333',
+        width: 48,
+        height: 48,
+        borderRadius: 24,
+        backgroundColor: '#DF2324',
         justifyContent: 'center',
         alignItems: 'center',
-        shadowColor: '#FF3333',
-        shadowOffset: { width: 0, height: 2 },
-        shadowOpacity: 0.4,
-        shadowRadius: 6,
-        elevation: 4,
+        shadowColor: '#DF2324',
+        shadowOffset: { width: 0, height: 6 },
+        shadowOpacity: 0.6,
+        shadowRadius: 12,
+        elevation: 10,
     },
 });
+

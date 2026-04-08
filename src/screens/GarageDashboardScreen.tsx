@@ -1,32 +1,223 @@
 import React, { useEffect, useState } from 'react';
-import { View, Text, StyleSheet, FlatList, Image, TouchableOpacity, ActivityIndicator, StatusBar } from 'react-native';
+import { View, Text, StyleSheet, TouchableOpacity, ScrollView, Dimensions, ActivityIndicator, TextInput, Alert, StatusBar, Image, FlatList, Platform } from 'react-native';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
+import { LinearGradient } from 'expo-linear-gradient';
 import { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import { RootStackParamList } from '../../App';
-import apiClient from '../services/apiClient';
+import apiClient, { BASE_SERVER_URL } from '../services/apiClient';
 import { useCartStore, CartItem } from '../store/cartStore';
 import { useAuthStore } from '../store/authStore';
 import { useThemeStore, DARK_THEME, LIGHT_THEME } from '../store/themeStore';
+
+import ModernDashboardHeader from '../components/ModernDashboardHeader';
+import ModernDropdown from '../components/ModernDropdown';
+import { ListCardSkeleton } from '../components/SkeletonLoader';
+import { Toast } from '../components/Toast';
+import { RefreshControl } from 'react-native';
 
 type Props = {
     navigation: NativeStackNavigationProp<RootStackParamList, 'GarageDashboard'>;
 };
 
+const CATEGORIES = [
+    { id: 'All', label: 'All Parts', icon: 'apps-outline' as const },
+    { id: 'Brakes', label: 'Brakes', icon: 'disc-outline' as const },
+    { id: 'Engine', label: 'Engine', icon: 'speedometer-outline' as const },
+    { id: 'Suspension', label: 'Suspension', icon: 'construct-outline' as const },
+    { id: 'Exhaust', label: 'Exhaust', icon: 'flame-outline' as const },
+    { id: 'Electrical', label: 'Electrical', icon: 'flash-outline' as const },
+];
+
+export interface GarageProduct {
+    id: number;
+    name: string;
+    originalPrice: number;
+    garagePrice: number;
+    imageUrl: string;
+    category?: string;
+    condition?: string;
+    color?: string;
+    stockQuantity?: number;
+    deviceName?: string; // For fallback
+    flagged?: boolean;
+}
+
 export default function GarageDashboardScreen({ navigation }: Props) {
-    const [products, setProducts] = useState<CartItem[]>([]);
+    const [products, setProducts] = useState<GarageProduct[]>([]);
     const [loading, setLoading] = useState(true);
-    const addItem = useCartStore((state) => state.addItem);
-    const cartItemsCount = useCartStore((state) => state.items.reduce((acc, item) => acc + item.quantity, 0));
-    const logout = useAuthStore((state) => state.logout);
+    const [activeCategory, setActiveCategory] = useState<string | null>(null);
+    const [activeCondition, setActiveCondition] = useState('ALL');
+
+    // Vehicle Selection State
+    const [makes, setMakes] = useState<string[]>([]);
+    const [models, setModels] = useState<string[]>([]);
+    const [years, setYears] = useState<number[]>([]);
+    const [fuels, setFuels] = useState<string[]>([]);
+    const [trims, setTrims] = useState<string[]>([]);
+    const [engines, setEngines] = useState<string[]>([]);
+
+    const [selectedMake, setSelectedMake] = useState<string>('');
+    const [selectedModel, setSelectedModel] = useState<string>('');
+    const [selectedYear, setSelectedYear] = useState<string>('');
+    const [selectedFuel, setSelectedFuel] = useState<string>('');
+    const [selectedTrim, setSelectedTrim] = useState<string>('');
+    const [selectedEngine, setSelectedEngine] = useState<string>('');
+
+    // Search & Sort State
+    const [searchQuery, setSearchQuery] = useState('');
+    const [showSortMenu, setShowSortMenu] = useState(false);
+    const [sortBy, setSortBy] = useState('Featured');
+    const [showProfileMenu, setShowProfileMenu] = useState(false);
+    const [refreshing, setRefreshing] = useState(false);
+    const [showVehicleFilters, setShowVehicleFilters] = useState(false);
+    const [currentPage, setCurrentPage] = useState(1);
+    const pageSize = 10;
+
+    const { addItem, items } = useCartStore();
+    const cartItemsCount = items.reduce((acc, item) => acc + item.quantity, 0);
+    const { logout, token, isGuest } = useAuthStore();
     const { isDark, toggleTheme } = useThemeStore();
     const T = isDark ? DARK_THEME : LIGHT_THEME;
+    const PRIMARY = '#DF2324';
+    const insets = useSafeAreaInsets();
 
-    useEffect(() => { fetchProducts(); }, []);
+    useEffect(() => {
+        fetchProducts(activeCategory);
+        fetchMakes();
+    }, [selectedEngine]);
 
-    const fetchProducts = async () => {
+    const fetchMakes = async () => {
         try {
-            const response = await apiClient.get('/products/garage');
+            const response = await apiClient.get('/vehicles/makes');
+            setMakes(response.data);
+        } catch (error) {
+            console.error('Error fetching makes:', error);
+        }
+    };
+
+    const fetchModels = async (make: string) => {
+        try {
+            const response = await apiClient.get(`/vehicles/models?make=${make}`);
+            setModels(response.data);
+        } catch (error) {
+            console.error('Error fetching models:', error);
+        }
+    };
+
+    const fetchYears = async (make: string, model: string) => {
+        try {
+            const response = await apiClient.get(`/vehicles/years?make=${make}&model=${model}`);
+            setYears(response.data);
+        } catch (error) {
+            console.error('Error fetching years:', error);
+        }
+    };
+
+    const fetchFuels = async (make: string, model: string, year: string) => {
+        try {
+            const response = await apiClient.get(`/vehicles/fuels?make=${make}&model=${model}&year=${year}`);
+            setFuels(response.data);
+            setTrims([]);
+            setEngines([]);
+        } catch (error) {
+            console.error('Error fetching fuels:', error);
+        }
+    };
+
+    const fetchTrims = async (make: string, model: string, year: string, fuel: string) => {
+        try {
+            const response = await apiClient.get(`/vehicles/trims?make=${make}&model=${model}&year=${year}&fuel=${fuel}`);
+            setTrims(response.data);
+            setEngines([]);
+        } catch (error) {
+            console.error('Error fetching trims:', error);
+        }
+    };
+
+    const fetchEngines = async (make: string, model: string, year: string, fuel: string, trim: string) => {
+        try {
+            const response = await apiClient.get(`/vehicles/engines?make=${make}&model=${model}&year=${year}&fuel=${fuel}&trim=${trim}`);
+            setEngines(response.data);
+        } catch (error) {
+            console.error('Error fetching engines:', error);
+        }
+    };
+
+    const handleMakeChange = (make: string) => {
+        setSelectedMake(make);
+        setSelectedModel('');
+        setSelectedYear('');
+        setSelectedFuel('');
+        setSelectedTrim('');
+        setSelectedEngine('');
+        setModels([]);
+        setYears([]);
+        setFuels([]);
+        setTrims([]);
+        setEngines([]);
+        if (make) fetchModels(make);
+    };
+
+    const handleModelChange = (model: string) => {
+        setSelectedModel(model);
+        setSelectedYear('');
+        setSelectedFuel('');
+        setSelectedTrim('');
+        setSelectedEngine('');
+        setYears([]);
+        setFuels([]);
+        setTrims([]);
+        setEngines([]);
+        if (model) fetchYears(selectedMake, model);
+    };
+
+    const handleYearChange = (year: string) => {
+        setSelectedYear(year);
+        setSelectedFuel('');
+        setSelectedTrim('');
+        setSelectedEngine('');
+        setFuels([]);
+        setTrims([]);
+        setEngines([]);
+        if (year) fetchFuels(selectedMake, selectedModel, year);
+    };
+
+    const handleFuelChange = (fuel: string) => {
+        setSelectedFuel(fuel);
+        setSelectedTrim('');
+        setSelectedEngine('');
+        setTrims([]);
+        setEngines([]);
+        if (fuel) fetchTrims(selectedMake, selectedModel, selectedYear, fuel);
+    };
+
+    const handleTrimChange = (trim: string) => {
+        setSelectedTrim(trim);
+        setSelectedEngine('');
+        setEngines([]);
+        if (trim) fetchEngines(selectedMake, selectedModel, selectedYear, selectedFuel, trim);
+    };
+
+    const fetchProducts = async (category: string | null = null) => {
+        setLoading(true);
+        setCurrentPage(1);
+        try {
+            let url = '/products/garage';
+            if (selectedEngine) {
+                // Backend /search expects 'fuel' and 'engine' (not fuelType/engineType)
+                const vRes = await apiClient.get(`/vehicles/search?make=${encodeURIComponent(selectedMake)}&model=${encodeURIComponent(selectedModel)}&year=${selectedYear}&fuel=${encodeURIComponent(selectedFuel)}&trim=${encodeURIComponent(selectedTrim)}&engine=${encodeURIComponent(selectedEngine)}`);
+                if (vRes.data && vRes.data.length > 0) {
+                    url += (url.includes('?') ? '&' : '?') + `vehicleId=${vRes.data[0].id}`;
+                }
+            }
+            if (category && category !== 'All') {
+                url += (url.includes('?') ? '&' : '?') + `category=${category}`;
+            }
+
+            const response = await apiClient.get(url);
             setProducts(response.data);
+            setActiveCategory(category);
         } catch (error) {
             console.error('Error fetching products:', error);
             setProducts([
@@ -35,87 +226,467 @@ export default function GarageDashboardScreen({ navigation }: Props) {
             ] as any);
         } finally {
             setLoading(false);
+            setRefreshing(false);
         }
+    };
+
+    const clearVehicleFilter = () => {
+        setSelectedMake('');
+        setSelectedModel('');
+        setSelectedYear('');
+        setSelectedFuel('');
+        setSelectedTrim('');
+        setSelectedEngine('');
+        setModels([]);
+        setYears([]);
+        setFuels([]);
+        setTrims([]);
+        setEngines([]);
+    };
+
+    const handleRefresh = () => {
+        setRefreshing(true);
+        fetchProducts(activeCategory);
     };
 
     const handleLogout = async () => {
         await logout();
-        navigation.replace('Login');
     };
 
-    const renderItem = ({ item }: { item: any }) => (
-        <TouchableOpacity
-            style={[styles.card, { backgroundColor: T.statBg, borderColor: '#FF333355' }]}
-            onPress={() => navigation.navigate('ProductDetails' as any, { product: item })}
-            activeOpacity={0.8}
-        >
-            <Image source={{ uri: item.imageUrl || 'https://via.placeholder.com/150' }} style={styles.image} />
-            <View style={styles.cardContent}>
-                <Text style={[styles.deviceLabel, { color: T.subText }]}>Wholesale Part</Text>
-                <Text style={[styles.deviceName, { color: T.text }]}>{item.name}</Text>
-                <View style={styles.priceContainer}>
-                    <Text style={[styles.retailPrice, { color: T.subText }]}>MSRP: ${item.originalPrice?.toFixed(2)}</Text>
-                    <Text style={styles.garagePrice}>Garage Price: ${item.garagePrice?.toFixed(2)}</Text>
+
+
+    const filteredProducts = products.filter(p => {
+        if (p.flagged) return false; // Safety Shield: Hide flagged listings
+        const name = p.name || p.deviceName || '';
+        const matchSearch = name.toLowerCase().includes(searchQuery.toLowerCase());
+        const matchCat = !activeCategory || activeCategory === 'All' || p.category?.toLowerCase() === activeCategory.toLowerCase();
+        const matchCondition = activeCondition === 'ALL' || p.condition === activeCondition;
+        return matchSearch && matchCat && matchCondition;
+    }).sort((a, b) => {
+        if (sortBy === 'Price: Low to High') return (a.garagePrice || a.originalPrice) - (b.garagePrice || b.originalPrice);
+        if (sortBy === 'Price: High to Low') return (b.garagePrice || b.originalPrice) - (a.garagePrice || a.originalPrice);
+        if (sortBy === 'Name: A to Z') {
+            const nameA = (a.name || a.deviceName || '').toLowerCase();
+            const nameB = (b.name || b.deviceName || '').toLowerCase();
+            return nameA.localeCompare(nameB);
+        }
+        return 0;
+    });
+ 
+    const totalPages = Math.ceil(filteredProducts.length / pageSize);
+    const pagedProducts = filteredProducts.slice((currentPage - 1) * pageSize, currentPage * pageSize);
+
+    const renderItem = ({ item }: { item: any }) => {
+        const imageUrl = item.imageUrl?.startsWith('/') ? `${BASE_SERVER_URL}${item.imageUrl}` : item.imageUrl;
+        return (
+            <TouchableOpacity
+                style={[styles.card, { backgroundColor: T.statBg }]}
+                onPress={() => navigation.navigate('ProductDetails' as any, { product: item })}
+                activeOpacity={0.85}
+            >
+                <View style={styles.cardInner}>
+                    <Image source={{ uri: imageUrl || 'https://via.placeholder.com/150' }} style={styles.cardImg} resizeMode="cover" />
+                    <View style={styles.brandChip}>
+                        <Text style={styles.brandChipText}>Wholesale</Text>
+                    </View>
+                    <View style={styles.conditionChip}>
+                        <Text style={[styles.conditionChipText, { color: item.condition === 'USED' ? '#FFA500' : (item.condition === 'REFURBISHED' ? '#00BFFF' : '#00FF00') }]}>{item.condition || 'NEW'}</Text>
+                    </View>
+                    <View style={[styles.cardBottom, { backgroundColor: T.statBg }]}>
+                        <Text style={[styles.cardTitle, { color: T.text }]} numberOfLines={1}>{item.name}</Text>
+                        <View style={styles.cardPriceRow}>
+                            <Text style={styles.cardPrice}>₹{item.garagePrice?.toLocaleString()}</Text>
+                            <TouchableOpacity
+                                style={styles.miniCartBtn}
+                                onPress={() => {
+                                    const success = addItem({
+                                        id: item.id.toString(),
+                                        deviceName: item.name,
+                                        price: item.originalPrice,
+                                        imageUrl: item.imageUrl,
+                                        manufacturer: 'Wholesale Part',
+                                        quantity: 1,
+                                        stockQuantity: item.stockQuantity ?? 0
+                                    });
+                                    if (!success) {
+                                        Alert.alert("Stock Limit", "No more stock available for this part.");
+                                    }
+                                }}
+                            >
+                                <Ionicons name="add" size={18} color="#FFF" />
+                            </TouchableOpacity>
+                        </View>
+                    </View>
+                </View>
+            </TouchableOpacity>
+        );
+    };
+ 
+    const renderFooter = () => (
+        <View style={{ paddingBottom: 100 }}>
+            {/* Pagination Controls */}
+            {totalPages > 1 && (
+                <View style={styles.paginationRow}>
+                    <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.paginationScroll}>
+                        {Array.from({ length: totalPages }).map((_, i) => {
+                            const p = i + 1;
+                            const isActive = currentPage === p;
+                            return (
+                                <TouchableOpacity
+                                    key={p}
+                                    style={[styles.pageBtn, isActive && styles.pageBtnActive]}
+                                    onPress={() => setCurrentPage(p)}
+                                >
+                                    <Text style={[styles.pageText, isActive && styles.pageTextActive]}>{p}</Text>
+                                </TouchableOpacity>
+                            );
+                        })}
+                    </ScrollView>
+                </View>
+            )}
+ 
+            {/* Massive Web Hero Match - Added to Bottom as requested */}
+            <View style={styles.heroSection}>
+                <Text style={styles.heroTitle}>BUILT FOR <Text style={{ color: '#DF2324', fontStyle: 'italic' }}>SPEED.</Text></Text>
+                <Text style={styles.heroSubtitle}>Premium wholesale parts for professional workshops. Engineered for the track, optimized for your business.</Text>
+ 
+                {/* Trust Badges */}
+                <View style={styles.badgesWrapper}>
+                    <View style={styles.badgeItem}>
+                        <View style={styles.badgeIconWrap}><Ionicons name="shield-checkmark" size={20} color="#DF2324" /></View>
+                        <View style={{ flex: 1 }}><Text style={styles.badgeTitle}>Certified Parts</Text><Text style={styles.badgeDesc}>100% Genuine</Text></View>
+                    </View>
+                    <View style={styles.badgeItem}>
+                        <View style={styles.badgeIconWrap}><Ionicons name="scan" size={20} color="#DF2324" /></View>
+                        <View style={{ flex: 1 }}><Text style={styles.badgeTitle}>Precision Fitment</Text><Text style={styles.badgeDesc}>AI-matched for you</Text></View>
+                    </View>
+                </View>
+            </View>
+        </View>
+    );
+
+    const renderVehicleFilters = () => (
+        <View>
+            {/* Search Bar */}
+            <View style={styles.searchRow}>
+                <View style={[styles.searchBar, { backgroundColor: T.inputBg, borderColor: T.inputBorder }]}>
+                    <Ionicons name="search-outline" size={18} color={T.placeholder} />
+                    <TextInput
+                        style={[styles.searchInput, { color: T.text }]}
+                        placeholder="Search wholesale parts..."
+                        placeholderTextColor={T.placeholder}
+                        value={searchQuery}
+                        onChangeText={setSearchQuery}
+                    />
                 </View>
                 <TouchableOpacity
-                    style={styles.addButton}
-                    onPress={() => addItem({
-                        id: item.id.toString(),
-                        deviceName: item.name,
-                        price: item.originalPrice,
-                        imageUrl: item.imageUrl,
-                        manufacturer: 'Wholesale Part',
-                        quantity: 1
-                    })}
+                    style={[styles.filterBtn, { backgroundColor: isDark ? '#1A0808' : '#FFF0F0' }]}
+                    onPress={() => setShowSortMenu(!showSortMenu)}
                 >
-                    <Text style={styles.addButtonText}>ADD TO CART</Text>
-                    <Ionicons name="cart" size={18} color="#FFF" />
+                    <Ionicons name="options-outline" size={20} color={T.primary} />
                 </TouchableOpacity>
+
+                {showSortMenu && (
+                    <View style={[styles.sortMenu, { backgroundColor: T.statBg, borderColor: T.statBorder }]}>
+                        {['Featured', 'Price: Low to High', 'Price: High to Low', 'Name: A to Z'].map((option) => (
+                            <TouchableOpacity
+                                key={option}
+                                style={styles.menuItem}
+                                onPress={() => { setSortBy(option); setShowSortMenu(false); }}
+                            >
+                                <Ionicons
+                                    name={sortBy === option ? 'radio-button-on' : 'radio-button-off'}
+                                    size={16}
+                                    color={sortBy === option ? '#DF2324' : T.subText}
+                                />
+                                <Text style={[styles.menuText, { color: sortBy === option ? T.text : T.subText }]}>
+                                    {option}
+                                </Text>
+                            </TouchableOpacity>
+                        ))}
+                    </View>
+                )}
             </View>
-        </TouchableOpacity>
+
+            {/* Dedicated Vehicle Selection Bar */}
+            <View style={styles.vehicleBarWrapper}>
+                <TouchableOpacity
+                    style={[
+                        styles.vehicleToggleBar,
+                        { backgroundColor: T.inputBg, borderColor: selectedEngine ? '#DF232466' : T.inputBorder }
+                    ]}
+                    onPress={() => {
+                        if (Platform.OS === 'android' || Platform.OS === 'ios') {
+                            const { LayoutAnimation } = require('react-native');
+                            LayoutAnimation.configureNext(LayoutAnimation.Presets.easeInEaseOut);
+                        }
+                        setShowVehicleFilters(!showVehicleFilters);
+                    }}
+                    activeOpacity={0.7}
+                >
+                    <Ionicons name="car-outline" size={18} color={selectedEngine ? '#DF2324' : T.subText} />
+                    <View style={{ flex: 1, marginLeft: 10 }}>
+                        {selectedEngine ? (
+                            <Text style={[styles.vehicleSummaryText, { color: T.text }]}>
+                                {selectedYear} {selectedMake} {selectedModel} • {selectedTrim}
+                            </Text>
+                        ) : (
+                            <Text style={[styles.vehiclePlaceholderText, { color: T.subText }]}>
+                                Select Your Vehicle for Precise Fitment
+                            </Text>
+                        )}
+                    </View>
+                    <Ionicons
+                        name={showVehicleFilters ? "chevron-up" : "chevron-down"}
+                        size={18}
+                        color={T.subText}
+                    />
+                </TouchableOpacity>
+
+                {selectedEngine && !showVehicleFilters && (
+                    <TouchableOpacity
+                        style={styles.clearVehicleBtn}
+                        onPress={clearVehicleFilter}
+                    >
+                        <Ionicons name="close-circle" size={20} color="#DF2324" />
+                    </TouchableOpacity>
+                )}
+            </View>
+
+            {/* Vehicle Selection Section */}
+            {showVehicleFilters && (
+                <View style={[styles.vehicleFilterContainer, { backgroundColor: T.bg }]}>
+                    <View style={styles.pickerRow}>
+                        <ModernDropdown
+                            label="MAKE"
+                            value={selectedMake}
+                            options={makes}
+                            onSelect={handleMakeChange}
+                            placeholder="Select Make"
+                            containerStyle={{ flex: 1 }}
+                        />
+                        <ModernDropdown
+                            label="MODEL"
+                            value={selectedModel}
+                            options={models}
+                            onSelect={handleModelChange}
+                            placeholder="Select Model"
+                            enabled={!!selectedMake}
+                            containerStyle={{ flex: 1 }}
+                        />
+                    </View>
+
+                    <View style={styles.pickerRow}>
+                        <ModernDropdown
+                            label="YEAR"
+                            value={selectedYear}
+                            options={years.map(y => y.toString())}
+                            onSelect={handleYearChange}
+                            placeholder="Select Year"
+                            enabled={!!selectedModel}
+                            containerStyle={{ flex: 1, marginRight: 12 }}
+                        />
+                        <ModernDropdown
+                            label="FUEL"
+                            value={selectedFuel}
+                            options={fuels}
+                            onSelect={handleFuelChange}
+                            placeholder="Select Fuel"
+                            enabled={!!selectedYear}
+                            containerStyle={{ flex: 1 }}
+                        />
+                    </View>
+
+                    <View style={styles.pickerRow}>
+                        <ModernDropdown
+                            label="TRIM"
+                            value={selectedTrim}
+                            options={trims}
+                            onSelect={handleTrimChange}
+                            placeholder="Select Trim"
+                            enabled={!!selectedFuel}
+                            containerStyle={{ flex: 1, marginRight: 12 }}
+                        />
+                        <ModernDropdown
+                            label="ENGINE"
+                            value={selectedEngine}
+                            options={engines}
+                            onSelect={(val) => {
+                                setSelectedEngine(val);
+                                // Collapse on final selection
+                                if (Platform.OS === 'android' || Platform.OS === 'ios') {
+                                    const { LayoutAnimation } = require('react-native');
+                                    LayoutAnimation.configureNext(LayoutAnimation.Presets.easeInEaseOut);
+                                }
+                                setShowVehicleFilters(false);
+                            }}
+                            placeholder="Select Engine"
+                            enabled={!!selectedTrim}
+                            containerStyle={{ flex: 1 }}
+                        />
+                    </View>
+                </View>
+            )}
+
+            {/* Category Pills */}
+            <FlatList
+                horizontal
+                showsHorizontalScrollIndicator={false}
+                data={CATEGORIES}
+                keyExtractor={c => c.id}
+                contentContainerStyle={styles.catList}
+                renderItem={({ item: cat }) => (
+                    <TouchableOpacity
+                        style={[
+                            styles.catPill,
+                            { backgroundColor: T.inputBg, borderColor: T.inputBorder },
+                            activeCategory === cat.id && styles.catPillActive
+                        ]}
+                        onPress={() => fetchProducts(cat.id === 'All' ? null : cat.id)}
+                    >
+                        <Ionicons name={cat.icon as any} size={14} color={activeCategory === cat.id ? '#FFF' : T.subText} />
+                        <Text style={[styles.catText, { color: T.subText }, activeCategory === cat.id && styles.catTextActive]}>{cat.label}</Text>
+                    </TouchableOpacity>
+                )}
+            />
+
+            {/* Condition Filter Row */}
+            <View style={[styles.conditionFilterWrap, { backgroundColor: T.bg }]}>
+                <Text style={[styles.filterLabel, { color: T.subText }]}>Condition</Text>
+                <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.conditionScroll}>
+                    {[
+                        { id: 'ALL', label: 'All', icon: 'list-outline' as const },
+                        { id: 'NEW', label: 'New', icon: 'sparkles-outline' as const },
+                        { id: 'USED', label: 'Used', icon: 'refresh-outline' as const },
+                        { id: 'REFURBISHED', label: 'Refurbished', icon: 'build-outline' as const },
+                    ].map(cond => (
+                        <TouchableOpacity
+                            key={cond.id}
+                            style={[
+                                styles.condPill,
+                                { backgroundColor: T.inputBg, borderColor: T.inputBorder },
+                                activeCondition === cond.id && styles.condPillActive
+                            ]}
+                            onPress={() => setActiveCondition(cond.id)}
+                        >
+                            <Ionicons
+                                name={cond.icon as any}
+                                size={12}
+                                color={activeCondition === cond.id ? '#FFF' : (cond.id === 'REFURBISHED' ? '#00BFFF' : T.subText)}
+                            />
+                            <Text style={[
+                                styles.condText,
+                                { color: cond.id === 'REFURBISHED' && activeCondition !== cond.id ? '#00BFFF' : T.subText },
+                                activeCondition === cond.id && styles.condTextActive
+                            ]}>{cond.label}</Text>
+                        </TouchableOpacity>
+                    ))}
+                </ScrollView>
+            </View>
+
+            {/* Huge Web Part Request Banner - Restored to Header */}
+            <View style={styles.requestBannerWrap}>
+                <View style={styles.requestBanner}>
+                    <View style={{ flex: 1, marginBottom: 12 }}>
+                        <Text style={styles.requestBannerTitle}>HARD TO FIND A{"\n"}<Text style={{ color: '#DF2324', fontStyle: 'italic', textTransform: 'uppercase' }}>SPECIFIC PART?</Text></Text>
+                        <Text style={styles.requestBannerSub}>Our global sourcing experts can track down rare spares from scrap yards and manufacturers worldwide.</Text>
+                    </View>
+                    <TouchableOpacity
+                        style={styles.requestBannerBtn}
+                        onPress={() => navigation.navigate('PartRequest')}
+                    >
+                        <Text style={styles.requestBannerBtnTxt}>Request Area</Text>
+                        <Ionicons name="arrow-forward" size={16} color="#FFF" />
+                    </TouchableOpacity>
+                </View>
+            </View>
+        </View>
     );
 
     return (
         <View style={[styles.container, { backgroundColor: T.bg2 }]}>
             <StatusBar barStyle={T.statusBar} backgroundColor={T.headerBg} />
-            <View style={[styles.header, { backgroundColor: T.headerBg, borderBottomColor: T.headerBorder }]}>
-                <View>
-                    <Text style={[styles.title, { color: '#FF3333' }]}>Garage Portal</Text>
-                    <Text style={[styles.subtitle, { color: T.subText }]}>Wholesale Account Active (-5%)</Text>
-                </View>
-                <View style={styles.headerIcons}>
-                    {/* Theme toggle */}
+            {/* Modern Header */}
+            <ModernDashboardHeader
+                title="MAD GARAGE"
+                subtitle="Wholesale Portal"
+                showCart={Boolean(token && !isGuest)}
+                cartItemCount={cartItemsCount}
+                onProfilePress={() => setShowProfileMenu(!showProfileMenu)}
+                onCartPress={() => navigation.navigate('Cart')}
+                onThemeToggle={toggleTheme}
+                logo={require('../../assets/app_logo.png')}
+                profileIcon="person"
+            />
+
+            {showProfileMenu && (
+                <View style={[styles.profileMenu, { backgroundColor: T.statBg, borderColor: T.statBorder, top: 75, right: 16 }]}>
                     <TouchableOpacity
-                        style={[styles.iconBtn, { backgroundColor: T.inputBg, borderColor: T.inputBorder }]}
-                        onPress={toggleTheme}
+                        style={styles.profileMenuItem}
+                        onPress={() => { setShowProfileMenu(false); navigation.navigate('GarageProfile' as any); }}
                     >
-                        <Ionicons name={isDark ? 'sunny-outline' : 'moon-outline'} size={20} color={isDark ? '#FFD700' : '#5B5BFF'} />
+                        <Ionicons name="person-circle-outline" size={18} color={T.text} />
+                        <Text style={[styles.profileMenuText, { color: T.text }]}>Garage Profile</Text>
                     </TouchableOpacity>
-                    <TouchableOpacity onPress={() => navigation.navigate('Cart')} style={styles.cartIconContainer}>
-                        <Ionicons name="cart-outline" size={28} color="#FF3333" />
-                        {cartItemsCount > 0 && (
-                            <View style={styles.badge}>
-                                <Text style={styles.badgeText}>{cartItemsCount}</Text>
-                            </View>
-                        )}
+                    <View style={styles.profileMenuDivider} />
+                    <TouchableOpacity
+                        style={styles.profileMenuItem}
+                        onPress={() => { setShowProfileMenu(false); navigation.navigate('OrderHistory' as any); }}
+                    >
+                        <Ionicons name="receipt-outline" size={18} color={T.text} />
+                        <Text style={[styles.profileMenuText, { color: T.text }]}>Order History</Text>
                     </TouchableOpacity>
-                    <TouchableOpacity onPress={handleLogout} style={styles.logoutIcon}>
-                        <Ionicons name="log-out-outline" size={28} color="#FF3333" />
+                    <View style={styles.profileMenuDivider} />
+                    <TouchableOpacity
+                        style={styles.profileMenuItem}
+                        onPress={() => { setShowProfileMenu(false); handleLogout(); }}
+                    >
+                        <Ionicons name="log-out-outline" size={18} color="#DF2324" />
+                        <Text style={[styles.profileMenuText, { color: '#DF2324' }]}>Log Out</Text>
                     </TouchableOpacity>
                 </View>
-            </View>
+            )}
 
             {loading ? (
-                <ActivityIndicator size="large" color="#FF3333" style={{ marginTop: 50 }} />
+                <View style={{ flexDirection: 'row', flexWrap: 'wrap', padding: 14, gap: 12 }}>
+                    {[1, 2, 3, 4, 5, 6].map(i => <ListCardSkeleton key={i} />)}
+                </View>
             ) : (
                 <FlatList
-                    data={products}
+                    key={`products-${activeCategory || 'all'}-${activeCondition}`}
+                    data={pagedProducts}
                     keyExtractor={(item) => item.id.toString()}
+                    numColumns={2}
+                    columnWrapperStyle={styles.colWrapper}
+                    contentContainerStyle={styles.listContent}
                     renderItem={renderItem}
-                    contentContainerStyle={styles.list}
+                    ListHeaderComponent={renderVehicleFilters}
+                    ListFooterComponent={renderFooter}
                     showsVerticalScrollIndicator={false}
+                    refreshControl={
+                        <RefreshControl
+                            refreshing={refreshing}
+                            onRefresh={handleRefresh}
+                            tintColor={PRIMARY}
+                            colors={[PRIMARY]}
+                        />
+                    }
                 />
             )}
+
+            {/* Floating Chat Assistant Button */}
+            <TouchableOpacity
+                style={styles.chatFab}
+                onPress={() => navigation.navigate('Chat')}
+                activeOpacity={0.9}
+            >
+                <LinearGradient
+                    colors={['#FF5555', '#CC1111']}
+                    style={styles.fabGradient}
+                >
+                    <Ionicons name="chatbubble-ellipses" size={24} color="#FFF" />
+                </LinearGradient>
+            </TouchableOpacity>
         </View>
     );
 }
@@ -127,26 +698,53 @@ const styles = StyleSheet.create({
         justifyContent: 'space-between',
         alignItems: 'center',
         padding: 20,
-        borderBottomWidth: 1,
     },
     headerIcons: { flexDirection: 'row', alignItems: 'center', gap: 10 },
     iconBtn: {
         width: 38,
         height: 38,
         borderRadius: 19,
-        borderWidth: 1,
         justifyContent: 'center',
         alignItems: 'center',
     },
-    logoutIcon: {},
-    title: { fontSize: 28, fontWeight: '900', letterSpacing: 1 },
-    subtitle: { fontSize: 14, marginTop: 2 },
+    profileMenu: {
+        position: 'absolute',
+        top: 50,
+        right: 0,
+        width: 180,
+        borderRadius: 12,
+        paddingVertical: 5,
+        zIndex: 1000,
+        shadowColor: '#000',
+        shadowOffset: { width: 0, height: 4 },
+        shadowOpacity: 0.15,
+        shadowRadius: 8,
+        elevation: 10,
+    },
+    profileMenuItem: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        paddingVertical: 12,
+        paddingHorizontal: 15,
+        gap: 12,
+    },
+    profileMenuText: {
+        fontSize: 14,
+        fontWeight: '600',
+    },
+    profileMenuDivider: {
+        height: 1,
+        backgroundColor: 'rgba(0,0,0,0.05)',
+        marginHorizontal: 10,
+    },
+    title: { fontSize: 20, fontWeight: '900', letterSpacing: 0.5 },
+    subtitle: { fontSize: 13, marginTop: 2 },
     cartIconContainer: { position: 'relative' },
     badge: {
         position: 'absolute',
         right: -6,
         top: -6,
-        backgroundColor: '#FF2222',
+        backgroundColor: '#DF2324',
         borderRadius: 10,
         width: 20,
         height: 20,
@@ -154,27 +752,341 @@ const styles = StyleSheet.create({
         alignItems: 'center',
     },
     badgeText: { color: '#FFF', fontSize: 10, fontWeight: 'bold' },
-    list: { padding: 15 },
+    listContent: { paddingBottom: 100, gap: 12 },
+    colWrapper: { paddingHorizontal: 14, gap: 12 },
     card: {
-        borderRadius: 15,
-        marginBottom: 20,
-        borderWidth: 1,
+        flex: 1,
+        height: 240,
+        borderRadius: 12,
+        overflow: 'visible',
+        shadowColor: '#000',
+        shadowOffset: { width: 0, height: 2 },
+        shadowOpacity: 0.1,
+        shadowRadius: 4,
+        elevation: 3,
+    },
+    cardInner: {
+        flex: 1,
+        borderRadius: 12,
         overflow: 'hidden',
     },
-    image: { width: '100%', height: 180 },
-    cardContent: { padding: 15 },
-    deviceLabel: { fontSize: 12, textTransform: 'uppercase', letterSpacing: 1, marginBottom: 4 },
-    deviceName: { fontSize: 20, fontWeight: 'bold', marginBottom: 10 },
-    priceContainer: { marginBottom: 15 },
-    retailPrice: { fontSize: 14, textDecorationLine: 'line-through' },
-    garagePrice: { color: '#FF3333', fontSize: 18, fontWeight: '900' },
-    addButton: {
-        backgroundColor: '#FF3333',
-        flexDirection: 'row',
+    cardImg: { width: '100%', height: 150 },
+    brandChip: {
+        position: 'absolute',
+        top: 10,
+        right: 10,
+        backgroundColor: 'rgba(223,35,36,0.9)',
+        borderRadius: 6,
+        paddingHorizontal: 8,
+        paddingVertical: 3,
+    },
+    brandChipText: { color: '#FFF', fontSize: 10, fontWeight: '700' },
+    conditionChip: {
+        position: 'absolute',
+        top: 10,
+        left: 10,
+        backgroundColor: 'rgba(0,0,0,0.6)',
+        borderRadius: 6,
+        paddingHorizontal: 8,
+        paddingVertical: 3,
+    },
+    conditionChipText: { color: '#00FF00', fontSize: 10, fontWeight: '800' },
+    cardBottom: {
+        padding: 12,
+    },
+    cardTitle: { fontWeight: '700', fontSize: 13, marginBottom: 4 },
+    cardPriceRow: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' },
+    cardPrice: { color: '#DF2324', fontWeight: '900', fontSize: 15 },
+    miniCartBtn: {
+        width: 28,
+        height: 28,
+        borderRadius: 6,
+        backgroundColor: '#DF2324',
         justifyContent: 'center',
         alignItems: 'center',
-        padding: 12,
-        borderRadius: 8,
     },
-    addButtonText: { color: '#FFF', fontWeight: 'bold', marginRight: 8, letterSpacing: 1 },
+    filterContainer: { paddingVertical: 12, backgroundColor: 'transparent' },
+    filterScroll: { paddingHorizontal: 15, gap: 8 },
+    filterPill: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        paddingHorizontal: 16,
+        paddingVertical: 8,
+        borderRadius: 10,
+        gap: 6,
+    },
+    filterPillActive: {
+        backgroundColor: '#DF2324',
+    },
+    filterText: { fontWeight: 'bold', fontSize: 13 },
+    filterTextActive: { color: '#FFF' },
+    vehicleFilterContainer: {
+        paddingVertical: 12,
+    },
+    pickerRow: {
+        flexDirection: 'row',
+        gap: 12,
+        paddingHorizontal: 15,
+        marginBottom: 4,
+    },
+    chatFab: {
+        position: 'absolute',
+        bottom: 30,
+        right: 25,
+        width: 56,
+        height: 56,
+        borderRadius: 28,
+        elevation: 10,
+        shadowColor: '#DF2324',
+        shadowOffset: { width: 0, height: 6 },
+        shadowOpacity: 0.4,
+        shadowRadius: 10,
+    },
+    fabGradient: {
+        flex: 1,
+        borderRadius: 28,
+        justifyContent: 'center',
+        alignItems: 'center',
+    },
+    searchRow: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        paddingHorizontal: 20,
+        gap: 10,
+        marginBottom: 16,
+    },
+    searchBar: {
+        flex: 1,
+        flexDirection: 'row',
+        alignItems: 'center',
+        borderRadius: 12,
+        paddingHorizontal: 14,
+        paddingVertical: 11,
+        gap: 10,
+    },
+    searchInput: { flex: 1, fontSize: 14 },
+    filterBtn: {
+        width: 46,
+        height: 46,
+        borderRadius: 12,
+        justifyContent: 'center',
+        alignItems: 'center',
+    },
+    vehicleBarWrapper: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        paddingHorizontal: 20,
+        marginBottom: 16,
+    },
+    vehicleToggleBar: {
+        flex: 1,
+        flexDirection: 'row',
+        alignItems: 'center',
+        paddingHorizontal: 15,
+        paddingVertical: 12,
+        borderRadius: 12,
+        borderWidth: 1,
+    },
+    vehicleSummaryText: {
+        fontSize: 13,
+        fontWeight: '800',
+    },
+    vehiclePlaceholderText: {
+        fontSize: 13,
+        fontWeight: '600',
+    },
+    clearVehicleBtn: {
+        marginLeft: 10,
+        padding: 5,
+    },
+    catList: { paddingHorizontal: 20, paddingBottom: 16, gap: 8 },
+    catPill: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        paddingHorizontal: 14,
+        paddingVertical: 8,
+        borderRadius: 10,
+        gap: 6,
+    },
+    catPillActive: { backgroundColor: '#DF2324' },
+    catText: { fontWeight: '600', fontSize: 13 },
+    catTextActive: { color: '#FFF' },
+    conditionFilterWrap: { paddingHorizontal: 20, paddingBottom: 15 },
+    filterLabel: { fontSize: 10, fontWeight: '800', textTransform: 'uppercase', marginBottom: 8, letterSpacing: 1 },
+    conditionScroll: { gap: 8 },
+    condPill: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        paddingHorizontal: 12,
+        paddingVertical: 6,
+        borderRadius: 8,
+        borderWidth: 1,
+        gap: 5,
+    },
+    condPillActive: { backgroundColor: '#DF2324', borderColor: '#DF2324' },
+    condText: { fontSize: 11, fontWeight: '700' },
+    condTextActive: { color: '#FFF' },
+    sortMenu: {
+        position: 'absolute',
+        top: 65,
+        right: 15,
+        width: 180,
+        borderRadius: 12,
+        paddingVertical: 5,
+        zIndex: 1000,
+        shadowColor: '#000',
+        shadowOffset: { width: 0, height: 4 },
+        shadowOpacity: 0.15,
+        shadowRadius: 8,
+        elevation: 10,
+    },
+    menuItem: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        paddingVertical: 12,
+        paddingHorizontal: 15,
+        gap: 12,
+    },
+    menuText: {
+        fontSize: 14,
+        fontWeight: '600',
+    },
+    requestBannerWrap: {
+        marginTop: 20,
+        paddingHorizontal: 20,
+        marginBottom: 10,
+    },
+    requestBanner: {
+        backgroundColor: '#1A1A1A',
+        borderColor: '#333333',
+        borderWidth: 1,
+        borderRadius: 20,
+        padding: 20,
+        flexDirection: 'column',
+    },
+    requestBannerTitle: {
+        color: '#FFFFFF',
+        fontSize: 20,
+        fontWeight: '900',
+        fontStyle: 'italic',
+        textTransform: 'uppercase',
+        letterSpacing: -0.5,
+        marginBottom: 6,
+        lineHeight: 24,
+    },
+    requestBannerSub: {
+        color: '#AAAAAA',
+        fontSize: 11,
+        fontWeight: '500',
+        lineHeight: 15,
+        paddingRight: 10,
+    },
+    requestBannerBtn: {
+        backgroundColor: '#DF2324',
+        paddingHorizontal: 14,
+        paddingVertical: 8,
+        borderRadius: 10,
+        flexDirection: 'row',
+        alignItems: 'center',
+        gap: 6,
+    },
+    requestBannerBtnTxt: {
+        color: '#FFF',
+        fontSize: 12,
+        fontWeight: '800',
+    },
+    heroSection: {
+        paddingHorizontal: 20,
+        paddingTop: 20,
+        paddingBottom: 10,
+        alignItems: 'center',
+    },
+    heroTitle: {
+        fontSize: 48,
+        fontWeight: '900',
+        fontStyle: 'italic',
+        textTransform: 'uppercase',
+        letterSpacing: -2,
+        color: '#FFF',
+        textAlign: 'center',
+        lineHeight: 52,
+        marginBottom: 12,
+    },
+    heroSubtitle: {
+        fontSize: 14,
+        fontWeight: '600',
+        color: '#AAAAAA',
+        textAlign: 'center',
+        paddingHorizontal: 10,
+        marginBottom: 24,
+        lineHeight: 20,
+    },
+    badgesWrapper: {
+        flexDirection: 'row',
+        gap: 12,
+        justifyContent: 'space-between',
+        width: '100%',
+    },
+    badgeItem: {
+        flex: 1,
+        flexDirection: 'row',
+        alignItems: 'center',
+        gap: 8,
+        backgroundColor: '#1A1A1A',
+        padding: 12,
+        borderRadius: 16,
+        borderWidth: 1,
+        borderColor: 'rgba(255,255,255,0.05)',
+    },
+    badgeIconWrap: {
+        width: 36,
+        height: 36,
+        borderRadius: 10,
+        backgroundColor: 'rgba(223,35,36,0.1)',
+        justifyContent: 'center',
+        alignItems: 'center',
+    },
+    badgeTitle: {
+        color: '#FFF',
+        fontSize: 10,
+        fontWeight: '900',
+        fontStyle: 'italic',
+        textTransform: 'uppercase',
+    },
+    badgeDesc: {
+        color: '#888',
+        fontSize: 9,
+        fontWeight: '600',
+    },
+    paginationRow: {
+        marginVertical: 20,
+        alignItems: 'center',
+    },
+    paginationScroll: {
+        paddingHorizontal: 20,
+        gap: 10,
+    },
+    pageBtn: {
+        width: 40,
+        height: 40,
+        borderRadius: 10,
+        backgroundColor: '#1A1A1A',
+        borderWidth: 1,
+        borderColor: 'rgba(255,255,255,0.05)',
+        justifyContent: 'center',
+        alignItems: 'center',
+    },
+    pageBtnActive: {
+        backgroundColor: '#DF2324',
+        borderColor: '#DF2324',
+    },
+    pageText: {
+        color: '#888',
+        fontSize: 14,
+        fontWeight: '900',
+        fontStyle: 'italic',
+    },
+    pageTextActive: {
+        color: '#FFF',
+    },
 });

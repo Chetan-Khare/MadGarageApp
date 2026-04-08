@@ -1,9 +1,10 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { View, Text, StyleSheet, TextInput, TouchableOpacity, ScrollView, Alert, ActivityIndicator, Image, Platform } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import ModernDropdown from '../components/ModernDropdown';
 import { Ionicons } from '@expo/vector-icons';
 import { NativeStackNavigationProp } from '@react-navigation/native-stack';
+import { RouteProp, useRoute } from '@react-navigation/native';
 import { RootStackParamList } from '../../App';
 import * as ImagePicker from 'expo-image-picker';
 import apiClient from '../services/apiClient';
@@ -11,6 +12,7 @@ import apiClient from '../services/apiClient';
 import * as FileSystem from 'expo-file-system/legacy';
 import { useAuthStore } from '../store/authStore';
 import { useThemeStore, DARK_THEME, LIGHT_THEME } from '../store/themeStore';
+import { BASE_SERVER_URL } from '../services/apiClient';
 
 const PART_CATEGORIES = [
     'Sound Tech',
@@ -32,24 +34,50 @@ const COLORS = [
 ];
 
 type Props = {
-    navigation: NativeStackNavigationProp<RootStackParamList, 'AddProduct'>;
+    navigation: NativeStackNavigationProp<RootStackParamList, 'EditProduct'>;
 };
 
-export default function AddProductScreen({ navigation }: Props) {
-    const [partName, setPartName] = useState('');
-    const [brand, setBrand] = useState('');
-    const [sku, setSku] = useState('');
-    const [category, setCategory] = useState('All Tech');
-    const [price, setPrice] = useState('');
-    const [stockQuantity, setStockQuantity] = useState('');
-    const [description, setDescription] = useState('');
-    const [fitmentCategory, setFitmentCategory] = useState('ENGINE');
-    const [condition, setCondition] = useState('NEW');
-    const [color, setColor] = useState('Unpainted/Raw');
-    const [isUniversal, setIsUniversal] = useState(false);
+type EditProductRouteProp = RouteProp<RootStackParamList, 'EditProduct'>;
+
+export default function EditProductScreen({ navigation }: Props) {
+    const route = useRoute<EditProductRouteProp>();
+    const { product } = route.params;
+
+    const { isDark } = useThemeStore();
+    const T = isDark ? DARK_THEME : LIGHT_THEME;
+
+    const [partName, setPartName] = useState(product.partName || '');
+    const [brand, setBrand] = useState(product.brand || '');
+    const [sku, setSku] = useState(product.sku || '');
+    const [category, setCategory] = useState(product.category || 'others');
+    const [price, setPrice] = useState(product.price ? String(product.price) : '');
+    const [stockQuantity, setStockQuantity] = useState(product.stockQuantity !== undefined ? String(product.stockQuantity) : '');
+    const [description, setDescription] = useState(product.description || '');
+    const [fitmentCategory, setFitmentCategory] = useState(product.fitmentCategory || 'ENGINE');
+    const [condition, setCondition] = useState(product.condition || 'NEW');
+    const [color, setColor] = useState(product.color || 'Black');
+    const [isUniversal, setIsUniversal] = useState(product.fitmentCategory === 'UNIVERSAL');
     const [imageUris, setImageUris] = useState<string[]>([]);
     const [uploading, setUploading] = useState(false);
     const [guideUri, setGuideUri] = useState<string | null>(null);
+
+    const [selectedFitments, setSelectedFitments] = useState<any[]>([]);
+
+    useEffect(() => {
+        if (product.fittedVehicles) {
+            setSelectedFitments(product.fittedVehicles);
+        }
+    }, [product]);
+
+    // Initial load existing images
+    const [existingImages, setExistingImages] = useState<string[]>([]);
+    useEffect(() => {
+        if (product.imageUrls && product.imageUrls.length > 0) {
+            setExistingImages(product.imageUrls.map(url => `${BASE_SERVER_URL}${url}`));
+        } else if (product.imageUrl) {
+            setExistingImages([`${BASE_SERVER_URL}${product.imageUrl}`]);
+        }
+    }, [product]);
 
     // Vehicle Selection State
     const [makes, setMakes] = useState<string[]>([]);
@@ -66,17 +94,10 @@ export default function AddProductScreen({ navigation }: Props) {
     const [selectedTrim, setSelectedTrim] = useState('');
     const [selectedEngine, setSelectedEngine] = useState('');
 
-    const [selectedFitments, setSelectedFitments] = useState<any[]>([]);
-
-    const { isDark } = useThemeStore();
-    const T = isDark ? DARK_THEME : LIGHT_THEME;
-
-    // Fetch Makes on mount
     React.useEffect(() => {
         apiClient.get('/vehicles/makes').then(res => setMakes(res.data)).catch(err => console.log("Error fetching makes", err));
     }, []);
 
-    // Fetch Models when Make changes
     React.useEffect(() => {
         if (selectedMake) {
             apiClient.get(`/vehicles/models?make=${selectedMake}`).then(res => {
@@ -88,7 +109,6 @@ export default function AddProductScreen({ navigation }: Props) {
         }
     }, [selectedMake]);
 
-    // Fetch Years when Model changes
     React.useEffect(() => {
         if (selectedMake && selectedModel) {
             apiClient.get(`/vehicles/years?make=${selectedMake}&model=${selectedModel}`).then(res => {
@@ -99,7 +119,6 @@ export default function AddProductScreen({ navigation }: Props) {
         }
     }, [selectedModel]);
 
-    // Fetch Fuels when Year changes
     React.useEffect(() => {
         if (selectedMake && selectedModel && selectedYear) {
             apiClient.get(`/vehicles/fuels?make=${selectedMake}&model=${selectedModel}&year=${selectedYear}`).then(res => {
@@ -111,7 +130,6 @@ export default function AddProductScreen({ navigation }: Props) {
         }
     }, [selectedYear]);
 
-    // Fetch Trims when Fuel changes
     React.useEffect(() => {
         if (selectedMake && selectedModel && selectedYear && selectedFuel) {
             apiClient.get(`/vehicles/trims?make=${selectedMake}&model=${selectedModel}&year=${selectedYear}&fuel=${selectedFuel}`).then(res => {
@@ -122,7 +140,6 @@ export default function AddProductScreen({ navigation }: Props) {
         }
     }, [selectedFuel]);
 
-    // Fetch Engines when Trim changes
     React.useEffect(() => {
         if (selectedMake && selectedModel && selectedYear && selectedFuel && selectedTrim) {
             apiClient.get(`/vehicles/engines?make=${selectedMake}&model=${selectedModel}&year=${selectedYear}&fuel=${selectedFuel}&trim=${selectedTrim}`).then(res => {
@@ -134,7 +151,7 @@ export default function AddProductScreen({ navigation }: Props) {
 
     const handleAddFitment = async () => {
         if (!selectedEngine) {
-            Alert.alert("Incomplete Selection", "Please select a full vehicle specification (Make through Engine) before adding.");
+            Alert.alert("Incomplete Selection", "Please select a full vehicle specification.");
             return;
         }
 
@@ -143,21 +160,21 @@ export default function AddProductScreen({ navigation }: Props) {
             if (res.data && res.data.length > 0) {
                 const newFits = res.data.filter((v: any) => !selectedFitments.some(sf => sf.id === v.id));
                 if (newFits.length === 0) {
-                    Alert.alert("Duplicate", "This vehicle is already in your compatibility list.");
+                    Alert.alert("Duplicate", "This vehicle is already in the list.");
                     return;
                 }
                 setSelectedFitments(prev => [...prev, ...newFits]);
-                setSelectedMake(''); // Reset to allow next car
+                setSelectedMake('');
                 setSelectedModel('');
                 setSelectedYear('');
                 setSelectedFuel('');
                 setSelectedTrim('');
                 setSelectedEngine('');
             } else {
-                Alert.alert("Not Found", "No matching vehicle found in database.");
+                Alert.alert("Not Found", "No matching vehicle found.");
             }
         } catch (error) {
-            Alert.alert("Error", "Failed to verify vehicle compatibility.");
+            Alert.alert("Error", "Failed to verify compatibility.");
         }
     };
 
@@ -166,11 +183,16 @@ export default function AddProductScreen({ navigation }: Props) {
     };
 
     const pickImage = async () => {
+        // Clear existing server images if the user picks new local ones.
+        if (existingImages.length > 0) {
+            setExistingImages([]);
+        }
+
         let result = await ImagePicker.launchImageLibraryAsync({
-            mediaTypes: ImagePicker.MediaTypeOptions.Images,
+            mediaTypes: ['images'],
             allowsMultipleSelection: true,
             selectionLimit: 5,
-            quality: 0.4, // Reduced from 0.8 to avoid MaxUploadSizeExceededException
+            quality: 0.4,
         });
 
         if (!result.canceled) {
@@ -179,13 +201,22 @@ export default function AddProductScreen({ navigation }: Props) {
         }
     };
 
-    const removeImage = (index: number) => {
-        setImageUris(prev => prev.filter((_, i) => i !== index));
+    const removeImage = (index: number, isExisting: boolean) => {
+        if (isExisting) {
+            setExistingImages(prev => prev.filter((_, i) => i !== index));
+        } else {
+            setImageUris(prev => prev.filter((_, i) => i !== index));
+        }
     };
 
     const handleUpload = async () => {
-        if (!partName || !price || !stockQuantity || imageUris.length === 0) {
-            Alert.alert("Missing Details", "Please fill out the name, price, stock, and select at least one image.");
+        if (!partName || !price || !stockQuantity) {
+            Alert.alert("Missing Details", "Please fill out the name, price, and stock quantity.");
+            return;
+        }
+
+        if (imageUris.length === 0 && existingImages.length === 0) {
+            Alert.alert("Missing Images", "Please select at least one image.");
             return;
         }
 
@@ -195,14 +226,13 @@ export default function AddProductScreen({ navigation }: Props) {
             let vehicleIds: number[] = [];
             if (!isUniversal) {
                 if (selectedFitments.length === 0 && !selectedEngine) {
-                    Alert.alert("Fitment Required", "Please add at least one compatible vehicle or select Universal.");
+                    Alert.alert("Fitment Required", "Product must have at least one fitment.");
                     setUploading(false);
                     return;
                 }
                 
                 vehicleIds = selectedFitments.map(f => f.id);
 
-                // Add current pending selection if valid
                 if (selectedEngine && !selectedFitments.some(sf => sf.id === selectedEngine)) {
                     const res = await apiClient.get(`/vehicles/search?make=${selectedMake}&model=${selectedModel}&year=${selectedYear}&fuel=${selectedFuel}&trim=${selectedTrim}&engine=${selectedEngine}`);
                     const resIds = res.data.map((v: any) => v.id);
@@ -211,6 +241,7 @@ export default function AddProductScreen({ navigation }: Props) {
             }
 
             const base64Images: string[] = [];
+            // Only parse local URI images
             for (const uri of imageUris) {
                 const base64 = await FileSystem.readAsStringAsync(uri, {
                     encoding: 'base64'
@@ -218,7 +249,6 @@ export default function AddProductScreen({ navigation }: Props) {
                 base64Images.push(base64);
             }
 
-            // Optional Guide conversion
             let base64Guide: string | null = null;
             let guideExt: string | null = null;
             if (guideUri) {
@@ -229,31 +259,31 @@ export default function AddProductScreen({ navigation }: Props) {
             }
 
             const payload = {
-                sku: sku || `MG-${Math.floor(Math.random() * 10000)}`,
-                brand: brand || 'MAD GARAGE',
+                sku,
+                brand,
                 partName,
                 category,
                 price: parseFloat(price),
-                description: description || 'High performance part.',
+                description,
                 stockQuantity: parseInt(stockQuantity),
                 color,
                 condition,
                 fitmentCategory: isUniversal ? 'UNIVERSAL' : fitmentCategory,
                 vehicleIds,
-                base64Images,
+                base64Images, // Will be empty if they kept existing images
                 base64Guide,
                 guideExtension: guideExt
             };
 
-            await apiClient.post('/seller/inventory/base64', payload);
+            await apiClient.put(`/seller/inventory/${product.id}/base64`, payload);
 
-            Alert.alert("Success", "Part successfully listed via Base64!");
+            Alert.alert("Success", "Part successfully updated!");
             navigation.goBack();
 
         } catch (error: any) {
-            console.error("Upload failed", error);
+            console.error("Update failed", error);
             const errorMsg = error.response?.data?.message || error.message;
-            Alert.alert("Upload Failed", `Product creation failed: ${errorMsg}\n\nHint: Check Console for details.`);
+            Alert.alert("Update Failed", `Product update failed: ${errorMsg}`);
         } finally {
             setUploading(false);
         }
@@ -266,40 +296,43 @@ export default function AddProductScreen({ navigation }: Props) {
                     <TouchableOpacity onPress={() => navigation.goBack()} style={[styles.backBtn, { backgroundColor: T.inputBg }]}>
                         <Ionicons name="chevron-back" size={24} color={T.text} />
                     </TouchableOpacity>
-                    <Text style={[styles.headerTitle, { color: T.text }]}>New Listing</Text>
-                    <TouchableOpacity
-                        onPress={async () => {
-                            try {
-                                const res = await apiClient.get('/debug/ping');
-                                Alert.alert("Connection OK", `Status: ${res.data.status}\n${res.data.message}`);
-                            } catch (err: any) {
-                                console.error("Ping failed", err);
-                                Alert.alert("Connection Failed", `Could not reach backend at ${apiClient.defaults.baseURL}\n\nError: ${err.message}`);
-                            }
-                        }}
-                        style={[styles.pingBtn, { backgroundColor: T.inputBg }]}
-                    >
-                        <Ionicons name="wifi" size={20} color={T.text} />
-                    </TouchableOpacity>
+                    <Text style={[styles.headerTitle, { color: T.text }]}>Edit Listing</Text>
+                    <View style={{ width: 38 }} />
                 </View>
 
                 <View style={styles.formContainer}>
                     <View style={styles.imageSection}>
+                        <Text style={[styles.label, { color: T.subText, marginBottom: 8 }]}>Product Images</Text>
                         <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.imageScrollView}>
-                            {imageUris.map((uri, index) => (
-                                <View key={index} style={styles.imageThumbnailContainer}>
+
+                            {/* Render Existing Server Images */}
+                            {existingImages.map((uri, index) => (
+                                <View key={`exist-${index}`} style={styles.imageThumbnailContainer}>
                                     <Image source={{ uri }} style={styles.thumbnailImage} />
-                                    <TouchableOpacity style={styles.removeImageBtn} onPress={() => removeImage(index)}>
+                                    <TouchableOpacity style={styles.removeImageBtn} onPress={() => removeImage(index, true)}>
                                         <Ionicons name="close-circle" size={20} color="#FF4444" />
                                     </TouchableOpacity>
                                 </View>
                             ))}
-                            {imageUris.length < 5 && (
+
+                            {/* Render Local New Images */}
+                            {imageUris.map((uri, index) => (
+                                <View key={`new-${index}`} style={styles.imageThumbnailContainer}>
+                                    <Image source={{ uri }} style={styles.thumbnailImage} />
+                                    <TouchableOpacity style={styles.removeImageBtn} onPress={() => removeImage(index, false)}>
+                                        <Ionicons name="close-circle" size={20} color="#FF4444" />
+                                    </TouchableOpacity>
+                                </View>
+                            ))}
+
+                            {(imageUris.length + existingImages.length) < 5 && (
                                 <TouchableOpacity style={[styles.imagePicker, { backgroundColor: T.inputBg, borderColor: T.inputBorder }]} onPress={pickImage}>
                                     <View style={styles.pickerPlaceholder}>
                                         <Ionicons name="camera-outline" size={32} color="#DF2324" />
-                                        <Text style={[styles.pickerText, { color: T.subText }]}>{imageUris.length > 0 ? 'Add More' : 'Add Photos'}</Text>
-                                        <Text style={{ fontSize: 10, color: T.subText }}>Max 5</Text>
+                                        <Text style={[styles.pickerText, { color: T.subText }]}>
+                                            {(imageUris.length + existingImages.length) > 0 ? 'Add More' : 'Add Photos'}
+                                        </Text>
+                                        <Text style={{ fontSize: 10, color: T.subText }}>Max 5 / Overwrites existing if picked</Text>
                                     </View>
                                 </TouchableOpacity>
                             )}
@@ -312,7 +345,6 @@ export default function AddProductScreen({ navigation }: Props) {
                             <TextInput
                                 style={[styles.input, { backgroundColor: T.inputBg, borderColor: T.inputBorder, color: T.text }]}
                                 placeholderTextColor={T.placeholder}
-                                placeholder="e.g. Forged Pistons"
                                 value={partName}
                                 onChangeText={setPartName}
                             />
@@ -323,7 +355,6 @@ export default function AddProductScreen({ navigation }: Props) {
                             <TextInput
                                 style={[styles.input, { backgroundColor: T.inputBg, borderColor: T.inputBorder, color: T.text }]}
                                 placeholderTextColor={T.placeholder}
-                                placeholder="e.g. CP Carrillo"
                                 value={brand}
                                 onChangeText={setBrand}
                             />
@@ -351,7 +382,6 @@ export default function AddProductScreen({ navigation }: Props) {
                             value={category}
                             options={PART_CATEGORIES}
                             onSelect={setCategory}
-                            placeholder="Select Part Category"
                         />
 
                         <View style={styles.row}>
@@ -360,7 +390,6 @@ export default function AddProductScreen({ navigation }: Props) {
                                 <TextInput
                                     style={[styles.input, { backgroundColor: T.inputBg, borderColor: T.inputBorder, color: T.text }]}
                                     placeholderTextColor={T.placeholder}
-                                    placeholder="99.99"
                                     keyboardType="numeric"
                                     value={price}
                                     onChangeText={setPrice}
@@ -372,7 +401,6 @@ export default function AddProductScreen({ navigation }: Props) {
                                     <TextInput
                                         style={[styles.input, { backgroundColor: T.inputBg, borderColor: T.inputBorder, color: T.text }]}
                                         placeholderTextColor={T.placeholder}
-                                        placeholder="10"
                                         keyboardType="numeric"
                                         value={stockQuantity}
                                         onChangeText={setStockQuantity}
@@ -386,7 +414,6 @@ export default function AddProductScreen({ navigation }: Props) {
                             <TextInput
                                 style={[styles.input, styles.textArea, { backgroundColor: T.inputBg, borderColor: T.inputBorder, color: T.text }]}
                                 placeholderTextColor={T.placeholder}
-                                placeholder="Specifications..."
                                 multiline
                                 numberOfLines={4}
                                 value={description}
@@ -445,7 +472,6 @@ export default function AddProductScreen({ navigation }: Props) {
                                         containerStyle={{ flex: 1 }}
                                     />
                                 </View>
-
                                 <View style={styles.pickerRow}>
                                     <ModernDropdown
                                         label="YEAR"
@@ -498,12 +524,16 @@ export default function AddProductScreen({ navigation }: Props) {
 
                                 {selectedFitments.length > 0 && (
                                     <View style={styles.fitmentList}>
-                                        <Text style={[styles.label, { color: T.subText, fontSize: 10, marginTop: 10 }]}>Confirmed Fitments ({selectedFitments.length})</Text>
+                                        <Text style={[styles.label, { color: T.subText, fontSize: 10, marginTop: 10 }]}>Current Compatible Vehicles ({selectedFitments.length})</Text>
                                         {selectedFitments.map(item => (
                                             <View key={item.id} style={[styles.fitmentItem, { backgroundColor: T.inputBg, borderColor: T.inputBorder }]}>
                                                 <View style={{ flex: 1 }}>
-                                                    <Text style={[styles.fitmentTitle, { color: T.text }]}>{item.carModel.make.name} {item.carModel.name}</Text>
-                                                    <Text style={[styles.fitmentSub, { color: T.subText }]}>{item.year} | {item.engineType}</Text>
+                                                    <Text style={[styles.fitmentTitle, { color: T.text }]}>
+                                                        {item.carModel?.make?.name || ''} {item.carModel?.name || ''}
+                                                    </Text>
+                                                    <Text style={[styles.fitmentSub, { color: T.subText }]}>
+                                                        {item.year} | {item.engineType}
+                                                    </Text>
                                                 </View>
                                                 <TouchableOpacity onPress={() => removeFitment(item.id)}>
                                                     <Ionicons name="trash-outline" size={20} color="#FF4444" />
@@ -521,7 +551,7 @@ export default function AddProductScreen({ navigation }: Props) {
                         onPress={handleUpload}
                         disabled={uploading}
                     >
-                        {uploading ? <ActivityIndicator color="#FFF" /> : <Text style={styles.submitBtnText}>PUBLISH TO MARKET</Text>}
+                        {uploading ? <ActivityIndicator color="#FFF" /> : <Text style={styles.submitBtnText}>SAVE CHANGES</Text>}
                     </TouchableOpacity>
                 </View>
             </ScrollView>
@@ -541,7 +571,6 @@ const styles = StyleSheet.create({
     },
     backBtn: { width: 38, height: 38, borderRadius: 19, justifyContent: 'center', alignItems: 'center' },
     headerTitle: { fontSize: 18, fontWeight: '800', flex: 1, textAlign: 'center' },
-    pingBtn: { width: 38, height: 38, borderRadius: 19, justifyContent: 'center', alignItems: 'center' },
     formContainer: { padding: 16 },
     imageSection: {
         marginBottom: 20,
@@ -556,17 +585,24 @@ const styles = StyleSheet.create({
         borderRadius: 12,
         overflow: 'hidden',
         position: 'relative',
+        borderWidth: 1,
+        borderColor: '#333'
     },
     thumbnailImage: {
         width: '100%',
         height: '100%',
+        resizeMode: 'cover'
     },
     removeImageBtn: {
         position: 'absolute',
         top: 5,
         right: 5,
         backgroundColor: 'rgba(255,255,255,0.8)',
-        borderRadius: 10,
+        borderRadius: 15,
+        width: 30,
+        height: 30,
+        justifyContent: 'center',
+        alignItems: 'center'
     },
     imagePicker: {
         width: 140,

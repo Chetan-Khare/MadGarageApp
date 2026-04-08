@@ -1,7 +1,7 @@
 import { create } from 'zustand';
 import * as SecureStore from 'expo-secure-store';
 
-export type UserRole = 'ADMIN' | 'SELLER' | 'CUSTOMER' | 'GARAGE';
+export type UserRole = 'ROLE_ADMIN' | 'ROLE_SELLER' | 'ROLE_CUSTOMER' | 'ROLE_GARAGE';
 
 export interface User {
     id: string;
@@ -14,7 +14,9 @@ interface AuthState {
     token: string | null;
     role: UserRole | null;
     user: User | null;
+    isGuest: boolean;
     setAuth: (token: string, role: UserRole, user?: User) => Promise<void>;
+    setGuest: (isGuest: boolean) => void;
     logout: () => Promise<void>;
     initializeAuth: () => Promise<void>;
 }
@@ -23,6 +25,7 @@ export const useAuthStore = create<AuthState>((set) => ({
     token: null,
     role: null,
     user: null,
+    isGuest: false,
 
     setAuth: async (token, role, user) => {
         try {
@@ -37,12 +40,16 @@ export const useAuthStore = create<AuthState>((set) => ({
         }
     },
 
+    setGuest: (isGuest) => {
+        set({ isGuest, role: isGuest ? 'ROLE_CUSTOMER' : null });
+    },
+
     logout: async () => {
         try {
             await SecureStore.deleteItemAsync('jwtToken');
             await SecureStore.deleteItemAsync('userRole');
             await SecureStore.deleteItemAsync('userData');
-            set({ token: null, role: null, user: null });
+            set({ token: null, role: null, user: null, isGuest: false });
         } catch (error) {
             console.error('Error clearing auth state:', error);
         }
