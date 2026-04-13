@@ -484,7 +484,6 @@ export default function EditProductScreen({ navigation }: Props) {
                                 <Text style={{ fontSize: 8, color: '#FF9B3E88', marginTop: 4 }}>This response will be visible to Mad Garage Administrators during catalog audit.</Text>
                             </View>
                         )}
-
                         <View style={styles.inputGroup}>
                             <Text style={[styles.label, { color: T.subText }]}>Fitment Type</Text>
                             <View style={styles.fitmentToggleRow}>

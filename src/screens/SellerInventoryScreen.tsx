@@ -87,6 +87,7 @@ export default function SellerInventoryScreen({ navigation }: Props) {
                         <View style={{ flexDirection: 'row', alignItems: 'center', gap: 4, marginTop: 4 }}>
                             <Ionicons name="star" size={12} color="#FFD700" />
                             <Text style={{ fontSize: 12, fontWeight: '800', color: T.subText }}>{item.rating || '4.5'}</Text>
+                            {item.isManualRating && <Ionicons name="shield-checkmark-outline" size={12} color="#DF2324" style={{ marginLeft: 4 }} />}
                         </View>
                     </View>
                     <View style={[styles.stockBadge, { backgroundColor: item.stockQuantity > 0 ? '#4CAF5022' : '#F4433622' }]}>
