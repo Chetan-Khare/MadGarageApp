@@ -4,11 +4,12 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
 import { LinearGradient } from 'expo-linear-gradient';
 import { NativeStackNavigationProp } from '@react-navigation/native-stack';
-import { RootStackParamList } from '../../App';
+import { RootStackParamList } from '../types';
 import apiClient, { BASE_SERVER_URL } from '../services/apiClient';
 import { useCartStore, CartItem } from '../store/cartStore';
 import { useAuthStore } from '../store/authStore';
 import { useThemeStore, DARK_THEME, LIGHT_THEME } from '../store/themeStore';
+import { useWishlistStore } from '../store/wishlistStore';
 
 import ModernDashboardHeader from '../components/ModernDashboardHeader';
 import ModernDropdown from '../components/ModernDropdown';
@@ -81,6 +82,8 @@ export default function GarageDashboardScreen({ navigation }: Props) {
     const T = isDark ? DARK_THEME : LIGHT_THEME;
     const PRIMARY = '#DF2324';
     const insets = useSafeAreaInsets();
+    const wishlistItems = useWishlistStore(s => s.items);
+    const toggleWishlist = useWishlistStore(s => s.toggleWishlist);
 
     useEffect(() => {
         fetchProducts(activeCategory);
@@ -133,6 +136,25 @@ export default function GarageDashboardScreen({ navigation }: Props) {
         } catch (error) {
             console.error('Error fetching trims:', error);
         }
+    };
+
+    const handleToggleWishlist = async (product: any) => {
+        if (isGuest || !token) {
+            Alert.alert(
+                'Authentication Required',
+                'Log in or create an account to save parts to your wishlist.',
+                [
+                    { text: 'Cancel', style: 'cancel' },
+                    { text: 'Log In', onPress: () => logout() }
+                ]
+            );
+            return;
+        }
+        const added = await toggleWishlist(product);
+        Toast.show({ 
+            message: added ? `${product.partName || product.name} added to wishlist` : 'Removed from wishlist', 
+            type: added ? 'success' : 'info' 
+        });
     };
 
     const fetchEngines = async (make: string, model: string, year: string, fuel: string, trim: string) => {
@@ -272,7 +294,7 @@ export default function GarageDashboardScreen({ navigation }: Props) {
         }
         return 0;
     });
- 
+
     const totalPages = Math.ceil(filteredProducts.length / pageSize);
     const pagedProducts = filteredProducts.slice((currentPage - 1) * pageSize, currentPage * pageSize);
 
@@ -286,42 +308,62 @@ export default function GarageDashboardScreen({ navigation }: Props) {
             >
                 <View style={styles.cardInner}>
                     <Image source={{ uri: imageUrl || 'https://via.placeholder.com/150' }} style={styles.cardImg} resizeMode="cover" />
-                    <View style={styles.brandChip}>
-                        <Text style={styles.brandChipText}>Wholesale</Text>
-                    </View>
+                    {(item.manufacturer || item.brand || item.brandName) ? (
+                        <View style={styles.brandChip}>
+                            <Text style={styles.brandChipText}>{item.manufacturer || item.brand || item.brandName}</Text>
+                        </View>
+                    ) : null}
                     <View style={styles.conditionChip}>
                         <Text style={[styles.conditionChipText, { color: item.condition === 'USED' ? '#FFA500' : (item.condition === 'REFURBISHED' ? '#00BFFF' : '#00FF00') }]}>{item.condition || 'NEW'}</Text>
                     </View>
                     <View style={[styles.cardBottom, { backgroundColor: T.statBg }]}>
-                        <Text style={[styles.cardTitle, { color: T.text }]} numberOfLines={1}>{item.name}</Text>
+                        <Text style={[styles.cardTitle, { color: T.text }]} numberOfLines={1}>{item?.partName || item?.deviceName || item?.name || 'Unknown Part'}</Text>
+                        <View style={styles.ratingRow}>
+                            <Ionicons name="star" size={10} color="#FFD700" />
+                            <Text style={[styles.ratingText, { color: T.subText }]}>{item.rating || '4.8'}</Text>
+                        </View>
                         <View style={styles.cardPriceRow}>
                             <Text style={styles.cardPrice}>₹{item.garagePrice?.toLocaleString()}</Text>
-                            <TouchableOpacity
-                                style={styles.miniCartBtn}
-                                onPress={() => {
-                                    const success = addItem({
-                                        id: item.id.toString(),
-                                        deviceName: item.name,
-                                        price: item.originalPrice,
-                                        imageUrl: item.imageUrl,
-                                        manufacturer: 'Wholesale Part',
-                                        quantity: 1,
-                                        stockQuantity: item.stockQuantity ?? 0
-                                    });
-                                    if (!success) {
-                                        Alert.alert("Stock Limit", "No more stock available for this part.");
-                                    }
-                                }}
-                            >
-                                <Ionicons name="add" size={18} color="#FFF" />
-                            </TouchableOpacity>
+                            <View style={styles.cardActions}>
+                                {/* Wishlist heart */}
+                                <TouchableOpacity
+                                    style={[styles.miniWishBtn, wishlistItems.some(w => w.id === item.id) && styles.miniWishBtnActive]}
+                                    onPress={() => handleToggleWishlist(item)}
+                                >
+                                    <Ionicons
+                                        name={wishlistItems.some(w => w.id === item.id) ? 'heart' : 'heart-outline'}
+                                        size={14}
+                                        color={wishlistItems.some(w => w.id === item.id) ? '#FFF' : '#DF2324'}
+                                    />
+                                </TouchableOpacity>
+                                {/* Add to cart */}
+                                <TouchableOpacity
+                                    style={styles.miniCartBtn}
+                                    onPress={() => {
+                                        const success = addItem({
+                                            id: item.id.toString(),
+                                            deviceName: item.name,
+                                            price: item.originalPrice,
+                                            imageUrl: item.imageUrl,
+                                            manufacturer: 'Wholesale Part',
+                                            quantity: 1,
+                                            stockQuantity: item.stockQuantity ?? 0
+                                        });
+                                        if (!success) {
+                                            Alert.alert("Stock Limit", "No more stock available for this part.");
+                                        }
+                                    }}
+                                >
+                                    <Ionicons name="add" size={18} color="#FFF" />
+                                </TouchableOpacity>
+                            </View>
                         </View>
                     </View>
                 </View>
             </TouchableOpacity>
         );
     };
- 
+
     const renderFooter = () => (
         <View style={{ paddingBottom: 100 }}>
             {/* Pagination Controls */}
@@ -344,12 +386,12 @@ export default function GarageDashboardScreen({ navigation }: Props) {
                     </ScrollView>
                 </View>
             )}
- 
+
             {/* Massive Web Hero Match - Added to Bottom as requested */}
             <View style={styles.heroSection}>
                 <Text style={styles.heroTitle}>BUILT FOR <Text style={{ color: '#DF2324', fontStyle: 'italic' }}>SPEED.</Text></Text>
                 <Text style={styles.heroSubtitle}>Premium wholesale parts for professional workshops. Engineered for the track, optimized for your business.</Text>
- 
+
                 {/* Trust Badges */}
                 <View style={styles.badgesWrapper}>
                     <View style={styles.badgeItem}>
@@ -639,6 +681,16 @@ export default function GarageDashboardScreen({ navigation }: Props) {
                     <View style={styles.profileMenuDivider} />
                     <TouchableOpacity
                         style={styles.profileMenuItem}
+                        onPress={() => { setShowProfileMenu(false); navigation.navigate('Wishlist' as any); }}
+                    >
+                        <Ionicons name="heart-outline" size={18} color={T.text} />
+                        <Text style={[styles.profileMenuText, { color: T.text }]}>
+                            My Wishlist{wishlistItems.length > 0 ? ` (${wishlistItems.length})` : ''}
+                        </Text>
+                    </TouchableOpacity>
+                    <View style={styles.profileMenuDivider} />
+                    <TouchableOpacity
+                        style={styles.profileMenuItem}
                         onPress={() => { setShowProfileMenu(false); handleLogout(); }}
                     >
                         <Ionicons name="log-out-outline" size={18} color="#DF2324" />
@@ -795,6 +847,16 @@ const styles = StyleSheet.create({
         padding: 12,
     },
     cardTitle: { fontWeight: '700', fontSize: 13, marginBottom: 4 },
+    ratingRow: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        gap: 4,
+        marginBottom: 4,
+    },
+    ratingText: {
+        fontSize: 10,
+        fontWeight: '700',
+    },
     cardPriceRow: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' },
     cardPrice: { color: '#DF2324', fontWeight: '900', fontSize: 15 },
     miniCartBtn: {
@@ -804,6 +866,25 @@ const styles = StyleSheet.create({
         backgroundColor: '#DF2324',
         justifyContent: 'center',
         alignItems: 'center',
+    },
+    cardActions: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        gap: 6,
+    },
+    miniWishBtn: {
+        width: 28,
+        height: 28,
+        borderRadius: 6,
+        backgroundColor: 'transparent',
+        borderWidth: 1,
+        borderColor: '#DF2324',
+        justifyContent: 'center',
+        alignItems: 'center',
+    },
+    miniWishBtnActive: {
+        backgroundColor: '#DF2324',
+        borderColor: '#DF2324',
     },
     filterContainer: { paddingVertical: 12, backgroundColor: 'transparent' },
     filterScroll: { paddingHorizontal: 15, gap: 8 },

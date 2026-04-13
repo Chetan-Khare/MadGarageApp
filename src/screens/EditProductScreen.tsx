@@ -5,7 +5,7 @@ import ModernDropdown from '../components/ModernDropdown';
 import { Ionicons } from '@expo/vector-icons';
 import { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import { RouteProp, useRoute } from '@react-navigation/native';
-import { RootStackParamList } from '../../App';
+import { Product, RootStackParamList } from '../types';
 import * as ImagePicker from 'expo-image-picker';
 import apiClient from '../services/apiClient';
 
@@ -59,7 +59,12 @@ export default function EditProductScreen({ navigation }: Props) {
     const [isUniversal, setIsUniversal] = useState(product.fitmentCategory === 'UNIVERSAL');
     const [imageUris, setImageUris] = useState<string[]>([]);
     const [uploading, setUploading] = useState(false);
+    const [isManualRating, setIsManualRating] = useState(product.isManualRating || false);
+    const [rating, setRating] = useState(product.rating ? String(product.rating) : '4.5');
     const [guideUri, setGuideUri] = useState<string | null>(null);
+    const [flagged, setFlagged] = useState(product.flagged || false);
+    const [flagReason, setFlagReason] = useState(product.flagReason || '');
+    const [sellerResponse, setSellerResponse] = useState(product.sellerResponse || '');
 
     const [selectedFitments, setSelectedFitments] = useState<any[]>([]);
 
@@ -272,7 +277,12 @@ export default function EditProductScreen({ navigation }: Props) {
                 vehicleIds,
                 base64Images, // Will be empty if they kept existing images
                 base64Guide,
-                guideExtension: guideExt
+                guideExtension: guideExt,
+                isManualRating,
+                rating: parseFloat(rating),
+                sellerResponse,
+                flagged,
+                flagReason
             };
 
             await apiClient.put(`/seller/inventory/${product.id}/base64`, payload);
@@ -365,7 +375,12 @@ export default function EditProductScreen({ navigation }: Props) {
                                 label="Condition"
                                 value={condition}
                                 options={['NEW', 'USED', 'REFURBISHED']}
-                                onSelect={setCondition}
+                                onSelect={(val) => {
+                                    setCondition(val);
+                                    if (val === 'USED' || val === 'REFURBISHED') {
+                                        setStockQuantity('1');
+                                    }
+                                }}
                                 containerStyle={{ flex: 1, marginRight: 12 }}
                             />
                             <ModernDropdown
@@ -399,12 +414,16 @@ export default function EditProductScreen({ navigation }: Props) {
                                 <View style={styles.inputGroup}>
                                     <Text style={[styles.label, { color: T.subText }]}>Stock Qty</Text>
                                     <TextInput
-                                        style={[styles.input, { backgroundColor: T.inputBg, borderColor: T.inputBorder, color: T.text }]}
+                                        style={[styles.input, { backgroundColor: T.inputBg, borderColor: T.inputBorder, color: T.text }, (condition === 'USED' || condition === 'REFURBISHED') && { opacity: 0.5 }]}
                                         placeholderTextColor={T.placeholder}
                                         keyboardType="numeric"
                                         value={stockQuantity}
                                         onChangeText={setStockQuantity}
+                                        editable={condition !== 'USED' && condition !== 'REFURBISHED'}
                                     />
+                                    {(condition === 'USED' || condition === 'REFURBISHED') && (
+                                        <Text style={{ fontSize: 10, color: '#FF9800', marginTop: 4, fontWeight: '800', textTransform: 'uppercase' }}>Locked to 1 unit</Text>
+                                    )}
                                 </View>
                             </View>
                         </View>
@@ -420,6 +439,51 @@ export default function EditProductScreen({ navigation }: Props) {
                                 onChangeText={setDescription}
                             />
                         </View>
+
+                        <View style={styles.inputGroup}>
+                            <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 8 }}>
+                                <Text style={[styles.label, { color: T.subText, marginBottom: 0 }]}>Admin Quality Override</Text>
+                                <TouchableOpacity 
+                                    onPress={() => setIsManualRating(!isManualRating)}
+                                    style={{ width: 44, height: 24, borderRadius: 12, backgroundColor: isManualRating ? '#DF2324' : '#333', padding: 2 }}
+                                >
+                                    <View style={{ width: 20, height: 20, borderRadius: 10, backgroundColor: '#FFF', marginLeft: isManualRating ? 20 : 0 }} />
+                                </TouchableOpacity>
+                            </View>
+                            <TextInput
+                                style={[styles.input, { backgroundColor: T.inputBg, borderColor: T.inputBorder, color: isManualRating ? T.text : T.placeholder, opacity: isManualRating ? 1 : 0.5 }]}
+                                placeholderTextColor={T.placeholder}
+                                keyboardType="numeric"
+                                editable={isManualRating}
+                                value={rating}
+                                onChangeText={setRating}
+                            />
+                            <Text style={{ fontSize: 9, color: T.placeholder, marginTop: 4 }}>Values: 0.0 - 5.0 (Forces this rating over customer feedback)</Text>
+                        </View>
+
+                        {(flagged || sellerResponse.length > 0) && (
+                            <View style={[styles.inputGroup, { backgroundColor: '#FF9B3E11', padding: 15, borderRadius: 20, borderWidth: 1, borderColor: '#FF9B3E33' }]}>
+                                {flagReason.length > 0 && (
+                                    <View style={{ marginBottom: 15, paddingBottom: 15, borderBottomWidth: 1, borderBottomColor: '#FF9B3E22' }}>
+                                        <Text style={{ fontSize: 9, fontWeight: '900', color: '#FF9B3E', textTransform: 'uppercase', letterSpacing: 1, marginBottom: 4 }}>Administrative Flag Reason</Text>
+                                        <Text style={{ fontSize: 13, color: T.text, fontStyle: 'italic' }}>"{flagReason}"</Text>
+                                    </View>
+                                )}
+                                <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6, marginBottom: 8 }}>
+                                    <Ionicons name="chatbubble-ellipses-outline" size={14} color="#FF9B3E" />
+                                    <Text style={[styles.label, { color: '#FF9B3E', marginBottom: 0 }]}>Merchant Response</Text>
+                                </View>
+                                <TextInput
+                                    style={[styles.input, { backgroundColor: 'transparent', borderColor: '#FF9B3E33', color: T.text, height: 80, textAlignVertical: 'top' }]}
+                                    placeholder="Provide details to resolve the administrative flag..."
+                                    placeholderTextColor={T.placeholder}
+                                    multiline
+                                    value={sellerResponse}
+                                    onChangeText={setSellerResponse}
+                                />
+                                <Text style={{ fontSize: 8, color: '#FF9B3E88', marginTop: 4 }}>This response will be visible to Mad Garage Administrators during catalog audit.</Text>
+                            </View>
+                        )}
 
                         <View style={styles.inputGroup}>
                             <Text style={[styles.label, { color: T.subText }]}>Fitment Type</Text>

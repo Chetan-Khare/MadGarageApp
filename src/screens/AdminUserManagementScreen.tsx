@@ -1,9 +1,9 @@
 import React, { useState, useEffect } from 'react';
-import { View, Text, StyleSheet, FlatList, TouchableOpacity, StatusBar, ActivityIndicator, Alert, TextInput } from 'react-native';
+import { View, Text, StyleSheet, FlatList, TouchableOpacity, StatusBar, ActivityIndicator, Alert, TextInput, Modal } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
 import { NativeStackNavigationProp } from '@react-navigation/native-stack';
-import { RootStackParamList } from '../../App';
+import { RootStackParamList } from '../types';
 import { useThemeStore, DARK_THEME, LIGHT_THEME } from '../store/themeStore';
 import apiClient from '../services/apiClient';
 import { RouteProp } from '@react-navigation/native';
@@ -14,10 +14,17 @@ type Props = {
 };
 
 export default function AdminUserManagementScreen({ navigation, route }: Props) {
+    // Core State
     const [users, setUsers] = useState<any[]>([]);
     const [loading, setLoading] = useState(true);
     const [searchQuery, setSearchQuery] = useState('');
     const [activeRole, setActiveRole] = useState(route.params?.roleFilter || 'ALL');
+
+    // Revision State (Edit)
+    const [editingUser, setEditingUser] = useState<any | null>(null);
+    const [editForm, setEditForm] = useState({ firstName: '', lastName: '', email: '', phone: '', role: '' });
+    const [activeTab, setActiveTab] = useState<'ACTIVE' | 'ARCHIVED'>('ACTIVE');
+    const [actionLoading, setActionLoading] = useState(false);
 
     const { isDark } = useThemeStore();
     const T = isDark ? DARK_THEME : LIGHT_THEME;
@@ -28,27 +35,65 @@ export default function AdminUserManagementScreen({ navigation, route }: Props) 
     }, []);
 
     const fetchUsers = async () => {
+        setLoading(true);
         try {
             const response = await apiClient.get('/admin/users');
             setUsers(response.data);
         } catch (error) {
             console.error('Failed to fetch users:', error);
-            // Fallback for demo
-            setUsers([
-                { id: 1, firstName: 'Admin', lastName: 'User', email: 'admin@madgarage.com', role: 'ROLE_ADMIN' },
-                { id: 2, firstName: 'John', lastName: 'Seller', email: 'john@seller.com', role: 'ROLE_SELLER' },
-                { id: 3, firstName: 'Alice', lastName: 'Garage', email: 'alice@garage.com', role: 'ROLE_GARAGE' },
-            ]);
         } finally {
             setLoading(false);
         }
     };
 
+    const handleUpdateUser = async () => {
+        if (!editingUser) return;
+        setActionLoading(true);
+        try {
+            await apiClient.put(`/admin/users/${editingUser.id}`, editForm);
+            setEditingUser(null);
+            fetchUsers();
+            Alert.alert("Success", "Identity record updated.");
+        } catch (error: any) {
+            if (error.response?.status === 403) {
+                Alert.alert("ACCOUNT DEACTIVATED", "Access to this Mad Garage profile has been purged by administration.");
+            } else {
+                Alert.alert("Revision Failed", error.response?.data || "Could not update user.");
+            }
+        } finally {
+            setActionLoading(false);
+        }
+    };
+
+    const handleRestore = async (id: number) => {
+        setActionLoading(true);
+        try {
+            await apiClient.post(`/admin/users/${id}/restore`);
+            fetchUsers();
+            Alert.alert("RESTORED", "Identity record unscrambled and operator reactivated.");
+        } catch (error: any) {
+            Alert.alert("Restore Failed", error.response?.data || "Could not reactivate user.");
+        } finally {
+            setActionLoading(false);
+        }
+    };
+
+    const openEditModal = (user: any) => {
+        setEditingUser(user);
+        setEditForm({
+            firstName: user.firstName,
+            lastName: user.lastName,
+            email: user.email,
+            phone: user.phone || '',
+            role: user.role
+        });
+    };
+
     const handleDelete = (id: number) => {
-        Alert.alert("Ban User", "Permanently remove this user from the MAD GARAGE network?", [
-            { text: "Cancel", style: "cancel" },
+        Alert.alert("Delete Account", "Purge operator from active network? This will scramble identity records.", [
+            { text: "Abort", style: "cancel" },
             {
-                text: "Ban",
+                text: "Delete",
                 style: "destructive",
                 onPress: async () => {
                     try {
@@ -56,7 +101,7 @@ export default function AdminUserManagementScreen({ navigation, route }: Props) 
                         await apiClient.delete(`/admin/users/${id}`);
                         fetchUsers();
                     } catch (error: any) {
-                        Alert.alert("Error", error.response?.data || "Could not remove user.");
+                        Alert.alert("Purge Failed", error.response?.data || "Could not remove user.");
                         setLoading(false);
                     }
                 }
@@ -68,42 +113,62 @@ export default function AdminUserManagementScreen({ navigation, route }: Props) 
         const matchesRole = activeRole === 'ALL' || u.role === activeRole;
         const fullName = (u.firstName || '') + ' ' + (u.lastName || '');
         const matchesSearch = (fullName + ' ' + (u.email || '')).toLowerCase().includes(searchQuery.toLowerCase());
-        return matchesRole && matchesSearch;
+        
+        // Show based on status tab
+        const matchesStatus = activeTab === 'ACTIVE' ? u.active !== false : u.active === false;
+        return matchesRole && matchesSearch && matchesStatus;
     });
 
     const renderUserItem = ({ item }: { item: any }) => (
         <View style={[styles.userCard, { backgroundColor: T.statBg, borderColor: T.statBorder }]}>
             <View style={styles.userHeader}>
-                <View style={[styles.avatar, { backgroundColor: '#DF232422' }]}>
-                    <Text style={{ color: '#DF2324', fontWeight: '900' }}>
+                <View style={[styles.avatar, { backgroundColor: item.active === false ? '#7A7A8533' : '#DF232422' }]}>
+                    <Text style={{ color: item.active === false ? '#7A7A85' : '#DF2324', fontWeight: '900' }}>
                         {(item.firstName?.[0] || 'U')}{(item.lastName?.[0] || '')}
                     </Text>
                 </View>
                 <View style={{ flex: 1, marginLeft: 12 }}>
-                    <Text style={[styles.userName, { color: T.text }]}>{item.firstName} {item.lastName}</Text>
-                    <Text style={[styles.userEmail, { color: T.subText }]}>{item.email}</Text>
+                    <Text style={[styles.userName, { color: item.active === false ? T.subText : T.text }]}>{item.firstName} {item.lastName}</Text>
+                    <Text style={[styles.userEmail, { color: T.subText }]} numberOfLines={1}>{item.email}</Text>
                 </View>
-                <View style={[styles.roleBadge, { backgroundColor: item.role === 'ROLE_ADMIN' ? '#FFD70033' : '#DF232422' }]}>
-                    <Text style={[styles.roleText, { color: item.role === 'ROLE_ADMIN' ? '#B8860B' : '#DF2324' }]}>
+                <View style={[styles.roleBadge, { backgroundColor: item.active === false ? '#7A7A8522' : (item.role === 'ROLE_ADMIN' ? '#FFD70033' : '#DF232422') }]}>
+                    <Text style={[styles.roleText, { color: item.active === false ? '#7A7A85' : (item.role === 'ROLE_ADMIN' ? '#B8860B' : '#DF2324') }]}>
                         {item.role?.replace('ROLE_', '')}
                     </Text>
                 </View>
             </View>
             <View style={styles.userFooter}>
-                <TouchableOpacity 
-                    style={[styles.actionBtn, { backgroundColor: T.inputBg }]}
-                    onPress={() => Alert.alert("Feature Coming Soon", "User detail view is in development.")}
-                >
-                    <Ionicons name="eye-outline" size={18} color={T.text} />
-                    <Text style={[styles.actionText, { color: T.text }]}>View</Text>
-                </TouchableOpacity>
-                {item.role !== 'ROLE_ADMIN' && (
+                {activeTab === 'ACTIVE' ? (
+                    <>
+                        <TouchableOpacity 
+                            style={[styles.actionBtn, { backgroundColor: T.inputBg }]}
+                            onPress={() => openEditModal(item)}
+                        >
+                            <Ionicons name="create-outline" size={18} color={T.text} />
+                            <Text style={[styles.actionText, { color: T.text }]}>Edit</Text>
+                        </TouchableOpacity>
+                        {item.role !== 'ROLE_ADMIN' && (
+                            <TouchableOpacity 
+                                style={[styles.actionBtn, { backgroundColor: '#DF232411' }]}
+                                onPress={() => handleDelete(item.id)}
+                            >
+                                <Ionicons name="trash-outline" size={18} color="#DF2324" />
+                                <Text style={[styles.actionText, { color: '#DF2324' }]}>Delete</Text>
+                            </TouchableOpacity>
+                        )}
+                    </>
+                ) : (
                     <TouchableOpacity 
-                        style={[styles.actionBtn, { backgroundColor: '#DF232411' }]}
-                        onPress={() => handleDelete(item.id)}
+                        style={[styles.actionBtn, { backgroundColor: '#DF2324', flex: 1 }]}
+                        onPress={() => handleRestore(item.id)}
+                        disabled={actionLoading}
                     >
-                        <Ionicons name="trash-outline" size={18} color="#DF2324" />
-                        <Text style={[styles.actionText, { color: '#DF2324' }]}>Disable</Text>
+                        {actionLoading ? <ActivityIndicator color="#FFF" /> : (
+                            <>
+                                <Ionicons name="refresh-outline" size={18} color="#FFF" />
+                                <Text style={[styles.actionText, { color: '#FFF' }]}>Restore Operator</Text>
+                            </>
+                        )}
                     </TouchableOpacity>
                 )}
             </View>
@@ -118,6 +183,27 @@ export default function AdminUserManagementScreen({ navigation, route }: Props) 
                     <Ionicons name="arrow-back" size={24} color="#DF2324" />
                 </TouchableOpacity>
                 <Text style={[styles.title, { color: T.text }]}>Network Access</Text>
+                <TouchableOpacity 
+                    style={[styles.addBtn, { backgroundColor: '#DF232411' }]}
+                    onPress={() => navigation.navigate('AdminDashboard')}
+                >
+                    <Ionicons name="add" size={24} color="#DF2324" />
+                </TouchableOpacity>
+            </View>
+
+            <View style={styles.tabContainer}>
+                <TouchableOpacity 
+                    onPress={() => setActiveTab('ACTIVE')}
+                    style={[styles.tab, activeTab === 'ACTIVE' && { backgroundColor: '#DF2324' }]}
+                >
+                    <Text style={[styles.tabText, { color: activeTab === 'ACTIVE' ? '#FFF' : T.subText }]}>ACTIVE</Text>
+                </TouchableOpacity>
+                <TouchableOpacity 
+                    onPress={() => setActiveTab('ARCHIVED')}
+                    style={[styles.tab, activeTab === 'ARCHIVED' && { backgroundColor: '#DF2324' }]}
+                >
+                    <Text style={[styles.tabText, { color: activeTab === 'ARCHIVED' ? '#FFF' : T.subText }]}>ARCHIVED</Text>
+                </TouchableOpacity>
             </View>
 
             <View style={styles.searchContainer}>
@@ -163,6 +249,66 @@ export default function AdminUserManagementScreen({ navigation, route }: Props) 
                     }
                 />
             )}
+
+            {/* Edit User Modal */}
+            <Modal
+                visible={!!editingUser}
+                animationType="slide"
+                transparent={true}
+                onRequestClose={() => setEditingUser(null)}
+            >
+                <View style={styles.modalOverlay}>
+                    <View style={[styles.modalContent, { backgroundColor: T.bg2 }]}>
+                        <Text style={[styles.modalTitle, { color: T.text }]}>REVISION HUB</Text>
+                        
+                        <TextInput 
+                            style={[styles.modalInput, { backgroundColor: T.inputBg, color: T.text }]}
+                            placeholder="First Name"
+                            placeholderTextColor={T.subText}
+                            value={editForm.firstName}
+                            onChangeText={txt => setEditForm({...editForm, firstName: txt})}
+                        />
+                        <TextInput 
+                            style={[styles.modalInput, { backgroundColor: T.inputBg, color: T.text }]}
+                            placeholder="Last Name"
+                            placeholderTextColor={T.subText}
+                            value={editForm.lastName}
+                            onChangeText={txt => setEditForm({...editForm, lastName: txt})}
+                        />
+                        <TextInput 
+                            style={[styles.modalInput, { backgroundColor: T.inputBg, color: T.text }]}
+                            placeholder="Email"
+                            placeholderTextColor={T.subText}
+                            value={editForm.email}
+                            onChangeText={txt => setEditForm({...editForm, email: txt})}
+                            autoCapitalize="none"
+                        />
+                        <TextInput 
+                            style={[styles.modalInput, { backgroundColor: T.inputBg, color: T.text }]}
+                            placeholder="Phone"
+                            placeholderTextColor={T.subText}
+                            value={editForm.phone}
+                            onChangeText={txt => setEditForm({...editForm, phone: txt})}
+                        />
+
+                        <View style={styles.modalActions}>
+                            <TouchableOpacity 
+                                style={[styles.modalBtn, { backgroundColor: T.inputBg }]}
+                                onPress={() => setEditingUser(null)}
+                            >
+                                <Text style={[styles.modalBtnText, { color: T.text }]}>CANCEL</Text>
+                            </TouchableOpacity>
+                            <TouchableOpacity 
+                                style={[styles.modalBtn, { backgroundColor: '#DF2324' }]}
+                                onPress={handleUpdateUser}
+                                disabled={actionLoading}
+                            >
+                                {actionLoading ? <ActivityIndicator color="#FFF" /> : <Text style={styles.modalBtnText}>SAVE</Text>}
+                            </TouchableOpacity>
+                        </View>
+                    </View>
+                </View>
+            </Modal>
         </View>
     );
 }
@@ -171,7 +317,11 @@ const styles = StyleSheet.create({
     container: { flex: 1 },
     header: { flexDirection: 'row', alignItems: 'center', paddingHorizontal: 20, paddingTop: 50, paddingBottom: 15, gap: 15 },
     backBtn: { width: 44, height: 44, borderRadius: 12, justifyContent: 'center', alignItems: 'center' },
-    title: { fontSize: 22, fontWeight: '900', letterSpacing: 0.5 },
+    addBtn: { width: 44, height: 44, borderRadius: 12, justifyContent: 'center', alignItems: 'center', marginLeft: 'auto' },
+    title: { fontSize: 20, fontWeight: '900', letterSpacing: 0.5, flex: 1 },
+    tabContainer: { flexDirection: 'row', paddingHorizontal: 20, marginBottom: 15, gap: 10 },
+    tab: { flex: 1, paddingVertical: 10, borderRadius: 12, alignItems: 'center', backgroundColor: 'rgba(255,255,255,0.05)', borderWidth: 1, borderColor: 'rgba(255,255,255,0.05)' },
+    tabText: { fontSize: 10, fontWeight: '900', letterSpacing: 1 },
     searchContainer: { paddingHorizontal: 20, marginBottom: 15 },
     searchBar: { flexDirection: 'row', alignItems: 'center', paddingHorizontal: 15, borderRadius: 12, height: 50, gap: 10 },
     searchInput: { flex: 1, fontSize: 14, fontWeight: '600' },
@@ -191,4 +341,16 @@ const styles = StyleSheet.create({
     actionText: { fontSize: 12, fontWeight: '800' },
     emptyContainer: { alignItems: 'center', marginTop: 100 },
     emptyText: { marginTop: 16, fontSize: 16, fontWeight: '800' },
+    modalOverlay: { 
+        flex: 1,
+        backgroundColor: 'rgba(0,0,0,0.85)', justifyContent: 'center', alignItems: 'center', padding: 20 
+    },
+    modalContent: { 
+        width: '100%', borderRadius: 24, padding: 30, borderWidth: 1, borderColor: 'rgba(255,255,255,0.1)' 
+    },
+    modalTitle: { fontSize: 18, fontWeight: '900', fontStyle: 'italic', marginBottom: 20, textAlign: 'center' },
+    modalInput: { padding: 16, borderRadius: 12, marginBottom: 15, fontWeight: '700', fontSize: 14 },
+    modalActions: { flexDirection: 'row', gap: 10, marginTop: 10 },
+    modalBtn: { flex: 1, paddingVertical: 15, borderRadius: 12, alignItems: 'center' },
+    modalBtnText: { color: '#FFF', fontSize: 12, fontWeight: '900' },
 });

@@ -3,13 +3,14 @@ import {
     View, Text, StyleSheet, ScrollView, TouchableOpacity,
     ActivityIndicator, SafeAreaView, StatusBar, Alert, Platform, TextInput
 } from 'react-native';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
 import { NativeStackScreenProps } from '@react-navigation/native-stack';
 import * as FileSystem from 'expo-file-system/legacy';
 import * as Sharing from 'expo-sharing';
 // Fallback for newer Expo SDKs where constants might be moved or namespaced differently in types
 const { documentDirectory, downloadAsync } = FileSystem as any;
-import { RootStackParamList } from '../../App';
+import { RootStackParamList } from '../types';
 import { useAuthStore } from '../store/authStore';
 import { useThemeStore, DARK_THEME, LIGHT_THEME } from '../store/themeStore';
 import apiClient from '../services/apiClient';
@@ -62,6 +63,7 @@ export default function OrderDetailsScreen({ route, navigation }: Props) {
 
     const { isDark } = useThemeStore();
     const T = isDark ? DARK_THEME : LIGHT_THEME;
+    const insets = useSafeAreaInsets();
 
     useEffect(() => {
         fetchOrderDetails();
@@ -163,7 +165,7 @@ export default function OrderDetailsScreen({ route, navigation }: Props) {
     const { subtotal, taxAmount, shippingFee, grandTotal } = order;
 
     return (
-        <SafeAreaView style={[styles.container, { backgroundColor: T.bg }]}>
+        <View style={[styles.container, { backgroundColor: T.bg, paddingTop: Math.max(insets.top, 10) }]}>
             <StatusBar barStyle={T.statusBar} backgroundColor={T.bg} />
             
             {/* Header */}
@@ -355,7 +357,7 @@ export default function OrderDetailsScreen({ route, navigation }: Props) {
                     A copy of this invoice has been sent to your email.
                 </Text>
             </ScrollView>
-        </SafeAreaView>
+        </View>
     );
 }
 

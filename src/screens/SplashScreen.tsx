@@ -103,14 +103,10 @@ const SplashScreen: React.FC = () => {
     const titleTranslate = useRef(new Animated.Value(20)).current;
     const subtitleOpacity = useRef(new Animated.Value(0)).current;
     const lineWidth = useRef(new Animated.Value(0)).current;
-    const barWidth = useRef(new Animated.Value(0)).current;
-    const BAR_TOTAL = width * 0.65;
 
     useEffect(() => {
         // Gauge fill
         rpm.value = withTiming(100, { duration: 2600, easing: REasing.out(REasing.cubic) });
-        // Loading bar (parallel with gauge)
-        Animated.timing(barWidth, { toValue: BAR_TOTAL, duration: 2600, useNativeDriver: false }).start();
 
         // Glow pulse
         Animated.loop(
@@ -253,11 +249,6 @@ const SplashScreen: React.FC = () => {
                         </Text>
                     </View>
                 </View>
-
-                {/* Bottom loading bar */}
-                <View style={styles.loadingBarBg}>
-                    <Animated.View style={[styles.loadingBarFill, { width: barWidth }]} />
-                </View>
             </View>
         </View>
     );
@@ -356,19 +347,6 @@ const styles = StyleSheet.create({
         fontWeight: '800',
         letterSpacing: 3,
         marginTop: 4,
-    },
-    // Loading bar
-    loadingBarBg: {
-        width: width * 0.65,
-        height: 4,
-        borderRadius: 2,
-        backgroundColor: '#1A1A24',
-        overflow: 'hidden',
-    },
-    loadingBarFill: {
-        height: '100%',
-        backgroundColor: '#DF2324',
-        borderRadius: 2,
     },
 });
 

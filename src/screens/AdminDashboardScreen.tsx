@@ -1,10 +1,10 @@
 import React, { useEffect, useState } from 'react';
-import { View, Text, StyleSheet, TouchableOpacity, ScrollView, Dimensions, ActivityIndicator, TextInput, Alert, StatusBar, Image } from 'react-native';
+import { View, Text, StyleSheet, TouchableOpacity, ScrollView, Dimensions, ActivityIndicator, TextInput, Alert, StatusBar, Image, KeyboardAvoidingView, Platform } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
 import { LinearGradient } from 'expo-linear-gradient';
 import { NativeStackNavigationProp } from '@react-navigation/native-stack';
-import { RootStackParamList } from '../../App';
+import { RootStackParamList } from '../types';
 import { useAuthStore } from '../store/authStore';
 import apiClient from '../services/apiClient';
 import { LineChart } from 'react-native-chart-kit';
@@ -31,11 +31,14 @@ export default function AdminDashboardScreen({ navigation }: Props) {
     const [loading, setLoading] = useState(true);
     const [showProfileMenu, setShowProfileMenu] = useState(false);
 
+    const [newUserFirstName, setNewUserFirstName] = useState('');
+    const [newUserLastName, setNewUserLastName] = useState('');
     const [newUserEmail, setNewUserEmail] = useState('');
     const [newUserPassword, setNewUserPassword] = useState('');
     const [newUserPhone, setNewUserPhone] = useState('');
     const [newUserRole, setNewUserRole] = useState<'ROLE_SELLER' | 'ROLE_GARAGE' | 'ROLE_ADMIN'>('ROLE_SELLER');
     const [creatingUser, setCreatingUser] = useState(false);
+    const [showPassword, setShowPassword] = useState(false);
 
     const { isDark, toggleTheme } = useThemeStore();
     const insets = useSafeAreaInsets();
@@ -62,21 +65,23 @@ export default function AdminDashboardScreen({ navigation }: Props) {
     };
 
     const handleCreateUser = async () => {
-        if (!newUserEmail || !newUserPassword || !newUserPhone) {
-            Alert.alert('Error', 'Email, Password, and Phone are required');
+        if (!newUserEmail || !newUserPassword || !newUserPhone || !newUserFirstName || !newUserLastName) {
+            Alert.alert('Error', 'First Name, Last Name, Email, Password, and Phone are required');
             return;
         }
         setCreatingUser(true);
         try {
             await apiClient.post('/admin/users', {
-                firstName: 'New',
-                lastName: newUserRole === 'ROLE_SELLER' ? 'Merchant' : newUserRole === 'ROLE_ADMIN' ? 'Administrator' : 'Garage',
+                firstName: newUserFirstName,
+                lastName: newUserLastName,
                 email: newUserEmail,
                 password: newUserPassword,
                 phone: newUserPhone,
                 role: newUserRole
             });
             Alert.alert('Success', `${newUserRole} account created!`);
+            setNewUserFirstName('');
+            setNewUserLastName('');
             setNewUserEmail('');
             setNewUserPassword('');
             setNewUserPhone('');
@@ -98,7 +103,11 @@ export default function AdminDashboardScreen({ navigation }: Props) {
     }
 
     return (
-        <View style={[styles.root, { backgroundColor: bgPrimary, paddingTop: Math.max(insets.top, 8) }]}>
+        <KeyboardAvoidingView 
+            style={[styles.root, { backgroundColor: bgPrimary, paddingTop: Math.max(insets.top, 8) }]}
+            behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
+            keyboardVerticalOffset={Platform.OS === 'ios' ? 0 : 20}
+        >
             <StatusBar barStyle={isDark ? 'light-content' : 'dark-content'} backgroundColor={bgPrimary} />
 
             {/* ── Custom Centered Header ── */}
@@ -307,6 +316,20 @@ export default function AdminDashboardScreen({ navigation }: Props) {
 
                     <TextInput
                         style={[styles.formInput, { backgroundColor: inputBg, color: textPrimary }]}
+                        placeholder="First Name"
+                        placeholderTextColor={textMuted}
+                        value={newUserFirstName}
+                        onChangeText={setNewUserFirstName}
+                    />
+                    <TextInput
+                        style={[styles.formInput, { backgroundColor: inputBg, color: textPrimary }]}
+                        placeholder="Last Name"
+                        placeholderTextColor={textMuted}
+                        value={newUserLastName}
+                        onChangeText={setNewUserLastName}
+                    />
+                    <TextInput
+                        style={[styles.formInput, { backgroundColor: inputBg, color: textPrimary }]}
                         placeholder="Operator Email"
                         placeholderTextColor={textMuted}
                         value={newUserEmail}
@@ -321,14 +344,22 @@ export default function AdminDashboardScreen({ navigation }: Props) {
                         onChangeText={setNewUserPhone}
                         keyboardType="phone-pad"
                     />
-                    <TextInput
-                        style={[styles.formInput, { backgroundColor: inputBg, color: textPrimary }]}
-                        placeholder="Root Password"
-                        placeholderTextColor={textMuted}
-                        secureTextEntry
-                        value={newUserPassword}
-                        onChangeText={setNewUserPassword}
-                    />
+                    <View style={styles.passwordContainer}>
+                        <TextInput
+                            style={[styles.formInput, { backgroundColor: inputBg, color: textPrimary, flex: 1, marginBottom: 0 }]}
+                            placeholder="Root Password"
+                            placeholderTextColor={textMuted}
+                            secureTextEntry={!showPassword}
+                            value={newUserPassword}
+                            onChangeText={setNewUserPassword}
+                        />
+                        <TouchableOpacity 
+                            style={styles.eyeBtn} 
+                            onPress={() => setShowPassword(!showPassword)}
+                        >
+                            <Ionicons name={showPassword ? "eye-off-outline" : "eye-outline"} size={22} color={textMuted} />
+                        </TouchableOpacity>
+                    </View>
 
                     <TouchableOpacity
                         style={styles.provisionBtnWrap}
@@ -353,7 +384,7 @@ export default function AdminDashboardScreen({ navigation }: Props) {
                     </TouchableOpacity>
                 </LinearGradient>
             </ScrollView>
-        </View>
+        </KeyboardAvoidingView>
     );
 }
 
@@ -535,6 +566,17 @@ const styles = StyleSheet.create({
         fontWeight: '800',
         fontSize: 14,
         letterSpacing: 0.5,
+    },
+    passwordContainer: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        marginBottom: 16,
+    },
+    eyeBtn: {
+        position: 'absolute',
+        right: 18,
+        height: '100%',
+        justifyContent: 'center',
     },
     provisionBtnWrap: {
         borderRadius: 12,

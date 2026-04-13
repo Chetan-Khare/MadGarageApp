@@ -7,13 +7,14 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import { LinearGradient } from 'expo-linear-gradient';
 import { Ionicons } from '@expo/vector-icons';
 import { NativeStackNavigationProp } from '@react-navigation/native-stack';
-import { RootStackParamList } from '../../App';
+import { Product, RootStackParamList } from '../types';
 import apiClient, { BASE_SERVER_URL } from '../services/apiClient';
 import { useCartStore } from '../store/cartStore';
 import { useAuthStore } from '../store/authStore';
 import { useThemeStore, DARK_THEME, LIGHT_THEME } from '../store/themeStore';
 import ModernDashboardHeader from '../components/ModernDashboardHeader';
 import ModernDropdown from '../components/ModernDropdown';
+import { useWishlistStore } from '../store/wishlistStore';
 import { ProductCardSkeleton } from '../components/SkeletonLoader';
 import { Toast } from '../components/Toast';
 
@@ -35,24 +36,6 @@ const CONDITIONS = [
     { id: 'USED', label: 'Used', icon: 'refresh-outline' },
     { id: 'REFURBISHED', label: 'Refurbished', icon: 'build-outline' }
 ];
-
-interface Product {
-    id: number;
-    partName: string;
-    price: number;
-    imageUrl: string;
-    brand: string;
-    category: string;
-    condition: string;
-    color: string;
-    sku: string;
-    description: string;
-    stockQuantity: number;
-    deviceName?: string;
-    name?: string;
-    manufacturer?: string;
-    flagged?: boolean;
-}
 
 
 export default function HomeScreen({ navigation }: Props) {
@@ -93,11 +76,16 @@ export default function HomeScreen({ navigation }: Props) {
     const isGuest = useAuthStore((state) => state.isGuest);
     const { isDark, toggleTheme } = useThemeStore();
     const T = isDark ? DARK_THEME : LIGHT_THEME;
+    const wishlistItems = useWishlistStore(s => s.items);
+    const toggleWishlist = useWishlistStore(s => s.toggleWishlist);
 
-    useEffect(() => { 
+    useEffect(() => {
         const controller = new AbortController();
         fetchDevices(selectedEngine ? undefined : controller.signal);
         fetchMakes();
+        if (!isGuest && token) {
+            useWishlistStore.getState().loadWishlist();
+        }
         return () => controller.abort();
     }, [selectedEngine, activeCategory, activeCondition]);
 
@@ -228,7 +216,7 @@ export default function HomeScreen({ navigation }: Props) {
             if (activeCategory !== 'All') {
                 url += (url.includes('?') ? '&' : '?') + `category=${activeCategory}`;
             }
-            
+
             const response = await apiClient.get(url, { signal });
             setDevices(response.data);
         } catch (err: any) {
@@ -263,10 +251,28 @@ export default function HomeScreen({ navigation }: Props) {
         await logout();
     };
 
+    const handleToggleWishlist = async (product: any) => {
+        if (isGuest || !token) {
+            Alert.alert(
+                'Authentication Required',
+                'Please log in or create an account to save parts to your wishlist.',
+                [
+                    { text: 'Cancel', style: 'cancel' },
+                    { text: 'Log In', onPress: () => navigation.navigate('CustomerLogin' as any) }
+                ]
+            );
+            return;
+        }
+        const added = await toggleWishlist(product);
+        Toast.show({ 
+            message: added ? `${product.partName || product.name} added to wishlist` : 'Removed from wishlist', 
+            type: added ? 'success' : 'info' 
+        });
+    };
     const handleProfilePress = () => {
-        if (isGuest || !token) { 
+        if (isGuest || !token) {
             logout();
-            return; 
+            return;
         }
         if (role === 'ROLE_ADMIN') navigation.navigate('AdminDashboard' as any);
         else if (role === 'ROLE_SELLER') navigation.navigate('SellerDashboard' as any);
@@ -277,7 +283,7 @@ export default function HomeScreen({ navigation }: Props) {
     };
 
     const handleAddToCart = (device: any) => {
-        if (isGuest || !token) { 
+        if (isGuest || !token) {
             Alert.alert(
                 'Authentication Required',
                 'Please log in to your account to add parts to your cart.',
@@ -286,17 +292,17 @@ export default function HomeScreen({ navigation }: Props) {
                     { text: 'Log In', onPress: () => logout() }
                 ]
             );
-            return; 
+            return;
         }
-        const success = addItem({ 
-            id: device?.id?.toString() || Math.random().toString(), 
-            deviceName: device?.partName || device?.deviceName || device?.name || 'Unknown', 
-            price: device?.price || 0, 
-            imageUrl: device?.imageUrl, 
+        const success = addItem({
+            id: device?.id?.toString() || Math.random().toString(),
+            deviceName: device?.partName || device?.deviceName || device?.name || 'Unknown',
+            price: device?.price || 0,
+            imageUrl: device?.imageUrl,
             manufacturer: device?.manufacturer || device?.brand || 'MAD GARAGE',
             stockQuantity: device?.stockQuantity ?? 0
         });
-        
+
         if (success) {
             Toast.show({ message: `${device?.partName || device?.name || 'Item'} added to cart`, type: 'success' });
         } else {
@@ -312,8 +318,8 @@ export default function HomeScreen({ navigation }: Props) {
         const matchCondition = activeCondition === 'ALL' || d.condition === activeCondition;
         return matchSearch && matchCat && matchCondition;
     }).sort((a, b) => {
-        if (sortBy === 'Price: Low to High') return a.price - b.price;
-        if (sortBy === 'Price: High to Low') return b.price - a.price;
+        if (sortBy === 'Price: Low to High') return (a.price || 0) - (b.price || 0);
+        if (sortBy === 'Price: High to Low') return (b.price || 0) - (a.price || 0);
         if (sortBy === 'Name: A to Z') {
             const nameA = (a?.partName || a?.deviceName || a?.name || '').toLowerCase();
             const nameB = (b?.partName || b?.deviceName || b?.name || '').toLowerCase();
@@ -321,7 +327,7 @@ export default function HomeScreen({ navigation }: Props) {
         }
         return 0;
     });
- 
+
     const totalPages = Math.ceil(filteredDevices.length / pageSize);
     const pagedDevices = filteredDevices.slice((currentPage - 1) * pageSize, currentPage * pageSize);
 
@@ -335,32 +341,50 @@ export default function HomeScreen({ navigation }: Props) {
             >
                 <View style={styles.cardInner}>
                     <Image source={{ uri: imageUrl || 'https://via.placeholder.com/150' }} style={styles.cardImg} resizeMode="cover" />
-                    <View style={styles.brandChip}>
-                        <Text style={styles.brandChipText}>{item.manufacturer || item.brand || 'Brand'}</Text>
-                    </View>
+                    {(item.manufacturer || item.brand) ? (
+                        <View style={styles.brandChip}>
+                            <Text style={styles.brandChipText}>{item.manufacturer || item.brand}</Text>
+                        </View>
+                    ) : null}
                     <View style={styles.conditionChip}>
                         <Text style={[styles.conditionChipText, { color: item.condition === 'USED' ? '#FFA500' : (item.condition === 'REFURBISHED' ? '#00BFFF' : '#00FF00') }]}>{item.condition || 'NEW'}</Text>
                     </View>
                     <View style={[styles.cardBottom, { backgroundColor: T.statBg }]}>
                         <Text style={[styles.cardTitle, { color: T.text }]} numberOfLines={1}>{item?.partName || item?.deviceName || item?.name || 'Unknown Part'}</Text>
+                        <View style={styles.ratingRow}>
+                            <Ionicons name="star" size={10} color="#FFD700" />
+                            <Text style={[styles.ratingText, { color: T.subText }]}>{item.rating || '4.8'}</Text>
+                        </View>
                         <View style={styles.cardPriceRow}>
                             <Text style={styles.cardPrice}>₹{item.price?.toLocaleString()}</Text>
-                            {(item.stockQuantity ?? 0) > 0 ? (
-                                <TouchableOpacity style={styles.miniCartBtn} onPress={() => handleAddToCart(item)}>
-                                    <Ionicons name="add" size={18} color="#FFF" />
+                            <View style={styles.cardActions}>
+                                <TouchableOpacity
+                                    style={[styles.miniWishBtn, wishlistItems.some(w => w.id === item.id) && styles.miniWishBtnActive]}
+                                    onPress={() => handleToggleWishlist(item)}
+                                >
+                                    <Ionicons
+                                        name={wishlistItems.some(w => w.id === item.id) ? 'heart' : 'heart-outline'}
+                                        size={14}
+                                        color={wishlistItems.some(w => w.id === item.id) ? '#FFF' : '#DF2324'}
+                                    />
                                 </TouchableOpacity>
-                            ) : (
-                                <View style={[styles.miniCartBtn, { backgroundColor: T.statBorder }]}>
-                                    <Ionicons name="close" size={16} color="#FFF" />
-                                </View>
-                            )}
+                                {(item.stockQuantity ?? 0) > 0 ? (
+                                    <TouchableOpacity style={styles.miniCartBtn} onPress={() => handleAddToCart(item)}>
+                                        <Ionicons name="add" size={18} color="#FFF" />
+                                    </TouchableOpacity>
+                                ) : (
+                                    <View style={[styles.miniCartBtn, { backgroundColor: T.statBorder }]}>
+                                        <Ionicons name="close" size={16} color="#FFF" />
+                                    </View>
+                                )}
+                            </View>
                         </View>
                     </View>
                 </View>
             </TouchableOpacity>
         );
     };
-    
+
     const renderHeader = () => (
         <View>
             <View style={styles.searchRow}>
@@ -379,7 +403,7 @@ export default function HomeScreen({ navigation }: Props) {
                         </TouchableOpacity>
                     ) : null}
                 </View>
-                <TouchableOpacity 
+                <TouchableOpacity
                     style={[styles.filterBtn, { backgroundColor: isDark ? '#1A0808' : '#FFF0F0' }]}
                     onPress={() => setShowSortMenu(!showSortMenu)}
                 >
@@ -389,15 +413,15 @@ export default function HomeScreen({ navigation }: Props) {
                 {showSortMenu && (
                     <View style={[styles.sortMenu, { backgroundColor: T.statBg, borderColor: T.statBorder }]}>
                         {['Featured', 'Price: Low to High', 'Price: High to Low', 'Name: A to Z'].map((option) => (
-                            <TouchableOpacity 
+                            <TouchableOpacity
                                 key={option}
-                                style={styles.menuItem} 
+                                style={styles.menuItem}
                                 onPress={() => { setSortBy(option); setShowSortMenu(false); }}
                             >
-                                <Ionicons 
-                                    name={sortBy === option ? 'radio-button-on' : 'radio-button-off'} 
-                                    size={16} 
-                                    color={sortBy === option ? '#DF2324' : T.subText} 
+                                <Ionicons
+                                    name={sortBy === option ? 'radio-button-on' : 'radio-button-off'}
+                                    size={16}
+                                    color={sortBy === option ? '#DF2324' : T.subText}
                                 />
                                 <Text style={[styles.menuText, { color: sortBy === option ? T.text : T.subText }]}>
                                     {option}
@@ -410,9 +434,9 @@ export default function HomeScreen({ navigation }: Props) {
 
             {/* Dedicated Vehicle Selection Bar */}
             <View style={styles.vehicleBarWrapper}>
-                <TouchableOpacity 
+                <TouchableOpacity
                     style={[
-                        styles.vehicleToggleBar, 
+                        styles.vehicleToggleBar,
                         { backgroundColor: T.inputBg, borderColor: selectedEngine ? '#DF232466' : T.inputBorder }
                     ]}
                     onPress={() => {
@@ -436,15 +460,15 @@ export default function HomeScreen({ navigation }: Props) {
                             </Text>
                         )}
                     </View>
-                    <Ionicons 
-                        name={showVehicleFilters ? "chevron-up" : "chevron-down"} 
-                        size={18} 
-                        color={T.subText} 
+                    <Ionicons
+                        name={showVehicleFilters ? "chevron-up" : "chevron-down"}
+                        size={18}
+                        color={T.subText}
                     />
                 </TouchableOpacity>
 
                 {selectedEngine && !showVehicleFilters && (
-                    <TouchableOpacity 
+                    <TouchableOpacity
                         style={styles.clearVehicleBtn}
                         onPress={clearVehicleFilter}
                     >
@@ -455,7 +479,7 @@ export default function HomeScreen({ navigation }: Props) {
 
             {showVehicleFilters && (
                 <View style={[styles.vehicleFilterContainer, { backgroundColor: T.bg }]}>
-                    <View style={[styles.pickerRow, { marginBottom: 12}]}>
+                    <View style={[styles.pickerRow, { marginBottom: 12 }]}>
                         <ModernDropdown
                             label="MAKE"
                             value={selectedMake}
@@ -474,7 +498,7 @@ export default function HomeScreen({ navigation }: Props) {
                             containerStyle={{ flex: 1 }}
                         />
                     </View>
-                    <View style={[styles.pickerRow, { marginBottom: 12}]}>
+                    <View style={[styles.pickerRow, { marginBottom: 12 }]}>
                         <ModernDropdown
                             label="YEAR"
                             value={selectedYear}
@@ -494,7 +518,7 @@ export default function HomeScreen({ navigation }: Props) {
                             containerStyle={{ flex: 1 }}
                         />
                     </View>
-                    <View style={[styles.pickerRow, { marginBottom: 12}]}>
+                    <View style={[styles.pickerRow, { marginBottom: 12 }]}>
                         <ModernDropdown
                             label="TRIM"
                             value={selectedTrim}
@@ -559,13 +583,13 @@ export default function HomeScreen({ navigation }: Props) {
                             ]}
                             onPress={() => setActiveCondition(cond.id)}
                         >
-                            <Ionicons 
-                                name={cond.icon as any} 
-                                size={12} 
-                                color={activeCondition === cond.id ? '#FFF' : (cond.id === 'REFURBISHED' ? '#00BFFF' : T.subText)} 
+                            <Ionicons
+                                name={cond.icon as any}
+                                size={12}
+                                color={activeCondition === cond.id ? '#FFF' : (cond.id === 'REFURBISHED' ? '#00BFFF' : T.subText)}
                             />
                             <Text style={[
-                                styles.condText, 
+                                styles.condText,
                                 { color: cond.id === 'REFURBISHED' && activeCondition !== cond.id ? '#00BFFF' : T.subText },
                                 activeCondition === cond.id && styles.condTextActive
                             ]}>
@@ -594,7 +618,7 @@ export default function HomeScreen({ navigation }: Props) {
             </View>
         </View>
     );
- 
+
     const renderFooter = () => (
         <View style={{ paddingBottom: 100 }}>
             {/* Pagination Controls */}
@@ -621,7 +645,7 @@ export default function HomeScreen({ navigation }: Props) {
             <View style={styles.heroSection}>
                 <Text style={styles.heroTitle}>BUILT FOR <Text style={{ color: '#DF2324', fontStyle: 'italic' }}>SPEED.</Text></Text>
                 <Text style={styles.heroSubtitle}>Premium performance parts for the serious enthusiast. Engineered for the track, optimized for your garage.</Text>
- 
+
                 {/* Trust Badges */}
                 <View style={styles.badgesWrapper}>
                     <View style={styles.badgeItem}>
@@ -663,6 +687,13 @@ export default function HomeScreen({ navigation }: Props) {
                         <TouchableOpacity style={styles.menuItem} onPress={() => { setShowProfileMenu(false); navigation.navigate('OrderHistory'); }}>
                             <Ionicons name="receipt-outline" size={18} color={T.text} />
                             <Text style={[styles.menuText, { color: T.text }]}>Order History</Text>
+                        </TouchableOpacity>
+                        <View style={styles.menuDivider} />
+                        <TouchableOpacity style={styles.menuItem} onPress={() => { setShowProfileMenu(false); navigation.navigate('Wishlist' as any); }}>
+                            <Ionicons name="heart-outline" size={18} color={T.text} />
+                            <Text style={[styles.menuText, { color: T.text }]}>
+                                My Wishlist{wishlistItems.length > 0 ? ` (${wishlistItems.length})` : ''}
+                            </Text>
                         </TouchableOpacity>
                         <View style={styles.menuDivider} />
                         <TouchableOpacity style={styles.menuItem} onPress={() => { setShowProfileMenu(false); handleLogout(); }}>
@@ -904,6 +935,17 @@ const styles = StyleSheet.create({
     cardTitle: { fontWeight: '900', fontSize: 14, marginBottom: 6, fontStyle: 'italic', textTransform: 'uppercase', letterSpacing: 1 },
     cardPriceRow: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' },
     cardPrice: { color: '#DF2324', fontWeight: '900', fontSize: 16 },
+    ratingRow: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        gap: 4,
+        marginBottom: 8,
+    },
+    ratingText: {
+        fontSize: 10,
+        fontWeight: '900',
+        fontStyle: 'italic',
+    },
     miniCartBtn: {
         width: 32,
         height: 32,
@@ -911,6 +953,25 @@ const styles = StyleSheet.create({
         backgroundColor: '#DF2324',
         justifyContent: 'center',
         alignItems: 'center',
+    },
+    cardActions: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        gap: 6,
+    },
+    miniWishBtn: {
+        width: 32,
+        height: 32,
+        borderRadius: 8,
+        backgroundColor: 'transparent',
+        borderWidth: 1,
+        borderColor: '#DF2324',
+        justifyContent: 'center',
+        alignItems: 'center',
+    },
+    miniWishBtnActive: {
+        backgroundColor: '#DF2324',
+        borderColor: '#DF2324',
     },
     pickerRow: {
         flexDirection: 'row',
@@ -971,12 +1032,12 @@ const styles = StyleSheet.create({
         paddingHorizontal: 16,
         gap: 12,
     },
-    menuText: { 
-        fontSize: 12, 
-        fontWeight: '900', 
-        fontStyle: 'italic', 
-        textTransform: 'uppercase', 
-        letterSpacing: 1.5 
+    menuText: {
+        fontSize: 12,
+        fontWeight: '900',
+        fontStyle: 'italic',
+        textTransform: 'uppercase',
+        letterSpacing: 1.5
     },
     menuDivider: {
         height: 1,

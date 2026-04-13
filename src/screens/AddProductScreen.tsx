@@ -1,10 +1,10 @@
 import React, { useState } from 'react';
-import { View, Text, StyleSheet, TextInput, TouchableOpacity, ScrollView, Alert, ActivityIndicator, Image, Platform } from 'react-native';
+import { View, Text, StyleSheet, TextInput, TouchableOpacity, ScrollView, Alert, ActivityIndicator, Image, Platform, KeyboardAvoidingView } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import ModernDropdown from '../components/ModernDropdown';
 import { Ionicons } from '@expo/vector-icons';
 import { NativeStackNavigationProp } from '@react-navigation/native-stack';
-import { RootStackParamList } from '../../App';
+import { RootStackParamList } from '../types';
 import * as ImagePicker from 'expo-image-picker';
 import apiClient from '../services/apiClient';
 
@@ -199,7 +199,7 @@ export default function AddProductScreen({ navigation }: Props) {
                     setUploading(false);
                     return;
                 }
-                
+
                 vehicleIds = selectedFitments.map(f => f.id);
 
                 // Add current pending selection if valid
@@ -261,7 +261,12 @@ export default function AddProductScreen({ navigation }: Props) {
 
     return (
         <SafeAreaView style={[styles.safe, { backgroundColor: T.bg }]}>
-            <ScrollView style={styles.container}>
+            <KeyboardAvoidingView 
+                style={{ flex: 1 }} 
+                behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
+                keyboardVerticalOffset={Platform.OS === 'ios' ? 0 : 20}
+            >
+                <ScrollView style={styles.container}>
                 <View style={styles.header}>
                     <TouchableOpacity onPress={() => navigation.goBack()} style={[styles.backBtn, { backgroundColor: T.inputBg }]}>
                         <Ionicons name="chevron-back" size={24} color={T.text} />
@@ -334,7 +339,12 @@ export default function AddProductScreen({ navigation }: Props) {
                                 label="Condition"
                                 value={condition}
                                 options={['NEW', 'USED', 'REFURBISHED']}
-                                onSelect={setCondition}
+                                onSelect={(val) => {
+                                    setCondition(val);
+                                    if (val === 'USED' || val === 'REFURBISHED') {
+                                        setStockQuantity('1');
+                                    }
+                                }}
                                 containerStyle={{ flex: 1, marginRight: 12 }}
                             />
                             <ModernDropdown
@@ -370,13 +380,17 @@ export default function AddProductScreen({ navigation }: Props) {
                                 <View style={styles.inputGroup}>
                                     <Text style={[styles.label, { color: T.subText }]}>Stock Qty</Text>
                                     <TextInput
-                                        style={[styles.input, { backgroundColor: T.inputBg, borderColor: T.inputBorder, color: T.text }]}
+                                        style={[styles.input, { backgroundColor: T.inputBg, borderColor: T.inputBorder, color: T.text }, (condition === 'USED' || condition === 'REFURBISHED') && { opacity: 0.5 }]}
                                         placeholderTextColor={T.placeholder}
                                         placeholder="10"
                                         keyboardType="numeric"
                                         value={stockQuantity}
                                         onChangeText={setStockQuantity}
+                                        editable={condition !== 'USED' && condition !== 'REFURBISHED'}
                                     />
+                                    {(condition === 'USED' || condition === 'REFURBISHED') && (
+                                        <Text style={{ fontSize: 10, color: '#FF9800', marginTop: 4, fontWeight: '800', textTransform: 'uppercase' }}>Locked to 1 unit</Text>
+                                    )}
                                 </View>
                             </View>
                         </View>
@@ -393,6 +407,7 @@ export default function AddProductScreen({ navigation }: Props) {
                                 onChangeText={setDescription}
                             />
                         </View>
+
 
                         <View style={styles.inputGroup}>
                             <Text style={[styles.label, { color: T.subText }]}>Fitment Type</Text>
@@ -488,8 +503,8 @@ export default function AddProductScreen({ navigation }: Props) {
                                     />
                                 </View>
 
-                                <TouchableOpacity 
-                                    style={[styles.addFitmentBtn, { borderColor: T.primary }]} 
+                                <TouchableOpacity
+                                    style={[styles.addFitmentBtn, { borderColor: T.primary }]}
                                     onPress={handleAddFitment}
                                 >
                                     <Ionicons name="add-circle-outline" size={20} color={T.primary} />
@@ -525,6 +540,7 @@ export default function AddProductScreen({ navigation }: Props) {
                     </TouchableOpacity>
                 </View>
             </ScrollView>
+            </KeyboardAvoidingView>
         </SafeAreaView>
     );
 }

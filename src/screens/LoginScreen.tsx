@@ -15,7 +15,7 @@ import Animated, {
     Easing
 } from 'react-native-reanimated';
 import { NativeStackNavigationProp } from '@react-navigation/native-stack';
-import { RootStackParamList } from '../../App';
+import { RootStackParamList } from '../types';
 import apiClient from '../services/apiClient';
 import { useAuthStore } from '../store/authStore';
 import { useThemeStore } from '../store/themeStore';
@@ -247,7 +247,12 @@ export default function LoginScreen({ navigation }: Props) {
             const response = await apiClient.post('/auth/verify-otp', { phone, otp });
             handleLoginSuccess(response.data);
         } catch (error: any) {
-            setErrorText(error.response?.data?.error || error.response?.data || 'Invalid OTP. Please try again.');
+            if (error.response?.status === 403) {
+                Alert.alert("ACCOUNT DEACTIVATED", "Access to this Mad Garage profile has been purged by administration.");
+                setErrorText("Account Deactivated.");
+            } else {
+                setErrorText(error.response?.data?.error || error.response?.data || 'Invalid OTP. Please try again.');
+            }
         } finally {
             setLoading(false);
         }
@@ -266,7 +271,12 @@ export default function LoginScreen({ navigation }: Props) {
             const response = await apiClient.post('/auth/login', { email: cleanEmail, password: cleanPassword });
             handleLoginSuccess(response.data);
         } catch (error: any) {
-            setErrorText(error.response?.data?.message || 'Login failed. Check credentials.');
+            if (error.response?.status === 403) {
+                Alert.alert("ACCOUNT DEACTIVATED", "Access to this Mad Garage profile has been purged by administration.");
+                setErrorText("Account Deactivated.");
+            } else {
+                setErrorText(error.response?.data?.message || 'Login failed. Check credentials.');
+            }
         } finally {
             setLoading(false);
         }

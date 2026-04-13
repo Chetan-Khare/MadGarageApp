@@ -2,7 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { View, Text, StyleSheet, FlatList, TouchableOpacity, Image, ActivityIndicator, Alert, StatusBar, TextInput } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { NativeStackNavigationProp } from '@react-navigation/native-stack';
-import { RootStackParamList } from '../../App';
+import { RootStackParamList } from '../types';
 import { useThemeStore, DARK_THEME, LIGHT_THEME } from '../store/themeStore';
 import apiClient, { BASE_SERVER_URL } from '../services/apiClient';
 
@@ -82,7 +82,13 @@ export default function SellerInventoryScreen({ navigation }: Props) {
                 )}
 
                 <View style={styles.stockRow}>
-                    <Text style={[styles.price, { color: '#DF2324' }]}>₹{item.price.toLocaleString()}</Text>
+                    <View>
+                        <Text style={[styles.price, { color: '#DF2324' }]}>₹{item.price.toLocaleString()}</Text>
+                        <View style={{ flexDirection: 'row', alignItems: 'center', gap: 4, marginTop: 4 }}>
+                            <Ionicons name="star" size={12} color="#FFD700" />
+                            <Text style={{ fontSize: 12, fontWeight: '800', color: T.subText }}>{item.rating || '4.5'}</Text>
+                        </View>
+                    </View>
                     <View style={[styles.stockBadge, { backgroundColor: item.stockQuantity > 0 ? '#4CAF5022' : '#F4433622' }]}>
                         <Text style={[styles.stockText, { color: item.stockQuantity > 0 ? '#4CAF50' : '#F44336' }]}>
                             {item.stockQuantity > 0 ? `${item.stockQuantity} IN STOCK` : 'OUT OF STOCK'}

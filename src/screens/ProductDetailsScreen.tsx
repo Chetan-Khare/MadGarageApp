@@ -4,12 +4,14 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import { LinearGradient } from 'expo-linear-gradient';
 import { Ionicons } from '@expo/vector-icons';
 import { NativeStackScreenProps } from '@react-navigation/native-stack';
-import { RootStackParamList } from '../../App';
+import { Product, RootStackParamList } from '../types';
 import { useCartStore } from '../store/cartStore';
 import { useThemeStore, DARK_THEME, LIGHT_THEME } from '../store/themeStore';
 import { useAuthStore } from '../store/authStore';
 import { Alert } from 'react-native';
 import apiClient, { BASE_SERVER_URL } from '../services/apiClient';
+import { useWishlistStore } from '../store/wishlistStore';
+import { Toast } from '../components/Toast';
 
 type Props = NativeStackScreenProps<RootStackParamList, 'ProductDetails'>;
 const { width } = Dimensions.get('window');
@@ -22,6 +24,9 @@ export default function ProductDetailsScreen({ route, navigation }: Props) {
     const T = isDark ? DARK_THEME : LIGHT_THEME;
     const [quantity, setQuantity] = useState(1);
     const [activeIndex, setActiveIndex] = useState(0);
+    const wishlistItems = useWishlistStore(s => s.items);
+    const toggleWishlist = useWishlistStore(s => s.toggleWishlist);
+    const isInWishlist = wishlistItems.some(w => w.id === product.id);
 
     const isWholesale = !isGuest && !!product.garagePrice;
     const price: number = isWholesale ? (product.garagePrice || 0) : (product.originalPrice || product.price || 0);
@@ -48,12 +53,28 @@ export default function ProductDetailsScreen({ route, navigation }: Props) {
             quantity,
             stockQuantity: product.stockQuantity ?? 0
         });
-        
+
         if (success) {
             navigation.navigate('Cart');
         } else {
             Alert.alert("Stock Limit Reached", "You cannot add more of this item to your cart.");
         }
+    };
+
+    const handleToggleWishlist = async () => {
+        if (isGuest) {
+            Alert.alert(
+                'Authentication Required',
+                'Please log in to your account to save parts to your wishlist.',
+                [
+                    { text: 'Cancel', style: 'cancel' },
+                    { text: 'Log In', onPress: () => logout() }
+                ]
+            );
+            return;
+        }
+        const added = await toggleWishlist(product);
+        Toast.show({ message: added ? 'Added to wishlist' : 'Removed from wishlist', type: added ? 'success' : 'info' });
     };
 
     return (
@@ -62,9 +83,9 @@ export default function ProductDetailsScreen({ route, navigation }: Props) {
 
                 {/* Hero Image Carousel */}
                 <View style={styles.heroWrap}>
-                    <ScrollView 
-                        horizontal 
-                        pagingEnabled 
+                    <ScrollView
+                        horizontal
+                        pagingEnabled
                         showsHorizontalScrollIndicator={false}
                         onScroll={(e) => {
                             const offset = e.nativeEvent.contentOffset.x;
@@ -76,11 +97,11 @@ export default function ProductDetailsScreen({ route, navigation }: Props) {
                         {(product.imageUrls && product.imageUrls.length > 0 ? product.imageUrls : [product.imageUrl]).map((url: string | undefined, index: number) => {
                             const fullUrl = url?.startsWith('http') ? url : `${BASE_SERVER_URL}${url}`;
                             return (
-                                <Image 
+                                <Image
                                     key={index}
-                                    source={{ uri: fullUrl || 'https://via.placeholder.com/400' }} 
-                                    style={styles.hero} 
-                                    resizeMode="cover" 
+                                    source={{ uri: fullUrl || 'https://via.placeholder.com/400' }}
+                                    style={styles.hero}
+                                    resizeMode="cover"
                                 />
                             );
                         })}
@@ -92,12 +113,12 @@ export default function ProductDetailsScreen({ route, navigation }: Props) {
                     {(product.imageUrls && product.imageUrls.length > 1) && (
                         <View style={styles.pagination}>
                             {product.imageUrls.map((_: any, i: number) => (
-                                <View 
-                                    key={i} 
+                                <View
+                                    key={i}
                                     style={[
-                                        styles.dot, 
+                                        styles.dot,
                                         { backgroundColor: i === activeIndex ? '#DF2324' : 'rgba(255,255,255,0.5)' }
-                                    ]} 
+                                    ]}
                                 />
                             ))}
                         </View>
@@ -108,12 +129,20 @@ export default function ProductDetailsScreen({ route, navigation }: Props) {
                         <Ionicons name="chevron-back" size={22} color="#000" />
                     </TouchableOpacity>
 
-                    {/* Cart Button */}
-                    {!isGuest && (
-                        <TouchableOpacity style={styles.heroCartBtn} onPress={() => navigation.navigate('Cart')}>
-                            <Ionicons name="bag-outline" size={22} color="#DF2324" />
+                    {/* Hero Action Row */}
+                    <View style={styles.heroActionRow}>
+                        <TouchableOpacity
+                            style={[styles.heroWishBtn, isInWishlist && styles.heroWishBtnActive]}
+                            onPress={handleToggleWishlist}
+                        >
+                            <Ionicons name={isInWishlist ? "heart" : "heart-outline"} size={22} color={isInWishlist ? "#FFF" : "#DF2324"} />
                         </TouchableOpacity>
-                    )}
+                        {!isGuest && (
+                            <TouchableOpacity style={styles.heroCartBtn} onPress={() => navigation.navigate('Cart')}>
+                                <Ionicons name="bag-outline" size={22} color="#DF2324" />
+                            </TouchableOpacity>
+                        )}
+                    </View>
                 </View>
 
                 <View style={styles.body}>
@@ -125,7 +154,7 @@ export default function ProductDetailsScreen({ route, navigation }: Props) {
                         </View>
                         <View style={styles.ratingPill}>
                             <Ionicons name="star" size={13} color="#000" />
-                            <Text style={styles.ratingScore}>4.8</Text>
+                            <Text style={styles.ratingScore}>{product.rating || '4.8'}</Text>
                         </View>
                     </View>
 
@@ -177,25 +206,25 @@ export default function ProductDetailsScreen({ route, navigation }: Props) {
             {/* Sticky Footer */}
             <View style={[styles.footer, { backgroundColor: T.headerBg, borderTopColor: T.headerBorder }]}>
                 <View style={[styles.qtyWrap, { backgroundColor: T.inputBg, borderColor: T.inputBorder, opacity: (product.stockQuantity ?? 0) <= 0 ? 0.5 : 1 }]}>
-                    <TouchableOpacity 
-                        style={styles.qtyBtn} 
+                    <TouchableOpacity
+                        style={styles.qtyBtn}
                         onPress={() => setQuantity(Math.max(1, quantity - 1))}
                         disabled={(product.stockQuantity ?? 0) <= 0}
                     >
                         <Ionicons name="remove" size={20} color={T.text} />
                     </TouchableOpacity>
                     <Text style={[styles.qtyNum, { color: T.text }]}>{quantity}</Text>
-                    <TouchableOpacity 
-                        style={styles.qtyBtn} 
+                    <TouchableOpacity
+                        style={styles.qtyBtn}
                         onPress={() => setQuantity(Math.min(product.stockQuantity ?? 0, quantity + 1))}
                         disabled={(product.stockQuantity ?? 0) <= 0 || quantity >= (product.stockQuantity ?? 0)}
                     >
                         <Ionicons name="add" size={20} color={quantity >= (product.stockQuantity ?? 0) ? T.placeholder : T.text} />
                     </TouchableOpacity>
                 </View>
-                <TouchableOpacity 
-                    style={[styles.addCta, { opacity: (product.stockQuantity ?? 0) <= 0 ? 0.6 : 1 }]} 
-                    onPress={handleAddToCart} 
+                <TouchableOpacity
+                    style={[styles.addCta, { opacity: (product.stockQuantity ?? 0) <= 0 ? 0.6 : 1 }]}
+                    onPress={handleAddToCart}
                     activeOpacity={0.85}
                     disabled={(product.stockQuantity ?? 0) <= 0}
                 >
@@ -245,9 +274,6 @@ const styles = StyleSheet.create({
         elevation: 3,
     },
     heroCartBtn: {
-        position: 'absolute',
-        top: 20,
-        right: 16,
         width: 44,
         height: 44,
         borderRadius: 22,
@@ -259,6 +285,29 @@ const styles = StyleSheet.create({
         shadowOpacity: 0.1,
         shadowRadius: 4,
         elevation: 3,
+    },
+    heroActionRow: {
+        position: 'absolute',
+        top: 20,
+        right: 16,
+        flexDirection: 'row',
+        gap: 10,
+    },
+    heroWishBtn: {
+        width: 44,
+        height: 44,
+        borderRadius: 22,
+        backgroundColor: 'rgba(255,255,255,0.9)',
+        justifyContent: 'center',
+        alignItems: 'center',
+        shadowColor: '#000',
+        shadowOffset: { width: 0, height: 2 },
+        shadowOpacity: 0.1,
+        shadowRadius: 4,
+        elevation: 3,
+    },
+    heroWishBtnActive: {
+        backgroundColor: '#DF2324',
     },
     body: { padding: 20, paddingBottom: 60 },
     nameRow: { flexDirection: 'row', alignItems: 'flex-start', marginBottom: 20 },

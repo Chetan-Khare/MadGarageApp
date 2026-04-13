@@ -1,7 +1,7 @@
 import React from 'react';
 import { createNativeStackNavigator } from '@react-navigation/native-stack';
 import { useAuthStore } from '../store/authStore';
-import type { RootStackParamList } from '../../App';
+import { RootStackParamList } from '../types';
 
 // Admin screens
 import AdminDashboardScreen from '../screens/AdminDashboardScreen';
@@ -34,6 +34,7 @@ import GarageProfileScreen from '../screens/GarageProfileScreen';
 
 import EditProductScreen from '../screens/EditProductScreen';
 import PartRequestScreen from '../screens/PartRequestScreen';
+import WishlistScreen from '../screens/WishlistScreen';
 
 const Stack = createNativeStackNavigator<RootStackParamList>();
 
@@ -105,6 +106,7 @@ const RoleNavigator: React.FC = () => {
       <Stack.Screen name="GarageProfile" component={GarageProfileScreen} />
       <Stack.Screen name="SellerProfile" component={SellerProfileScreen} />
       <Stack.Screen name="PartRequest" component={PartRequestScreen} />
+      <Stack.Screen name="Wishlist" component={WishlistScreen} />
     </Stack.Navigator>
   );
 };
