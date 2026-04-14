@@ -10,6 +10,8 @@ import RoleNavigator from './src/navigation/RoleNavigator';
 import { ToastProvider } from './src/components/Toast';
 import SplashScreen from './src/screens/SplashScreen';
 
+import CompleteProfileScreen from './src/screens/CompleteProfileScreen';
+
 import { Product, RootStackParamList } from './src/types';
 
 
@@ -43,6 +45,7 @@ export default function App() {
         ) : (
           <Stack.Navigator screenOptions={{ headerShown: false, contentStyle: { backgroundColor: '#0A0A0A' } }}>
             <Stack.Screen name="Login" component={LoginScreen} />
+            <Stack.Screen name="CompleteProfile" component={CompleteProfileScreen} />
           </Stack.Navigator>
         )}
       </NavigationContainer>

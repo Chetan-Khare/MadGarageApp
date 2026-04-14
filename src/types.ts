@@ -57,5 +57,15 @@ export type RootStackParamList = {
   SellerOrderHistory: undefined;
   SellerFlaggedProducts: undefined;
   PartRequest: undefined;
-  Wishlist: undefined; // ✅ Added Wishlist
+  Wishlist: undefined;
+  CompleteProfile: { registrationToken: string };
 };
+
+export interface AuthResponse {
+  token?: string;
+  message: string;
+  userId?: number;
+  role?: string;
+  requiresRegistration?: boolean;
+  registrationToken?: string;
+}

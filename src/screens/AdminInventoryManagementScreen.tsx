@@ -6,6 +6,7 @@ import { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import { RootStackParamList } from '../types';
 import { useThemeStore } from '../store/themeStore';
 import apiClient from '../services/apiClient';
+import { ProductImage } from '../components/ProductImage';
 
 type Props = {
     navigation: NativeStackNavigationProp<RootStackParamList, 'AdminInventoryManagement'>;
@@ -129,7 +130,7 @@ export default function AdminInventoryManagementScreen({ navigation }: Props) {
             style={[styles.productCard, { backgroundColor: bgSecondary, borderColor: borderSubtle }]}
         >
             <View style={[styles.imageContainer, { borderColor: item.flagged ? '#FF9B3E' : borderSubtle }]}>
-                <Image source={{ uri: item.imageUrl || 'https://via.placeholder.com/80' }} style={styles.productImage} />
+                <ProductImage product={item} style={styles.productImage} />
                 {item.flagged && (
                     <View style={styles.flaggedBadge}>
                         <Text style={styles.flaggedBadgeText}>FLAGGED</Text>

@@ -6,11 +6,11 @@ import {
 } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import * as ImagePicker from 'expo-image-picker';
-import * as FileSystem from 'expo-file-system';
-import { LinearGradient } from 'expo-linear-gradient';
+import { File } from 'expo-file-system';
 import { Ionicons } from '@expo/vector-icons';
 import { NativeStackNavigationProp } from '@react-navigation/native-stack';
-import { RootStackParamList } from '../../App';
+import { RootStackParamList } from '../types';
+import { useAuthStore } from '../store/authStore';
 import { useThemeStore, DARK_THEME, LIGHT_THEME } from '../store/themeStore';
 import apiClient, { BASE_SERVER_URL } from '../services/apiClient';
 
@@ -75,7 +75,7 @@ export default function CustomerProfileScreen({ navigation }: Props) {
             setUploadingImage(true);
             try {
                 let imageUri = result.assets[0].uri;
-                const base64 = await FileSystem.readAsStringAsync(imageUri, { encoding: 'base64' });
+                const base64 = await (new File(imageUri)).base64();
 
                 const filename = imageUri.split('/').pop() || 'profile.jpg';
                 const match = /\.(\w+)$/.exec(filename);
@@ -108,12 +108,18 @@ export default function CustomerProfileScreen({ navigation }: Props) {
 
         setSaving(true);
         try {
-            await apiClient.put('/users/profile', {
+            const response = await apiClient.put('/users/profile', {
                 firstName,
                 lastName,
                 email,
                 password: password.trim() ? password : null
             });
+
+            if (response.data?.token) {
+                const { setAuth, role, user } = useAuthStore.getState();
+                await setAuth(response.data.token, role as any, user || undefined);
+            }
+
             Alert.alert('Success', 'Your profile has been updated!');
             navigation.goBack();
         } catch (error: any) {
@@ -147,7 +153,8 @@ export default function CustomerProfileScreen({ navigation }: Props) {
 
             <KeyboardAvoidingView 
                 style={{ flex: 1 }} 
-                behavior={Platform.OS === 'ios' ? 'padding' : undefined}
+                behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
+                keyboardVerticalOffset={Platform.OS === 'ios' ? 0 : 80}
             >
                 <ScrollView contentContainerStyle={styles.scrollContent}>
                     

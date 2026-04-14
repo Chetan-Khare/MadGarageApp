@@ -12,6 +12,7 @@ import { Alert } from 'react-native';
 import apiClient, { BASE_SERVER_URL } from '../services/apiClient';
 import { useWishlistStore } from '../store/wishlistStore';
 import { Toast } from '../components/Toast';
+import { ProductImage } from '../components/ProductImage';
 
 type Props = NativeStackScreenProps<RootStackParamList, 'ProductDetails'>;
 const { width } = Dimensions.get('window');
@@ -94,12 +95,12 @@ export default function ProductDetailsScreen({ route, navigation }: Props) {
                         }}
                         scrollEventThrottle={16}
                     >
-                        {(product.imageUrls && product.imageUrls.length > 0 ? product.imageUrls : [product.imageUrl]).map((url: string | undefined, index: number) => {
-                            const fullUrl = url?.startsWith('http') ? url : `${BASE_SERVER_URL}${url}`;
+                        {(product.imageUrls && product.imageUrls.length > 0 ? product.imageUrls : [product.imageUrl]).map((_: any, index: number) => {
                             return (
-                                <Image
+                                <ProductImage
                                     key={index}
-                                    source={{ uri: fullUrl || 'https://via.placeholder.com/400' }}
+                                    product={product}
+                                    index={index}
                                     style={styles.hero}
                                     resizeMode="cover"
                                 />

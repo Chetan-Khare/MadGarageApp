@@ -226,7 +226,8 @@ export default function LoginScreen({ navigation }: Props) {
         setErrorText('');
         try {
             const res = await apiClient.post('/auth/send-otp', { phone });
-            Alert.alert("Development SMS", res.data);
+            console.log('[Login] OTP Send Response:', res.data);
+            Alert.alert("Development SMS", typeof res.data === 'string' ? res.data : JSON.stringify(res.data));
             setShowOtpInput(true);
             setResendTimer(30);
         } catch (error: any) {
@@ -245,7 +246,14 @@ export default function LoginScreen({ navigation }: Props) {
         setErrorText('');
         try {
             const response = await apiClient.post('/auth/verify-otp', { phone, otp });
-            handleLoginSuccess(response.data);
+            const data = response.data;
+            console.log('[Auth] Verify OTP response:', data);
+
+            if (data?.requiresRegistration) {
+                navigation.navigate('CompleteProfile', { registrationToken: data.registrationToken });
+            } else {
+                handleLoginSuccess(data);
+            }
         } catch (error: any) {
             if (error.response?.status === 403) {
                 Alert.alert("ACCOUNT DEACTIVATED", "Access to this Mad Garage profile has been purged by administration.");

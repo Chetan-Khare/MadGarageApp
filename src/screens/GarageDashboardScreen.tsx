@@ -16,6 +16,7 @@ import ModernDropdown from '../components/ModernDropdown';
 import { ListCardSkeleton } from '../components/SkeletonLoader';
 import { Toast } from '../components/Toast';
 import { RefreshControl } from 'react-native';
+import { ProductImage } from '../components/ProductImage';
 
 type Props = {
     navigation: NativeStackNavigationProp<RootStackParamList, 'GarageDashboard'>;
@@ -299,7 +300,6 @@ export default function GarageDashboardScreen({ navigation }: Props) {
     const pagedProducts = filteredProducts.slice((currentPage - 1) * pageSize, currentPage * pageSize);
 
     const renderItem = ({ item }: { item: any }) => {
-        const imageUrl = item.imageUrl?.startsWith('/') ? `${BASE_SERVER_URL}${item.imageUrl}` : item.imageUrl;
         return (
             <TouchableOpacity
                 style={[styles.card, { backgroundColor: T.statBg }]}
@@ -307,7 +307,7 @@ export default function GarageDashboardScreen({ navigation }: Props) {
                 activeOpacity={0.85}
             >
                 <View style={styles.cardInner}>
-                    <Image source={{ uri: imageUrl || 'https://via.placeholder.com/150' }} style={styles.cardImg} resizeMode="cover" />
+                    <ProductImage product={item} style={styles.cardImg} resizeMode="cover" />
                     {(item.manufacturer || item.brand || item.brandName) ? (
                         <View style={styles.brandChip}>
                             <Text style={styles.brandChipText}>{item.manufacturer || item.brand || item.brandName}</Text>

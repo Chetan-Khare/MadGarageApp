@@ -5,6 +5,7 @@ import { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import { RootStackParamList } from '../types';
 import { useThemeStore, DARK_THEME, LIGHT_THEME } from '../store/themeStore';
 import apiClient, { BASE_SERVER_URL } from '../services/apiClient';
+import { ProductImage } from '../components/ProductImage';
 
 type Props = {
     navigation: NativeStackNavigationProp<RootStackParamList, 'SellerInventory'>;
@@ -60,8 +61,8 @@ export default function SellerInventoryScreen({ navigation }: Props) {
     const renderProductItem = ({ item }: { item: any }) => (
         <View style={[styles.productCard, { backgroundColor: T.statBg, borderColor: T.statBorder }]}>
             <View>
-                <Image 
-                    source={{ uri: item.imageUrl ? `${BASE_SERVER_URL}${item.imageUrl}` : 'https://via.placeholder.com/150' }} 
+                <ProductImage 
+                    product={item} 
                     style={[styles.productImage, { borderColor: item.flagged ? '#FF9B3E' : 'transparent', borderWidth: item.flagged ? 2 : 0 }]} 
                 />
                 {item.flagged && (

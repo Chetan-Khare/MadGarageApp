@@ -347,7 +347,7 @@ export default function AdminDashboardScreen({ navigation }: Props) {
                     <View style={styles.passwordContainer}>
                         <TextInput
                             style={[styles.formInput, { backgroundColor: inputBg, color: textPrimary, flex: 1, marginBottom: 0 }]}
-                            placeholder="Root Password"
+                            placeholder="Root Password (Optional)"
                             placeholderTextColor={textMuted}
                             secureTextEntry={!showPassword}
                             value={newUserPassword}

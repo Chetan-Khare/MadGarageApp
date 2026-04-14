@@ -9,10 +9,10 @@ import { Product, RootStackParamList } from '../types';
 import * as ImagePicker from 'expo-image-picker';
 import apiClient from '../services/apiClient';
 
-import * as FileSystem from 'expo-file-system/legacy';
+import { File } from 'expo-file-system';
 import { useAuthStore } from '../store/authStore';
 import { useThemeStore, DARK_THEME, LIGHT_THEME } from '../store/themeStore';
-import { BASE_SERVER_URL } from '../services/apiClient';
+import { BASE_SERVER_URL, resolveSingleImageUrl, resolveProductImage } from '../utils/imageUtils';
 
 const PART_CATEGORIES = [
     'Sound Tech',
@@ -78,9 +78,9 @@ export default function EditProductScreen({ navigation }: Props) {
     const [existingImages, setExistingImages] = useState<string[]>([]);
     useEffect(() => {
         if (product.imageUrls && product.imageUrls.length > 0) {
-            setExistingImages(product.imageUrls.map(url => `${BASE_SERVER_URL}${url}`));
+            setExistingImages(product.imageUrls.map(url => resolveSingleImageUrl(url)));
         } else if (product.imageUrl) {
-            setExistingImages([`${BASE_SERVER_URL}${product.imageUrl}`]);
+            setExistingImages([resolveSingleImageUrl(product.imageUrl)]);
         }
     }, [product]);
 
@@ -248,18 +248,14 @@ export default function EditProductScreen({ navigation }: Props) {
             const base64Images: string[] = [];
             // Only parse local URI images
             for (const uri of imageUris) {
-                const base64 = await FileSystem.readAsStringAsync(uri, {
-                    encoding: 'base64'
-                });
+                const base64 = await (new File(uri)).base64();
                 base64Images.push(base64);
             }
 
             let base64Guide: string | null = null;
             let guideExt: string | null = null;
-            if (guideUri) {
-                base64Guide = await FileSystem.readAsStringAsync(guideUri, {
-                    encoding: 'base64'
-                });
+            if (guideUri && (guideUri.startsWith('file://') || guideUri.startsWith('/'))) {
+                base64Guide = await (new File(guideUri)).base64();
                 guideExt = guideUri.split('.').pop() || 'pdf';
             }
 

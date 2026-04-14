@@ -17,6 +17,7 @@ import ModernDropdown from '../components/ModernDropdown';
 import { useWishlistStore } from '../store/wishlistStore';
 import { ProductCardSkeleton } from '../components/SkeletonLoader';
 import { Toast } from '../components/Toast';
+import { ProductImage } from '../components/ProductImage';
 
 type HomeScreenNavigationProp = NativeStackNavigationProp<RootStackParamList, 'Home'>;
 interface Props { navigation: HomeScreenNavigationProp; }
@@ -332,7 +333,6 @@ export default function HomeScreen({ navigation }: Props) {
     const pagedDevices = filteredDevices.slice((currentPage - 1) * pageSize, currentPage * pageSize);
 
     const renderCard = ({ item }: { item: any }) => {
-        const imageUrl = item.imageUrl?.startsWith('/') ? `${BASE_SERVER_URL}${item.imageUrl}` : item.imageUrl;
         return (
             <TouchableOpacity
                 style={[styles.card, { backgroundColor: T.statBg }]}
@@ -340,7 +340,7 @@ export default function HomeScreen({ navigation }: Props) {
                 activeOpacity={0.85}
             >
                 <View style={styles.cardInner}>
-                    <Image source={{ uri: imageUrl || 'https://via.placeholder.com/150' }} style={styles.cardImg} resizeMode="cover" />
+                    <ProductImage product={item} style={styles.cardImg} resizeMode="cover" />
                     {(item.manufacturer || item.brand) ? (
                         <View style={styles.brandChip}>
                             <Text style={styles.brandChipText}>{item.manufacturer || item.brand}</Text>

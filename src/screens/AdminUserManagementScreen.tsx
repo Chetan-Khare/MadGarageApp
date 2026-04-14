@@ -220,7 +220,7 @@ export default function AdminUserManagementScreen({ navigation, route }: Props) 
             </View>
 
             <View style={styles.filterContainer}>
-                {['ALL', 'ROLE_SELLER', 'ROLE_GARAGE', 'ROLE_ADMIN'].map(role => (
+                {['ALL', 'ROLE_SELLER', 'ROLE_GARAGE', 'ROLE_CUSTOMER', 'ROLE_ADMIN'].map(role => (
                     <TouchableOpacity 
                         key={role}
                         style={[styles.roleTab, activeRole === role && { backgroundColor: '#DF2324' }]}
@@ -261,34 +261,34 @@ export default function AdminUserManagementScreen({ navigation, route }: Props) 
                     <View style={[styles.modalContent, { backgroundColor: T.bg2 }]}>
                         <Text style={[styles.modalTitle, { color: T.text }]}>REVISION HUB</Text>
                         
+                        {/* P1 REQ: Names are now static (read-only) for Admins */}
+                        <View style={{ marginBottom: 15 }}>
+                            <Text style={{ color: T.subText, fontSize: 10, fontWeight: '900', marginBottom: 5 }}>NAME (STATIC)</Text>
+                            <TextInput 
+                                style={[styles.modalInput, { backgroundColor: T.inputBg, color: T.text, opacity: 0.6, marginBottom: 0 }]}
+                                value={`${editForm.firstName} ${editForm.lastName}`}
+                                editable={false}
+                            />
+                        </View>
+
+                        <Text style={{ color: T.subText, fontSize: 10, fontWeight: '900', marginBottom: 5 }}>EMAIL (EDITABLE)</Text>
                         <TextInput 
-                            style={[styles.modalInput, { backgroundColor: T.inputBg, color: T.text }]}
-                            placeholder="First Name"
-                            placeholderTextColor={T.subText}
-                            value={editForm.firstName}
-                            onChangeText={txt => setEditForm({...editForm, firstName: txt})}
-                        />
-                        <TextInput 
-                            style={[styles.modalInput, { backgroundColor: T.inputBg, color: T.text }]}
-                            placeholder="Last Name"
-                            placeholderTextColor={T.subText}
-                            value={editForm.lastName}
-                            onChangeText={txt => setEditForm({...editForm, lastName: txt})}
-                        />
-                        <TextInput 
-                            style={[styles.modalInput, { backgroundColor: T.inputBg, color: T.text }]}
+                            style={[styles.modalInput, { backgroundColor: T.inputBg, color: T.text, marginBottom: 15 }]}
                             placeholder="Email"
                             placeholderTextColor={T.subText}
                             value={editForm.email}
                             onChangeText={txt => setEditForm({...editForm, email: txt})}
                             autoCapitalize="none"
                         />
+
+                        <Text style={{ color: T.subText, fontSize: 10, fontWeight: '900', marginBottom: 5 }}>PHONE (EDITABLE)</Text>
                         <TextInput 
-                            style={[styles.modalInput, { backgroundColor: T.inputBg, color: T.text }]}
+                            style={[styles.modalInput, { backgroundColor: T.inputBg, color: T.text, marginBottom: 15 }]}
                             placeholder="Phone"
                             placeholderTextColor={T.subText}
                             value={editForm.phone}
                             onChangeText={txt => setEditForm({...editForm, phone: txt})}
+                            keyboardType="phone-pad"
                         />
 
                         <View style={styles.modalActions}>

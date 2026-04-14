@@ -8,7 +8,7 @@ import { RootStackParamList } from '../types';
 import * as ImagePicker from 'expo-image-picker';
 import apiClient from '../services/apiClient';
 
-import * as FileSystem from 'expo-file-system/legacy';
+import { File } from 'expo-file-system';
 import { useAuthStore } from '../store/authStore';
 import { useThemeStore, DARK_THEME, LIGHT_THEME } from '../store/themeStore';
 
@@ -212,9 +212,7 @@ export default function AddProductScreen({ navigation }: Props) {
 
             const base64Images: string[] = [];
             for (const uri of imageUris) {
-                const base64 = await FileSystem.readAsStringAsync(uri, {
-                    encoding: 'base64'
-                });
+                const base64 = await (new File(uri)).base64();
                 base64Images.push(base64);
             }
 
@@ -222,9 +220,7 @@ export default function AddProductScreen({ navigation }: Props) {
             let base64Guide: string | null = null;
             let guideExt: string | null = null;
             if (guideUri) {
-                base64Guide = await FileSystem.readAsStringAsync(guideUri, {
-                    encoding: 'base64'
-                });
+                base64Guide = await (new File(guideUri)).base64();
                 guideExt = guideUri.split('.').pop() || 'pdf';
             }
 
@@ -261,285 +257,285 @@ export default function AddProductScreen({ navigation }: Props) {
 
     return (
         <SafeAreaView style={[styles.safe, { backgroundColor: T.bg }]}>
-            <KeyboardAvoidingView 
-                style={{ flex: 1 }} 
+            <KeyboardAvoidingView
+                style={{ flex: 1 }}
                 behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
                 keyboardVerticalOffset={Platform.OS === 'ios' ? 0 : 20}
             >
                 <ScrollView style={styles.container}>
-                <View style={styles.header}>
-                    <TouchableOpacity onPress={() => navigation.goBack()} style={[styles.backBtn, { backgroundColor: T.inputBg }]}>
-                        <Ionicons name="chevron-back" size={24} color={T.text} />
-                    </TouchableOpacity>
-                    <Text style={[styles.headerTitle, { color: T.text }]}>New Listing</Text>
-                    <TouchableOpacity
-                        onPress={async () => {
-                            try {
-                                const res = await apiClient.get('/debug/ping');
-                                Alert.alert("Connection OK", `Status: ${res.data.status}\n${res.data.message}`);
-                            } catch (err: any) {
-                                console.error("Ping failed", err);
-                                Alert.alert("Connection Failed", `Could not reach backend at ${apiClient.defaults.baseURL}\n\nError: ${err.message}`);
-                            }
-                        }}
-                        style={[styles.pingBtn, { backgroundColor: T.inputBg }]}
-                    >
-                        <Ionicons name="wifi" size={20} color={T.text} />
-                    </TouchableOpacity>
-                </View>
-
-                <View style={styles.formContainer}>
-                    <View style={styles.imageSection}>
-                        <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.imageScrollView}>
-                            {imageUris.map((uri, index) => (
-                                <View key={index} style={styles.imageThumbnailContainer}>
-                                    <Image source={{ uri }} style={styles.thumbnailImage} />
-                                    <TouchableOpacity style={styles.removeImageBtn} onPress={() => removeImage(index)}>
-                                        <Ionicons name="close-circle" size={20} color="#FF4444" />
-                                    </TouchableOpacity>
-                                </View>
-                            ))}
-                            {imageUris.length < 5 && (
-                                <TouchableOpacity style={[styles.imagePicker, { backgroundColor: T.inputBg, borderColor: T.inputBorder }]} onPress={pickImage}>
-                                    <View style={styles.pickerPlaceholder}>
-                                        <Ionicons name="camera-outline" size={32} color="#DF2324" />
-                                        <Text style={[styles.pickerText, { color: T.subText }]}>{imageUris.length > 0 ? 'Add More' : 'Add Photos'}</Text>
-                                        <Text style={{ fontSize: 10, color: T.subText }}>Max 5</Text>
-                                    </View>
-                                </TouchableOpacity>
-                            )}
-                        </ScrollView>
+                    <View style={styles.header}>
+                        <TouchableOpacity onPress={() => navigation.goBack()} style={[styles.backBtn, { backgroundColor: T.inputBg }]}>
+                            <Ionicons name="chevron-back" size={24} color={T.text} />
+                        </TouchableOpacity>
+                        <Text style={[styles.headerTitle, { color: T.text }]}>New Listing</Text>
+                        <TouchableOpacity
+                            onPress={async () => {
+                                try {
+                                    const res = await apiClient.get('/debug/ping');
+                                    Alert.alert("Connection OK", `Status: ${res.data.status}\n${res.data.message}`);
+                                } catch (err: any) {
+                                    console.error("Ping failed", err);
+                                    Alert.alert("Connection Failed", `Could not reach backend at ${apiClient.defaults.baseURL}\n\nError: ${err.message}`);
+                                }
+                            }}
+                            style={[styles.pingBtn, { backgroundColor: T.inputBg }]}
+                        >
+                            <Ionicons name="wifi" size={20} color={T.text} />
+                        </TouchableOpacity>
                     </View>
 
-                    <View style={styles.formSection}>
-                        <View style={styles.inputGroup}>
-                            <Text style={[styles.label, { color: T.subText }]}>Part Name</Text>
-                            <TextInput
-                                style={[styles.input, { backgroundColor: T.inputBg, borderColor: T.inputBorder, color: T.text }]}
-                                placeholderTextColor={T.placeholder}
-                                placeholder="e.g. Forged Pistons"
-                                value={partName}
-                                onChangeText={setPartName}
-                            />
+                    <View style={styles.formContainer}>
+                        <View style={styles.imageSection}>
+                            <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.imageScrollView}>
+                                {imageUris.map((uri, index) => (
+                                    <View key={index} style={styles.imageThumbnailContainer}>
+                                        <Image source={{ uri }} style={styles.thumbnailImage} />
+                                        <TouchableOpacity style={styles.removeImageBtn} onPress={() => removeImage(index)}>
+                                            <Ionicons name="close-circle" size={20} color="#FF4444" />
+                                        </TouchableOpacity>
+                                    </View>
+                                ))}
+                                {imageUris.length < 5 && (
+                                    <TouchableOpacity style={[styles.imagePicker, { backgroundColor: T.inputBg, borderColor: T.inputBorder }]} onPress={pickImage}>
+                                        <View style={styles.pickerPlaceholder}>
+                                            <Ionicons name="camera-outline" size={32} color="#DF2324" />
+                                            <Text style={[styles.pickerText, { color: T.subText }]}>{imageUris.length > 0 ? 'Add More' : 'Add Photos'}</Text>
+                                            <Text style={{ fontSize: 10, color: T.subText }}>Max 5</Text>
+                                        </View>
+                                    </TouchableOpacity>
+                                )}
+                            </ScrollView>
                         </View>
 
-                        <View style={styles.inputGroup}>
-                            <Text style={[styles.label, { color: T.subText }]}>Brand</Text>
-                            <TextInput
-                                style={[styles.input, { backgroundColor: T.inputBg, borderColor: T.inputBorder, color: T.text }]}
-                                placeholderTextColor={T.placeholder}
-                                placeholder="e.g. CP Carrillo"
-                                value={brand}
-                                onChangeText={setBrand}
-                            />
-                        </View>
-
-                        <View style={styles.row}>
-                            <ModernDropdown
-                                label="Condition"
-                                value={condition}
-                                options={['NEW', 'USED', 'REFURBISHED']}
-                                onSelect={(val) => {
-                                    setCondition(val);
-                                    if (val === 'USED' || val === 'REFURBISHED') {
-                                        setStockQuantity('1');
-                                    }
-                                }}
-                                containerStyle={{ flex: 1, marginRight: 12 }}
-                            />
-                            <ModernDropdown
-                                label="Color"
-                                value={color}
-                                options={COLORS}
-                                onSelect={setColor}
-                                containerStyle={{ flex: 1 }}
-                            />
-                        </View>
-
-                        <ModernDropdown
-                            label="Category"
-                            value={category}
-                            options={PART_CATEGORIES}
-                            onSelect={setCategory}
-                            placeholder="Select Part Category"
-                        />
-
-                        <View style={styles.row}>
-                            <View style={[styles.inputGroup, { flex: 1, marginRight: 12 }]}>
-                                <Text style={[styles.label, { color: T.subText }]}>Price (₹)</Text>
+                        <View style={styles.formSection}>
+                            <View style={styles.inputGroup}>
+                                <Text style={[styles.label, { color: T.subText }]}>Part Name</Text>
                                 <TextInput
                                     style={[styles.input, { backgroundColor: T.inputBg, borderColor: T.inputBorder, color: T.text }]}
                                     placeholderTextColor={T.placeholder}
-                                    placeholder="99.99"
-                                    keyboardType="numeric"
-                                    value={price}
-                                    onChangeText={setPrice}
+                                    placeholder="e.g. Forged Pistons"
+                                    value={partName}
+                                    onChangeText={setPartName}
                                 />
                             </View>
-                            <View style={{ flex: 1 }}>
-                                <View style={styles.inputGroup}>
-                                    <Text style={[styles.label, { color: T.subText }]}>Stock Qty</Text>
+
+                            <View style={styles.inputGroup}>
+                                <Text style={[styles.label, { color: T.subText }]}>Brand</Text>
+                                <TextInput
+                                    style={[styles.input, { backgroundColor: T.inputBg, borderColor: T.inputBorder, color: T.text }]}
+                                    placeholderTextColor={T.placeholder}
+                                    placeholder="e.g. CP Carrillo"
+                                    value={brand}
+                                    onChangeText={setBrand}
+                                />
+                            </View>
+
+                            <View style={styles.row}>
+                                <ModernDropdown
+                                    label="Condition"
+                                    value={condition}
+                                    options={['NEW', 'USED', 'REFURBISHED']}
+                                    onSelect={(val) => {
+                                        setCondition(val);
+                                        if (val === 'USED' || val === 'REFURBISHED') {
+                                            setStockQuantity('1');
+                                        }
+                                    }}
+                                    containerStyle={{ flex: 1, marginRight: 12 }}
+                                />
+                                <ModernDropdown
+                                    label="Color"
+                                    value={color}
+                                    options={COLORS}
+                                    onSelect={setColor}
+                                    containerStyle={{ flex: 1 }}
+                                />
+                            </View>
+
+                            <ModernDropdown
+                                label="Category"
+                                value={category}
+                                options={PART_CATEGORIES}
+                                onSelect={setCategory}
+                                placeholder="Select Part Category"
+                            />
+
+                            <View style={styles.row}>
+                                <View style={[styles.inputGroup, { flex: 1, marginRight: 12 }]}>
+                                    <Text style={[styles.label, { color: T.subText }]}>Price (₹)</Text>
                                     <TextInput
-                                        style={[styles.input, { backgroundColor: T.inputBg, borderColor: T.inputBorder, color: T.text }, (condition === 'USED' || condition === 'REFURBISHED') && { opacity: 0.5 }]}
+                                        style={[styles.input, { backgroundColor: T.inputBg, borderColor: T.inputBorder, color: T.text }]}
                                         placeholderTextColor={T.placeholder}
-                                        placeholder="10"
+                                        placeholder="99.99"
                                         keyboardType="numeric"
-                                        value={stockQuantity}
-                                        onChangeText={setStockQuantity}
-                                        editable={condition !== 'USED' && condition !== 'REFURBISHED'}
+                                        value={price}
+                                        onChangeText={setPrice}
                                     />
-                                    {(condition === 'USED' || condition === 'REFURBISHED') && (
-                                        <Text style={{ fontSize: 10, color: '#FF9800', marginTop: 4, fontWeight: '800', textTransform: 'uppercase' }}>Locked to 1 unit</Text>
+                                </View>
+                                <View style={{ flex: 1 }}>
+                                    <View style={styles.inputGroup}>
+                                        <Text style={[styles.label, { color: T.subText }]}>Stock Qty</Text>
+                                        <TextInput
+                                            style={[styles.input, { backgroundColor: T.inputBg, borderColor: T.inputBorder, color: T.text }, (condition === 'USED' || condition === 'REFURBISHED') && { opacity: 0.5 }]}
+                                            placeholderTextColor={T.placeholder}
+                                            placeholder="10"
+                                            keyboardType="numeric"
+                                            value={stockQuantity}
+                                            onChangeText={setStockQuantity}
+                                            editable={condition !== 'USED' && condition !== 'REFURBISHED'}
+                                        />
+                                        {(condition === 'USED' || condition === 'REFURBISHED') && (
+                                            <Text style={{ fontSize: 10, color: '#FF9800', marginTop: 4, fontWeight: '800', textTransform: 'uppercase' }}>Locked to 1 unit</Text>
+                                        )}
+                                    </View>
+                                </View>
+                            </View>
+
+                            <View style={styles.inputGroup}>
+                                <Text style={[styles.label, { color: T.subText }]}>Description</Text>
+                                <TextInput
+                                    style={[styles.input, styles.textArea, { backgroundColor: T.inputBg, borderColor: T.inputBorder, color: T.text }]}
+                                    placeholderTextColor={T.placeholder}
+                                    placeholder="Specifications..."
+                                    multiline
+                                    numberOfLines={4}
+                                    value={description}
+                                    onChangeText={setDescription}
+                                />
+                            </View>
+
+
+                            <View style={styles.inputGroup}>
+                                <Text style={[styles.label, { color: T.subText }]}>Fitment Type</Text>
+                                <View style={styles.fitmentToggleRow}>
+                                    <TouchableOpacity
+                                        style={[styles.fitmentToggle, !isUniversal && styles.fitmentToggleActive]}
+                                        onPress={() => setIsUniversal(false)}
+                                    >
+                                        <Ionicons name="car-sport-outline" size={18} color={!isUniversal ? "#FFF" : T.subText} />
+                                        <Text style={[styles.fitmentToggleText, !isUniversal && styles.fitmentToggleTextActive]}>Specific Vehicle</Text>
+                                    </TouchableOpacity>
+                                    <TouchableOpacity
+                                        style={[styles.fitmentToggle, isUniversal && styles.fitmentToggleActive]}
+                                        onPress={() => setIsUniversal(true)}
+                                    >
+                                        <Ionicons name="globe-outline" size={18} color={isUniversal ? "#FFF" : T.subText} />
+                                        <Text style={[styles.fitmentToggleText, isUniversal && styles.fitmentToggleTextActive]}>Universal Part</Text>
+                                    </TouchableOpacity>
+                                </View>
+                            </View>
+
+                            {!isUniversal && (
+                                <View style={[styles.vehicleFilterContainer, { backgroundColor: T.headerBg }]}>
+                                    <ModernDropdown
+                                        label="System Category"
+                                        value={fitmentCategory}
+                                        options={['ENGINE', 'INTERIOR', 'BODY']}
+                                        onSelect={setFitmentCategory}
+                                        containerStyle={{ marginBottom: 15 }}
+                                    />
+
+                                    <Text style={[styles.sectionTitle, { color: T.text, marginBottom: 12 }]}>Vehicle Fitment</Text>
+
+                                    <View style={styles.pickerRow}>
+                                        <ModernDropdown
+                                            label="MAKE"
+                                            value={selectedMake}
+                                            options={makes}
+                                            onSelect={setSelectedMake}
+                                            placeholder="Select Make"
+                                            containerStyle={{ flex: 1, marginRight: 12 }}
+                                        />
+                                        <ModernDropdown
+                                            label="MODEL"
+                                            value={selectedModel}
+                                            options={models}
+                                            onSelect={setSelectedModel}
+                                            placeholder="Select Model"
+                                            enabled={!!selectedMake}
+                                            containerStyle={{ flex: 1 }}
+                                        />
+                                    </View>
+
+                                    <View style={styles.pickerRow}>
+                                        <ModernDropdown
+                                            label="YEAR"
+                                            value={selectedYear}
+                                            options={years.map(y => y.toString())}
+                                            onSelect={setSelectedYear}
+                                            placeholder="Select Year"
+                                            enabled={!!selectedModel}
+                                            containerStyle={{ flex: 1, marginRight: 12 }}
+                                        />
+                                        <ModernDropdown
+                                            label="FUEL"
+                                            value={selectedFuel}
+                                            options={fuels}
+                                            onSelect={setSelectedFuel}
+                                            placeholder="Select Fuel"
+                                            enabled={!!selectedYear}
+                                            containerStyle={{ flex: 1 }}
+                                        />
+                                    </View>
+
+                                    <View style={styles.pickerRow}>
+                                        <ModernDropdown
+                                            label="TRIM"
+                                            value={selectedTrim}
+                                            options={trims}
+                                            onSelect={setSelectedTrim}
+                                            placeholder="Select Trim"
+                                            enabled={!!selectedFuel}
+                                            containerStyle={{ flex: 1, marginRight: 12 }}
+                                        />
+                                        <ModernDropdown
+                                            label="ENGINE"
+                                            value={selectedEngine}
+                                            options={engines}
+                                            onSelect={setSelectedEngine}
+                                            placeholder="Select Engine"
+                                            enabled={!!selectedTrim}
+                                            containerStyle={{ flex: 1 }}
+                                        />
+                                    </View>
+
+                                    <TouchableOpacity
+                                        style={[styles.addFitmentBtn, { borderColor: T.primary }]}
+                                        onPress={handleAddFitment}
+                                    >
+                                        <Ionicons name="add-circle-outline" size={20} color={T.primary} />
+                                        <Text style={[styles.addFitmentText, { color: T.primary }]}>ADD VEHICLE TO COMPATIBILITY</Text>
+                                    </TouchableOpacity>
+
+                                    {selectedFitments.length > 0 && (
+                                        <View style={styles.fitmentList}>
+                                            <Text style={[styles.label, { color: T.subText, fontSize: 10, marginTop: 10 }]}>Confirmed Fitments ({selectedFitments.length})</Text>
+                                            {selectedFitments.map(item => (
+                                                <View key={item.id} style={[styles.fitmentItem, { backgroundColor: T.inputBg, borderColor: T.inputBorder }]}>
+                                                    <View style={{ flex: 1 }}>
+                                                        <Text style={[styles.fitmentTitle, { color: T.text }]}>{item.carModel.make.name} {item.carModel.name}</Text>
+                                                        <Text style={[styles.fitmentSub, { color: T.subText }]}>{item.year} | {item.engineType}</Text>
+                                                    </View>
+                                                    <TouchableOpacity onPress={() => removeFitment(item.id)}>
+                                                        <Ionicons name="trash-outline" size={20} color="#FF4444" />
+                                                    </TouchableOpacity>
+                                                </View>
+                                            ))}
+                                        </View>
                                     )}
                                 </View>
-                            </View>
+                            )}
                         </View>
 
-                        <View style={styles.inputGroup}>
-                            <Text style={[styles.label, { color: T.subText }]}>Description</Text>
-                            <TextInput
-                                style={[styles.input, styles.textArea, { backgroundColor: T.inputBg, borderColor: T.inputBorder, color: T.text }]}
-                                placeholderTextColor={T.placeholder}
-                                placeholder="Specifications..."
-                                multiline
-                                numberOfLines={4}
-                                value={description}
-                                onChangeText={setDescription}
-                            />
-                        </View>
-
-
-                        <View style={styles.inputGroup}>
-                            <Text style={[styles.label, { color: T.subText }]}>Fitment Type</Text>
-                            <View style={styles.fitmentToggleRow}>
-                                <TouchableOpacity
-                                    style={[styles.fitmentToggle, !isUniversal && styles.fitmentToggleActive]}
-                                    onPress={() => setIsUniversal(false)}
-                                >
-                                    <Ionicons name="car-sport-outline" size={18} color={!isUniversal ? "#FFF" : T.subText} />
-                                    <Text style={[styles.fitmentToggleText, !isUniversal && styles.fitmentToggleTextActive]}>Specific Vehicle</Text>
-                                </TouchableOpacity>
-                                <TouchableOpacity
-                                    style={[styles.fitmentToggle, isUniversal && styles.fitmentToggleActive]}
-                                    onPress={() => setIsUniversal(true)}
-                                >
-                                    <Ionicons name="globe-outline" size={18} color={isUniversal ? "#FFF" : T.subText} />
-                                    <Text style={[styles.fitmentToggleText, isUniversal && styles.fitmentToggleTextActive]}>Universal Part</Text>
-                                </TouchableOpacity>
-                            </View>
-                        </View>
-
-                        {!isUniversal && (
-                            <View style={[styles.vehicleFilterContainer, { backgroundColor: T.headerBg }]}>
-                                <ModernDropdown
-                                    label="System Category"
-                                    value={fitmentCategory}
-                                    options={['ENGINE', 'INTERIOR', 'BODY']}
-                                    onSelect={setFitmentCategory}
-                                    containerStyle={{ marginBottom: 15 }}
-                                />
-
-                                <Text style={[styles.sectionTitle, { color: T.text, marginBottom: 12 }]}>Vehicle Fitment</Text>
-
-                                <View style={styles.pickerRow}>
-                                    <ModernDropdown
-                                        label="MAKE"
-                                        value={selectedMake}
-                                        options={makes}
-                                        onSelect={setSelectedMake}
-                                        placeholder="Select Make"
-                                        containerStyle={{ flex: 1, marginRight: 12 }}
-                                    />
-                                    <ModernDropdown
-                                        label="MODEL"
-                                        value={selectedModel}
-                                        options={models}
-                                        onSelect={setSelectedModel}
-                                        placeholder="Select Model"
-                                        enabled={!!selectedMake}
-                                        containerStyle={{ flex: 1 }}
-                                    />
-                                </View>
-
-                                <View style={styles.pickerRow}>
-                                    <ModernDropdown
-                                        label="YEAR"
-                                        value={selectedYear}
-                                        options={years.map(y => y.toString())}
-                                        onSelect={setSelectedYear}
-                                        placeholder="Select Year"
-                                        enabled={!!selectedModel}
-                                        containerStyle={{ flex: 1, marginRight: 12 }}
-                                    />
-                                    <ModernDropdown
-                                        label="FUEL"
-                                        value={selectedFuel}
-                                        options={fuels}
-                                        onSelect={setSelectedFuel}
-                                        placeholder="Select Fuel"
-                                        enabled={!!selectedYear}
-                                        containerStyle={{ flex: 1 }}
-                                    />
-                                </View>
-
-                                <View style={styles.pickerRow}>
-                                    <ModernDropdown
-                                        label="TRIM"
-                                        value={selectedTrim}
-                                        options={trims}
-                                        onSelect={setSelectedTrim}
-                                        placeholder="Select Trim"
-                                        enabled={!!selectedFuel}
-                                        containerStyle={{ flex: 1, marginRight: 12 }}
-                                    />
-                                    <ModernDropdown
-                                        label="ENGINE"
-                                        value={selectedEngine}
-                                        options={engines}
-                                        onSelect={setSelectedEngine}
-                                        placeholder="Select Engine"
-                                        enabled={!!selectedTrim}
-                                        containerStyle={{ flex: 1 }}
-                                    />
-                                </View>
-
-                                <TouchableOpacity
-                                    style={[styles.addFitmentBtn, { borderColor: T.primary }]}
-                                    onPress={handleAddFitment}
-                                >
-                                    <Ionicons name="add-circle-outline" size={20} color={T.primary} />
-                                    <Text style={[styles.addFitmentText, { color: T.primary }]}>ADD VEHICLE TO COMPATIBILITY</Text>
-                                </TouchableOpacity>
-
-                                {selectedFitments.length > 0 && (
-                                    <View style={styles.fitmentList}>
-                                        <Text style={[styles.label, { color: T.subText, fontSize: 10, marginTop: 10 }]}>Confirmed Fitments ({selectedFitments.length})</Text>
-                                        {selectedFitments.map(item => (
-                                            <View key={item.id} style={[styles.fitmentItem, { backgroundColor: T.inputBg, borderColor: T.inputBorder }]}>
-                                                <View style={{ flex: 1 }}>
-                                                    <Text style={[styles.fitmentTitle, { color: T.text }]}>{item.carModel.make.name} {item.carModel.name}</Text>
-                                                    <Text style={[styles.fitmentSub, { color: T.subText }]}>{item.year} | {item.engineType}</Text>
-                                                </View>
-                                                <TouchableOpacity onPress={() => removeFitment(item.id)}>
-                                                    <Ionicons name="trash-outline" size={20} color="#FF4444" />
-                                                </TouchableOpacity>
-                                            </View>
-                                        ))}
-                                    </View>
-                                )}
-                            </View>
-                        )}
+                        <TouchableOpacity
+                            style={[styles.submitBtn, uploading && { opacity: 0.7 }]}
+                            onPress={handleUpload}
+                            disabled={uploading}
+                        >
+                            {uploading ? <ActivityIndicator color="#FFF" /> : <Text style={styles.submitBtnText}>PUBLISH TO MARKET</Text>}
+                        </TouchableOpacity>
                     </View>
-
-                    <TouchableOpacity
-                        style={[styles.submitBtn, uploading && { opacity: 0.7 }]}
-                        onPress={handleUpload}
-                        disabled={uploading}
-                    >
-                        {uploading ? <ActivityIndicator color="#FFF" /> : <Text style={styles.submitBtnText}>PUBLISH TO MARKET</Text>}
-                    </TouchableOpacity>
-                </View>
-            </ScrollView>
+                </ScrollView>
             </KeyboardAvoidingView>
         </SafeAreaView>
     );
