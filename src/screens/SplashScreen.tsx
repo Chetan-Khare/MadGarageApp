@@ -211,15 +211,7 @@ const SplashScreen: React.FC = () => {
                 <Particle key={i} x={d.x} y={d.y} size={d.size} delay={i * 200} />
             ))}
 
-            {/* ── Top Header Bar ── */}
-            <View style={styles.header}>
-                <View style={styles.headerIconPlaceholder} />
-                <View style={styles.nodeStatusContainer}>
-                    {/* FIX 4: Static green dot, removed unused nodePulseOpacity */}
-                    <View style={styles.nodeIndicator} />
-                    <Text style={styles.nodeText}>NODE-04 ACTIVE</Text>
-                </View>
-            </View>
+
 
             {/* ── Main Content Layer ── */}
             <View style={styles.contentWrap}>
