@@ -9,47 +9,19 @@ import {
     Easing,
 } from 'react-native';
 import Svg, { Path } from 'react-native-svg';
-import Animated2, {
-    useSharedValue,
-    useAnimatedProps,
-    withTiming,
-    Easing as REasing,
-    useDerivedValue,
-    runOnJS,
-} from 'react-native-reanimated';
+import { LinearGradient } from 'expo-linear-gradient'; // Added for smooth grid dissolve
 
 const { width, height } = Dimensions.get('window');
-const AnimatedPath = Animated2.createAnimatedComponent(Path);
 
-// ── Gauge constants ───────────────────────────────────────────────────────────
-const RADIUS = 100;
-const STROKE_WIDTH = 12;
-const SVG_SIZE = 260;
-const CENTER = SVG_SIZE / 2;
-const CIRCUMFERENCE = Math.PI * RADIUS;
-
-const arcPath = `M ${CENTER - RADIUS} ${CENTER} A ${RADIUS} ${RADIUS} 0 0 1 ${CENTER + RADIUS} ${CENTER}`;
-
-const polarToCartesian = (cx: number, cy: number, r: number, deg: number) => {
-    const rad = (deg - 180) * Math.PI / 180;
-    return { x: cx + r * Math.cos(rad), y: cy + r * Math.sin(rad) };
-};
-
-// ── Dot positions for a constellation ambient effect ─────────────────────────
+// ── Floating Ambient Dots ───────────────────────────────────────────────────
 const DOTS = [
-    { x: 0.08, y: 0.1, size: 2 },
-    { x: 0.85, y: 0.12, size: 1.5 },
-    { x: 0.15, y: 0.42, size: 1.2 },
-    { x: 0.9, y: 0.38, size: 2 },
-    { x: 0.05, y: 0.7, size: 1.5 },
-    { x: 0.92, y: 0.68, size: 1.2 },
-    { x: 0.22, y: 0.88, size: 2 },
-    { x: 0.75, y: 0.9, size: 1.5 },
-    { x: 0.5, y: 0.05, size: 1 },
-    { x: 0.48, y: 0.92, size: 1 },
+    { x: 0.08, y: 0.1, size: 2 }, { x: 0.85, y: 0.12, size: 1.5 },
+    { x: 0.15, y: 0.42, size: 1.2 }, { x: 0.9, y: 0.38, size: 2 },
+    { x: 0.05, y: 0.7, size: 1.5 }, { x: 0.92, y: 0.68, size: 1.2 },
+    { x: 0.22, y: 0.88, size: 2 }, { x: 0.75, y: 0.9, size: 1.5 },
+    { x: 0.5, y: 0.05, size: 1 }, { x: 0.48, y: 0.92, size: 1 },
 ];
 
-// ── Floating particle component ───────────────────────────────────────────────
 const Particle = ({ x, y, size, delay }: { x: number, y: number, size: number, delay: number }) => {
     const opacity = useRef(new Animated.Value(0)).current;
     const translateY = useRef(new Animated.Value(0)).current;
@@ -60,11 +32,11 @@ const Particle = ({ x, y, size, delay }: { x: number, y: number, size: number, d
                 Animated.delay(delay),
                 Animated.parallel([
                     Animated.sequence([
-                        Animated.timing(opacity, { toValue: 0.7, duration: 1200, useNativeDriver: true }),
+                        Animated.timing(opacity, { toValue: 0.5, duration: 1200, useNativeDriver: true }),
                         Animated.timing(opacity, { toValue: 0.1, duration: 1200, useNativeDriver: true }),
                     ]),
                     Animated.sequence([
-                        Animated.timing(translateY, { toValue: -12, duration: 2400, easing: Easing.inOut(Easing.sin), useNativeDriver: true }),
+                        Animated.timing(translateY, { toValue: -15, duration: 2400, easing: Easing.inOut(Easing.sin), useNativeDriver: true }),
                         Animated.timing(translateY, { toValue: 0, duration: 0, useNativeDriver: true }),
                     ]),
                 ]),
@@ -73,42 +45,111 @@ const Particle = ({ x, y, size, delay }: { x: number, y: number, size: number, d
     }, []);
 
     return (
-        <Animated.View
-            style={{
-                position: 'absolute',
-                left: x * width,
-                top: y * height,
-                width: size * 2,
-                height: size * 2,
-                borderRadius: size,
-                backgroundColor: '#DF2324',
-                opacity,
-                transform: [{ translateY }],
-            }}
-        />
+        <Animated.View style={{
+            position: 'absolute', left: x * width, top: y * height,
+            width: size * 2, height: size * 2, borderRadius: size,
+            backgroundColor: '#DF2324', opacity, transform: [{ translateY }],
+        }} />
+    );
+};
+
+// ── Exact RN Translation of your HTML Astronaut ────────────────────────────
+const HtmlAstronaut = () => {
+    const floatAnim = useRef(new Animated.Value(0)).current;
+
+    useEffect(() => {
+        Animated.loop(
+            Animated.sequence([
+                Animated.timing(floatAnim, {
+                    toValue: -15,
+                    duration: 1800,
+                    easing: Easing.inOut(Easing.sin),
+                    useNativeDriver: true
+                }),
+                Animated.timing(floatAnim, {
+                    toValue: 0,
+                    duration: 1800,
+                    easing: Easing.inOut(Easing.sin),
+                    useNativeDriver: true
+                })
+            ])
+        ).start();
+    }, []);
+
+    return (
+        <Animated.View style={[styles.loader, { transform: [{ translateY: floatAnim }] }]}>
+            {/* The outer span container with the 4 exhaust/leg spans */}
+            <View style={styles.spanGroup}>
+                <View style={styles.spanItem} />
+                <View style={styles.spanItem} />
+                <View style={styles.spanItem} />
+                <View style={styles.spanItem} />
+            </View>
+
+            {/* The main base and face */}
+            <View style={styles.base}>
+                {/* FIX 2: baseSpan renders first, face renders on top naturally without zIndex: -1 */}
+                <View style={styles.baseSpan} />
+                <View style={styles.face} />
+            </View>
+        </Animated.View>
+    );
+};
+
+// ── 3D Perspective Grid ────────────────────────────────────────────────────────
+const PerspectiveGrid = () => {
+    const translateZ = useRef(new Animated.Value(0)).current;
+
+    useEffect(() => {
+        Animated.loop(
+            Animated.timing(translateZ, {
+                toValue: 60, duration: 800, easing: Easing.linear, useNativeDriver: true,
+            })
+        ).start();
+    }, []);
+
+    const gridLines = [];
+    for (let i = -10; i <= 10; i++) {
+        let x = i * 60;
+        gridLines.push(<Path key={`v${i}`} d={`M ${x} 0 L ${x} 800`} stroke="rgba(223, 35, 36, 0.4)" strokeWidth="1.5" />);
+    }
+    for (let i = 0; i <= 20; i++) {
+        let y = i * 60;
+        gridLines.push(<Path key={`h${i}`} d={`M -600 ${y} L 600 ${y}`} stroke="rgba(223, 35, 36, 0.4)" strokeWidth="1.5" />);
+    }
+
+    return (
+        <View style={styles.gridContainer}>
+            <Animated.View style={[styles.gridBox, {
+                transform: [{ perspective: 400 }, { rotateX: '75deg' }, { translateY: translateZ }]
+            }]}>
+                <Svg width="1200" height="800" viewBox="-600 0 1200 800">{gridLines}</Svg>
+            </Animated.View>
+
+            {/* FIX 3: Replaced static view with LinearGradient for smooth dissolve */}
+            <LinearGradient
+                colors={['#08080C', 'transparent']}
+                style={styles.gridFadeOverlay}
+            />
+        </View>
     );
 };
 
 const SplashScreen: React.FC = () => {
-    // ── Reanimated shared values ──────────────────────────────────────────────
-    const rpm = useSharedValue(0);
-    const [displayValue, setDisplayValue] = React.useState(0);
-
-    // ── Animated (legacy API for subtle glow pulses) ──────────────────────────
     const glowOpacity = useRef(new Animated.Value(0.4)).current;
     const glowScale = useRef(new Animated.Value(0.9)).current;
     const logoScale = useRef(new Animated.Value(0.6)).current;
     const logoOpacity = useRef(new Animated.Value(0)).current;
     const titleOpacity = useRef(new Animated.Value(0)).current;
     const titleTranslate = useRef(new Animated.Value(20)).current;
-    const subtitleOpacity = useRef(new Animated.Value(0)).current;
-    const lineWidth = useRef(new Animated.Value(0)).current;
+
+    // FIX 1 & 5: New Animated Refs for Progress Bar and System Blink
+    const progressTranslate = useRef(new Animated.Value(-280)).current;
+    const progressOpacity = useRef(new Animated.Value(0)).current;
+    const systemBlink = useRef(new Animated.Value(0.3)).current;
 
     useEffect(() => {
-        // Gauge fill
-        rpm.value = withTiming(100, { duration: 2600, easing: REasing.out(REasing.cubic) });
-
-        // Glow pulse
+        // Red Core Glow pulse
         Animated.loop(
             Animated.parallel([
                 Animated.sequence([
@@ -122,232 +163,154 @@ const SplashScreen: React.FC = () => {
             ])
         ).start();
 
-        // Logo entrance
+        // FIX 5: Slow blink pulse for "SYSTEM UNDER LOAD"
+        Animated.loop(
+            Animated.sequence([
+                Animated.timing(systemBlink, { toValue: 1, duration: 1000, easing: Easing.inOut(Easing.ease), useNativeDriver: true }),
+                Animated.timing(systemBlink, { toValue: 0.3, duration: 1000, easing: Easing.inOut(Easing.ease), useNativeDriver: true }),
+            ])
+        ).start();
+
+        // FIX 1: Recursive Progress Bar Loop (Fade In -> Slide -> Fade Out -> Reset Invisible)
+        const runProgressLoop = () => {
+            progressTranslate.setValue(-280);
+            progressOpacity.setValue(0);
+
+            Animated.sequence([
+                Animated.timing(progressOpacity, { toValue: 1, duration: 300, useNativeDriver: true }),
+                Animated.timing(progressTranslate, { toValue: 280, duration: 2000, easing: Easing.inOut(Easing.ease), useNativeDriver: true }),
+                Animated.timing(progressOpacity, { toValue: 0, duration: 300, useNativeDriver: true })
+            ]).start(() => runProgressLoop());
+        };
+        runProgressLoop();
+
+        // Entrance Animations (Logo -> Title)
         Animated.sequence([
             Animated.delay(300),
             Animated.parallel([
                 Animated.spring(logoScale, { toValue: 1, friction: 6, tension: 100, useNativeDriver: true }),
                 Animated.timing(logoOpacity, { toValue: 1, duration: 600, useNativeDriver: true }),
             ]),
-        ]).start();
-
-        // Title entrance
-        Animated.sequence([
-            Animated.delay(700),
             Animated.parallel([
                 Animated.timing(titleOpacity, { toValue: 1, duration: 500, useNativeDriver: true }),
                 Animated.timing(titleTranslate, { toValue: 0, duration: 500, easing: Easing.out(Easing.quad), useNativeDriver: true }),
-            ]),
-        ]).start();
-
-        // Separator line grow
-        Animated.sequence([
-            Animated.delay(900),
-            Animated.timing(lineWidth, { toValue: 80, duration: 600, easing: Easing.out(Easing.quad), useNativeDriver: false }),
-        ]).start();
-
-        // Subtitle
-        Animated.sequence([
-            Animated.delay(1100),
-            Animated.timing(subtitleOpacity, { toValue: 1, duration: 500, useNativeDriver: true }),
+            ])
         ]).start();
     }, []);
 
-    const gaugeProps = useAnimatedProps(() => ({
-        strokeDashoffset: CIRCUMFERENCE - (rpm.value / 100) * CIRCUMFERENCE,
-    }));
-
-    useDerivedValue(() => {
-        runOnJS(setDisplayValue)(Math.round(rpm.value));
-    });
-
-    const renderTicks = () => {
-        const ticks = [];
-        for (let i = 0; i <= 180; i += 30) {
-            const outerPt = polarToCartesian(CENTER, CENTER, RADIUS + 2, i);
-            const innerPt = polarToCartesian(CENTER, CENTER, RADIUS - STROKE_WIDTH - 4, i);
-            const isLarge = i % 60 === 0;
-            ticks.push(
-                <Path
-                    key={i}
-                    d={`M ${outerPt.x} ${outerPt.y} L ${innerPt.x} ${innerPt.y}`}
-                    stroke="#FFF"
-                    strokeWidth={isLarge ? 2 : 1}
-                    opacity={isLarge ? 0.5 : 0.25}
-                />
-            );
-        }
-        return ticks;
-    };
-
     return (
         <View style={styles.root}>
-            {/* Background ambient glow (pulsing red circle) */}
+            <PerspectiveGrid />
+
             <Animated.View style={[
                 styles.radialGlow,
                 { opacity: glowOpacity, transform: [{ scale: glowScale }] }
             ]} />
 
-            {/* Floating ambient dots */}
             {DOTS.map((d, i) => (
                 <Particle key={i} x={d.x} y={d.y} size={d.size} delay={i * 200} />
             ))}
 
-            {/* ─── Main Content ─────────────────────────────────────────── */}
+            {/* ── Top Header Bar ── */}
+            <View style={styles.header}>
+                <View style={styles.headerIconPlaceholder} />
+                <View style={styles.nodeStatusContainer}>
+                    {/* FIX 4: Static green dot, removed unused nodePulseOpacity */}
+                    <View style={styles.nodeIndicator} />
+                    <Text style={styles.nodeText}>NODE-04 ACTIVE</Text>
+                </View>
+            </View>
+
+            {/* ── Main Content Layer ── */}
             <View style={styles.contentWrap}>
 
-                {/* Logo */}
+                {/* 1. Mad Garage Logo */}
                 <Animated.View style={[styles.logoWrap, { opacity: logoOpacity, transform: [{ scale: logoScale }] }]}>
                     <View style={styles.logoRing}>
                         <Image source={require('../../assets/app_logo.png')} style={styles.logo} />
                     </View>
                 </Animated.View>
 
-                {/* Brand text */}
+                {/* 2. Mad Garage Text */}
                 <Animated.Text style={[styles.brandTitle, { opacity: titleOpacity, transform: [{ translateY: titleTranslate }] }]}>
-                    THE MAD GARAGE
+                    <Text style={styles.brandTitleBold}>MAD GARAGE</Text>
                 </Animated.Text>
 
-                {/* Separator line */}
-                <Animated.View style={[styles.separator, { width: lineWidth }]} />
+                {/* 3. HTML-based Astronaut Replacement */}
+                <HtmlAstronaut />
 
-                {/* Tagline */}
-                <Animated.Text style={[styles.tagline, { opacity: subtitleOpacity }]}>
-                    PERFORMANCE & HI-END PARTS
-                </Animated.Text>
+                {/* 4. HTML Typography & Loading Bar */}
+                <View style={styles.loaderTextContainer}>
+                    <Text style={styles.fetchingText}>FETCHING CONTENT</Text>
+                    <Text style={styles.calibratingText}>
+                        Calibrating neural data buffers • EST. 2.4s
+                    </Text>
 
-                {/* ── Gauge ─────────────────────────────────────────────── */}
-                <View style={styles.gaugeWrap}>
-                    <Svg width={SVG_SIZE} height={CENTER + 30} viewBox={`0 0 ${SVG_SIZE} ${CENTER + 30}`}>
-                        {/* Background track */}
-                        <Path
-                            d={arcPath}
-                            stroke="#1E1E26"
-                            strokeWidth={STROKE_WIDTH}
-                            strokeLinecap="round"
-                            fill="none"
-                        />
-                        {/* Tick marks */}
-                        {renderTicks()}
-                        {/* Active fill */}
-                        <AnimatedPath
-                            d={arcPath}
-                            stroke="#DF2324"
-                            strokeWidth={STROKE_WIDTH}
-                            strokeLinecap="round"
-                            fill="none"
-                            strokeDasharray={`${CIRCUMFERENCE} ${CIRCUMFERENCE}`}
-                            animatedProps={gaugeProps}
-                        />
-                    </Svg>
-
-                    {/* Percentage below arc */}
-                    <View style={styles.percentageWrap}>
-                        <Text style={styles.percentageValue}>{displayValue}<Text style={styles.percentSign}>%</Text></Text>
-                        <Text style={styles.statusText}>
-                            {displayValue < 40 ? 'BOOTING SYSTEMS' : displayValue < 80 ? 'LOADING ASSETS' : 'SYSTEMS READY'}
-                        </Text>
+                    {/* FIX 1: Linked opacity to the recursive loop fade */}
+                    <View style={styles.progressBarTrack}>
+                        <Animated.View style={[
+                            styles.progressBarFill,
+                            {
+                                opacity: progressOpacity,
+                                transform: [{ translateX: progressTranslate }]
+                            }
+                        ]} />
                     </View>
                 </View>
             </View>
+
+            {/* FIX 5: Animated telemetry text with ● prefix and brand red color */}
+            <Animated.View style={[styles.bottomStatus, { opacity: systemBlink }]}>
+                <Text style={styles.systemLoadText}>● SYSTEM UNDER LOAD</Text>
+            </Animated.View>
         </View>
     );
 };
 
 const styles = StyleSheet.create({
-    root: {
-        flex: 1,
-        backgroundColor: '#08080C',
-        justifyContent: 'center',
-        alignItems: 'center',
-    },
-    radialGlow: {
-        position: 'absolute',
-        width: width * 0.9,
-        height: width * 0.9,
-        borderRadius: width * 0.45,
-        backgroundColor: 'rgba(223, 35, 36, 0.07)',
-        top: height * 0.05,
-    },
-    contentWrap: {
-        alignItems: 'center',
-        paddingHorizontal: 24,
-    },
-    // Logo
-    logoWrap: {
-        marginBottom: 20,
-    },
-    logoRing: {
-        width: 112,
-        height: 112,
-        borderRadius: 56,
-        borderWidth: 2.5,
-        borderColor: '#DF2324',
-        backgroundColor: '#0F0F14',
-        justifyContent: 'center',
-        alignItems: 'center',
-        shadowColor: '#DF2324',
-        shadowOffset: { width: 0, height: 0 },
-        shadowRadius: 24,
-        shadowOpacity: 0.6,
-        elevation: 18,
-        overflow: 'hidden',
-    },
-    logo: {
-        width: 96,
-        height: 96,
-        resizeMode: 'cover',
-        borderRadius: 48,
-    },
-    // Title
-    brandTitle: {
-        color: '#FFFFFF',
-        fontSize: 26,
-        fontWeight: '900',
-        letterSpacing: 5,
-        textAlign: 'center',
-        marginBottom: 12,
-    },
-    separator: {
-        height: 2,
-        backgroundColor: '#DF2324',
-        borderRadius: 2,
-        marginBottom: 10,
-    },
-    tagline: {
-        color: '#7A7A88',
-        fontSize: 11,
-        fontWeight: '700',
-        letterSpacing: 3,
-        marginBottom: 36,
-    },
-    // Gauge
-    gaugeWrap: {
-        alignItems: 'center',
-        marginBottom: 28,
-    },
-    percentageWrap: {
-        alignItems: 'center',
-        marginTop: -8,
-    },
-    percentageValue: {
-        color: '#FFFFFF',
-        fontSize: 42,
-        fontWeight: '900',
-        lineHeight: 50,
-    },
-    percentSign: {
-        fontSize: 24,
-        fontWeight: '700',
-        color: '#DF2324',
-    },
-    statusText: {
-        color: '#DF2324',
-        fontSize: 10,
-        fontWeight: '800',
-        letterSpacing: 3,
-        marginTop: 4,
-    },
+    root: { flex: 1, backgroundColor: '#08080C', justifyContent: 'center', alignItems: 'center', overflow: 'hidden' },
+    gridContainer: { position: 'absolute', bottom: 0, left: 0, right: 0, height: height * 0.5, alignItems: 'center', overflow: 'hidden' },
+    gridBox: { position: 'absolute', top: -100 },
+    gridFadeOverlay: { position: 'absolute', top: 0, left: 0, right: 0, height: 150 }, // FIX 3: Background & opacity removed for LinearGradient
+    radialGlow: { position: 'absolute', width: width * 0.9, height: width * 0.9, borderRadius: width * 0.45, backgroundColor: 'rgba(223, 35, 36, 0.08)', top: height * 0.05 },
+
+    header: { position: 'absolute', top: 0, width: '100%', padding: 32, flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', zIndex: 50 },
+    headerIconPlaceholder: { width: 40, height: 40, backgroundColor: 'rgba(255,255,255,0.05)', borderRadius: 4 },
+    nodeStatusContainer: { flexDirection: 'row', alignItems: 'center', gap: 8 },
+    nodeIndicator: { width: 8, height: 8, borderRadius: 4, backgroundColor: '#22c55e' },
+    nodeText: { fontSize: 10, fontWeight: 'bold', letterSpacing: 2, color: '#9ca3af' },
+
+    contentWrap: { alignItems: 'center', paddingHorizontal: 24, marginTop: -20 },
+
+    // Logo 
+    logoWrap: { marginBottom: 20 },
+    logoRing: { width: 110, height: 110, borderRadius: 55, borderWidth: 2, borderColor: '#DF2324', backgroundColor: '#0F0F14', justifyContent: 'center', alignItems: 'center', shadowColor: '#DF2324', shadowOffset: { width: 0, height: 0 }, shadowRadius: 16, shadowOpacity: 0.5, elevation: 10, overflow: 'hidden' },
+    logo: { width: 96, height: 96, resizeMode: 'cover', borderRadius: 48 },
+
+    // Title 
+    brandTitle: { flexDirection: 'row', textAlign: 'center', marginBottom: 40 },
+    brandTitleBold: { color: '#DF2324', fontSize: 28, fontWeight: '900', letterSpacing: 4, textShadowColor: 'rgba(223, 35, 36, 0.7)', textShadowOffset: { width: 0, height: 0 }, textShadowRadius: 12 },
+
+    // HTML Astronaut Styles
+    loader: { width: 64, height: 80, alignItems: 'center', justifyContent: 'center', marginBottom: 40, zIndex: 10 },
+    base: { width: 50, height: 65, backgroundColor: '#FFFFFF', borderRadius: 25, borderWidth: 3, borderColor: '#1F2937', alignItems: 'center', paddingTop: 10, zIndex: 2 },
+    face: { width: 32, height: 20, backgroundColor: '#1F2937', borderRadius: 10, marginTop: 4 },
+    baseSpan: { position: 'absolute', width: 60, height: 40, backgroundColor: '#E5E7EB', borderRadius: 15, borderWidth: 3, borderColor: '#1F2937', top: 10 }, // FIX 2: Removed zIndex: -1
+    spanGroup: { flexDirection: 'row', position: 'absolute', bottom: -10, gap: 6, zIndex: 1 },
+    spanItem: { width: 6, height: 16, backgroundColor: '#DF2324', borderRadius: 3 },
+
+    // Loader Typography & Bar
+    loaderTextContainer: { alignItems: 'center', width: 280 },
+    fetchingText: { fontSize: 32, fontWeight: '900', color: '#FFFFFF', textTransform: 'uppercase', letterSpacing: 1, marginBottom: 8, textAlign: 'center' },
+    calibratingText: { fontSize: 10, color: '#6B7280', letterSpacing: 3, fontWeight: '600', textTransform: 'uppercase', marginBottom: 32, textAlign: 'center' },
+    progressBarTrack: { width: '100%', height: 2, backgroundColor: '#1F2937', overflow: 'hidden', position: 'relative' },
+    progressBarFill: { width: '33%', height: '100%', backgroundColor: '#DF2324', position: 'absolute', left: 0 },
+
+    // FIX 4: Removed 4 unused Telemetry styles (Left/Right/Text/TextRight)
+
+    // Status
+    bottomStatus: { position: 'absolute', bottom: 24, width: '100%', alignItems: 'center', flexDirection: 'row', justifyContent: 'center' },
+    systemLoadText: { fontSize: 10, color: '#DF2324', fontWeight: 'bold', letterSpacing: 4 } // FIX 5: Color set to brand red and font weight increased
 });
 
 export default SplashScreen;
