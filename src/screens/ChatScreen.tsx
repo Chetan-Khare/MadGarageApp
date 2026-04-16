@@ -32,7 +32,7 @@ interface ChatMessage {
     products?: any[];
 }
 
-export default function AntiGravChatScreen() {
+export default function ChatScreen() {
     const [messages, setMessages] = useState<ChatMessage[]>([
         {
             id: '0',
@@ -69,12 +69,8 @@ export default function AntiGravChatScreen() {
     }));
 
     const bg = isDark ? '#050505' : '#F6F8FF';
-    const cardBg = isDark ? 'rgba(25, 25, 25, 0.8)' : 'rgba(255, 255, 255, 0.9)';
-    const cardBorder = isDark ? 'rgba(223, 35, 36, 0.2)' : 'rgba(0,0,0,0.05)';
     const textColor = isDark ? '#FFFFFF' : '#1A1A1A';
     const subText = isDark ? '#AAAAAA' : '#666666';
-    const inputBg = isDark ? 'rgba(255,255,255,0.05)' : '#FFFFFF';
-    const inputBorder = isDark ? 'rgba(223,35,36,0.2)' : '#DDD';
     const inputBarBg = isDark ? '#121216' : '#FFFFFF';
     const inputBarBorder = isDark ? 'rgba(255,255,255,0.1)' : '#EEE';
     const thinkingBubbleBg = isDark ? '#121216' : '#FFFFFF';
@@ -323,8 +319,8 @@ export default function AntiGravChatScreen() {
 
             <KeyboardAvoidingView
                 style={styles.container}
-                behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
-                keyboardVerticalOffset={Platform.OS === 'ios' ? 0 : 5}
+                behavior={Platform.OS === 'ios' ? 'padding' : 'padding'}
+                keyboardVerticalOffset={Platform.OS === 'ios' ? 90 : 0}
             >
                 <FlatList
                     ref={flatListRef}
@@ -333,6 +329,8 @@ export default function AntiGravChatScreen() {
                     renderItem={renderMessage}
                     contentContainerStyle={styles.messageList}
                     onContentSizeChange={() => flatListRef.current?.scrollToEnd({ animated: true })}
+                    keyboardDismissMode="on-drag"
+                    keyboardShouldPersistTaps="handled"
                 />
 
                 {isThinking && (
@@ -551,4 +549,3 @@ const styles = StyleSheet.create({
         elevation: 10,
     },
 });
-

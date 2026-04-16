@@ -24,7 +24,7 @@ import SellerFlaggedProductsScreen from '../screens/SellerFlaggedProductsScreen'
 import HomeScreen from '../screens/HomeScreen';
 import CartScreen from '../screens/CartScreen';
 import CheckoutScreen from '../screens/CheckoutScreen';
-import AntiGravChatScreen from '../screens/AntiGravChatScreen';
+import ChatScreen from '../screens/ChatScreen';
 import ProductDetailsScreen from '../screens/ProductDetailsScreen';
 import AddProductScreen from '../screens/AddProductScreen';
 import OrderHistoryScreen from '../screens/OrderHistoryScreen';
@@ -96,7 +96,7 @@ const RoleNavigator: React.FC = () => {
       <Stack.Screen name="Home" component={HomeScreen} />
       <Stack.Screen name="Cart" component={CartScreen} />
       <Stack.Screen name="Checkout" component={CheckoutScreen} />
-      <Stack.Screen name="Chat" component={AntiGravChatScreen} />
+      <Stack.Screen name="Chat" component={ChatScreen} />
       <Stack.Screen name="ProductDetails" component={ProductDetailsScreen} />
       <Stack.Screen name="AddProduct" component={AddProductScreen} />
       <Stack.Screen name="EditProduct" component={EditProductScreen} />

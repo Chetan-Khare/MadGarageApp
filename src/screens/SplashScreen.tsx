@@ -281,7 +281,7 @@ const styles = StyleSheet.create({
 
     // Title 
     brandTitle: { flexDirection: 'row', textAlign: 'center', marginBottom: 40 },
-    brandTitleBold: { color: '#DF2324', fontSize: 28, fontWeight: '900', letterSpacing: 4, textShadowColor: 'rgba(223, 35, 36, 0.7)', textShadowOffset: { width: 0, height: 0 }, textShadowRadius: 12 },
+    brandTitleBold: { color: '#DF2324', fontSize: 32, fontFamily: 'Inter_900Black_Italic', letterSpacing: 4, textShadowColor: 'rgba(223, 35, 36, 0.7)', textShadowOffset: { width: 0, height: 0 }, textShadowRadius: 12 },
 
     // HTML Astronaut Styles
     loader: { width: 64, height: 80, alignItems: 'center', justifyContent: 'center', marginBottom: 40, zIndex: 10 },

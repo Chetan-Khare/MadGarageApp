@@ -15,6 +15,7 @@ type Props = {
 export default function AdminInventoryManagementScreen({ navigation }: Props) {
     const [products, setProducts] = useState<any[]>([]);
     const [loading, setLoading] = useState(true);
+    const [syncError, setSyncError] = useState('');
     
     // Edit Modal State
     const [editItem, setEditItem] = useState<any>(null);
@@ -44,11 +45,18 @@ export default function AdminInventoryManagementScreen({ navigation }: Props) {
     }, []);
 
     const fetchInventory = async () => {
+        setLoading(true);
+        setSyncError('');
         try {
             const response = await apiClient.get('/admin/inventory');
             setProducts(response.data);
-        } catch (error) {
-            console.error('Failed to fetch inventory:', error);
+        } catch (error: any) {
+            let errorMsg = error.response?.data || error.message || 'Inventory Sync Failure';
+            if (typeof errorMsg === 'object') {
+                errorMsg = errorMsg.message || JSON.stringify(errorMsg);
+            }
+            setSyncError(errorMsg);
+            console.error('Inventory Sync Failure:', errorMsg);
         } finally {
             setLoading(false);
         }
@@ -213,6 +221,20 @@ export default function AdminInventoryManagementScreen({ navigation }: Props) {
                 <FlatList
                     data={products}
                     keyExtractor={(item: any) => item.id.toString()}
+                    ListHeaderComponent={
+                        syncError ? (
+                            <View style={[styles.errorBanner, { backgroundColor: isDark ? '#2A1010' : '#FFF5F5' }]}>
+                                <Ionicons name="cloud-offline-outline" size={32} color="#DF2324" />
+                                <View style={{ flex: 1, marginLeft: 12 }}>
+                                    <Text style={styles.errorTitle}>SYSTEM SYNC FAILURE</Text>
+                                    <Text style={[styles.errorSubtitle, { color: textMuted }]}>{syncError}</Text>
+                                </View>
+                                <TouchableOpacity onPress={fetchInventory} style={styles.retryBtn}>
+                                    <Text style={styles.retryBtnText}>RETRY</Text>
+                                </TouchableOpacity>
+                            </View>
+                        ) : null
+                    }
                     renderItem={renderProductItem}
                     contentContainerStyle={styles.list}
                     ListEmptyComponent={
@@ -457,4 +479,24 @@ const styles = StyleSheet.create({
         marginTop: 30,
     },
     saveBtnText: { color: '#FFF', fontWeight: '900', fontStyle: 'italic', fontSize: 15, letterSpacing: 2 },
+    
+    // Error Banner Styles
+    errorBanner: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        padding: 20,
+        margin: 16,
+        borderRadius: 20,
+        borderWidth: 1,
+        borderColor: 'rgba(223, 35, 36, 0.2)',
+    },
+    errorTitle: { color: '#DF2324', fontSize: 13, fontWeight: '900', fontStyle: 'italic', letterSpacing: 1 },
+    errorSubtitle: { fontSize: 9, fontWeight: '900', textTransform: 'uppercase', marginTop: 2, letterSpacing: 0.5 },
+    retryBtn: {
+        backgroundColor: '#DF2324',
+        paddingHorizontal: 16,
+        paddingVertical: 10,
+        borderRadius: 12,
+    },
+    retryBtnText: { color: '#FFF', fontSize: 10, fontWeight: '900' },
 });

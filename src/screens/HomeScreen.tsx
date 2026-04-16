@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import {
     View, Text, StyleSheet, FlatList, TouchableOpacity, Image,
-    TextInput, ActivityIndicator, StatusBar, ScrollView, TouchableWithoutFeedback, Alert, RefreshControl, Platform
+    TextInput, ActivityIndicator, StatusBar, ScrollView, TouchableWithoutFeedback, Alert, RefreshControl, Platform, Pressable
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { LinearGradient } from 'expo-linear-gradient';
@@ -662,9 +662,17 @@ export default function HomeScreen({ navigation }: Props) {
     );
 
     return (
-        <TouchableWithoutFeedback onPress={() => { setShowProfileMenu(false); setShowSortMenu(false); }}>
-            <View style={[styles.root, { backgroundColor: T.bg }]}>
-                <StatusBar barStyle={T.statusBar} backgroundColor={T.bg} translucent />
+        <View style={[styles.root, { backgroundColor: T.bg }]}>
+            {(showProfileMenu || showSortMenu) && (
+                <Pressable
+                    style={[StyleSheet.absoluteFill, { zIndex: 999 }]}
+                    onPress={() => {
+                        setShowProfileMenu(false);
+                        setShowSortMenu(false);
+                    }}
+                />
+            )}
+            <StatusBar barStyle={T.statusBar} backgroundColor={T.bg} translucent />
                 <ModernDashboardHeader
                     title="MAD GARAGE"
                     subtitle="Performance Parts"
@@ -741,7 +749,6 @@ export default function HomeScreen({ navigation }: Props) {
                     </LinearGradient>
                 </TouchableOpacity>
             </View>
-        </TouchableWithoutFeedback>
     );
 }
 
