@@ -4,7 +4,7 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
 import { LinearGradient } from 'expo-linear-gradient';
 import { NativeStackNavigationProp } from '@react-navigation/native-stack';
-import { RootStackParamList } from '../../App';
+import { RootStackParamList } from '../types';
 import { useAuthStore } from '../store/authStore';
 import { useThemeStore } from '../store/themeStore';
 import apiClient from '../services/apiClient';
@@ -51,8 +51,7 @@ export default function SellerDashboardScreen({ navigation }: Props) {
             const flagged = inventoryRes.data.filter((p: any) => p.flagged).length;
             setFlaggedCount(flagged);
         } catch (error) {
-            console.error('Failed to fetch seller stats:', error);
-        } finally {
+            setStats(null);
             setLoading(false);
         }
     };
@@ -62,7 +61,7 @@ export default function SellerDashboardScreen({ navigation }: Props) {
             const response = await apiClient.get('/orders/seller-orders');
             setOrders(response.data);
         } catch (error) {
-            console.error('Failed to fetch seller orders:', error);
+            setOrders([]);
         }
     };
 

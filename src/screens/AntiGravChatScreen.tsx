@@ -162,7 +162,7 @@ export default function AntiGravChatScreen() {
         setIsThinking(true);
 
         try {
-            console.log('Sending chat message to:', '/assistant/chat');
+            // Posting to assistant
             const formData = new FormData();
             if (text) formData.append('message', text);
 
@@ -171,14 +171,14 @@ export default function AntiGravChatScreen() {
                 const match = /\.(\w+)$/.exec(filename);
                 const type = match ? `image/${match[1]}` : 'image/jpeg';
                 formData.append('image', { uri: imageToSend, name: filename, type } as any);
-                console.log('Attaching image:', filename);
+                // Attachment logic
             }
 
             const response = await apiClient.post('/assistant/chat', formData, {
                 headers: { 'Content-Type': 'multipart/form-data' },
             });
 
-            console.log('Chat response received:', response.status);
+            // Response received
             const result = response.data;
             const aiMsg: ChatMessage = {
                 id: (Date.now() + 1).toString(),

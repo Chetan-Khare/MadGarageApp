@@ -27,7 +27,6 @@ export default function SellerInventoryScreen({ navigation }: Props) {
             const response = await apiClient.get('/seller/inventory');
             setProducts(response.data);
         } catch (error) {
-            console.error('Failed to fetch inventory:', error);
             Alert.alert('Error', 'Could not load your inventory.');
         } finally {
             setLoading(false);

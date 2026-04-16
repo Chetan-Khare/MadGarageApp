@@ -73,7 +73,7 @@ export default function AddProductScreen({ navigation }: Props) {
 
     // Fetch Makes on mount
     React.useEffect(() => {
-        apiClient.get('/vehicles/makes').then(res => setMakes(res.data)).catch(err => console.log("Error fetching makes", err));
+        apiClient.get('/vehicles/makes').then(res => setMakes(res.data)).catch(err => { /* fetch fail */ });
     }, []);
 
     // Fetch Models when Make changes
@@ -247,7 +247,6 @@ export default function AddProductScreen({ navigation }: Props) {
             navigation.goBack();
 
         } catch (error: any) {
-            console.error("Upload failed", error);
             const errorMsg = error.response?.data?.message || error.message;
             Alert.alert("Upload Failed", `Product creation failed: ${errorMsg}\n\nHint: Check Console for details.`);
         } finally {

@@ -51,7 +51,6 @@ export const useWishlistStore = create<WishlistState>((set, get) => ({
             const { data } = await apiClient.get('/wishlist');
             set({ items: data.map(fromApiItem) });
         } catch (error) {
-            console.error('[Wishlist Store] Error loading wishlist:', error);
             set({ items: [] });
         } finally {
             set({ loading: false });
@@ -68,7 +67,6 @@ export const useWishlistStore = create<WishlistState>((set, get) => ({
             }
             return data.added as boolean;
         } catch (error) {
-            console.error('[Wishlist Store] Error toggling wishlist:', error);
             return false;
         }
     },

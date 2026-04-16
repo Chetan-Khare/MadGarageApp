@@ -36,7 +36,7 @@ export const useAuthStore = create<AuthState>((set) => ({
             }
             set({ token, role, user });
         } catch (error) {
-            console.error('Error saving auth state:', error);
+            // Handle error silently or via crash reporter
         }
     },
 
@@ -51,7 +51,7 @@ export const useAuthStore = create<AuthState>((set) => ({
             await SecureStore.deleteItemAsync('userData');
             set({ token: null, role: null, user: null, isGuest: false });
         } catch (error) {
-            console.error('Error clearing auth state:', error);
+            // Error clearing auth state
         }
     },
 
@@ -72,7 +72,7 @@ export const useAuthStore = create<AuthState>((set) => ({
                 set({ token: null, role: null, user: null });
             }
         } catch (error) {
-            console.error('Error initializing auth state from SecureStore:', error);
+            // Error initializing auth state
         }
     }
 }));

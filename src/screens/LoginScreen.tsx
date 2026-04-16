@@ -226,7 +226,7 @@ export default function LoginScreen({ navigation }: Props) {
         setErrorText('');
         try {
             const res = await apiClient.post('/auth/send-otp', { phone });
-            console.log('[Login] OTP Send Response:', res.data);
+            // Success
             Alert.alert("Development SMS", typeof res.data === 'string' ? res.data : JSON.stringify(res.data));
             setShowOtpInput(true);
             setResendTimer(30);
@@ -247,7 +247,7 @@ export default function LoginScreen({ navigation }: Props) {
         try {
             const response = await apiClient.post('/auth/verify-otp', { phone, otp });
             const data = response.data;
-            console.log('[Auth] Verify OTP response:', data);
+            // Verified
 
             if (data?.requiresRegistration) {
                 navigation.navigate('CompleteProfile', { registrationToken: data.registrationToken });

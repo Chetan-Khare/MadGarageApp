@@ -22,7 +22,6 @@ const getBaseServerUrl = (): string => {
   // const localIp = '192.168.x.x';
 
   const url = `http://${localIp}:8080`;
-  console.log('[API Client] Base URL detected:', url);
   return url;
 };
 
@@ -63,7 +62,7 @@ apiClient.interceptors.response.use(
   (response) => response,
   async (error) => {
     if (error.response && error.response.status === 401) {
-      console.warn('API returned 401 Unauthorized. Logging out.');
+      // Silent logout on 401
       await useAuthStore.getState().logout();
     }
     return Promise.reject(error);

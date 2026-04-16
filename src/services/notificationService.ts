@@ -27,7 +27,7 @@ Notifications.setNotificationHandler({
 export async function registerForPushNotifications(): Promise<void> {
     // Push notifications work only on real physical devices
     if (!Device.isDevice) {
-        console.log('[Push] Skipping token registration — running in simulator/emulator.');
+        // Skipping token registration on simulator
         return;
     }
 
@@ -41,7 +41,7 @@ export async function registerForPushNotifications(): Promise<void> {
     }
 
     if (finalStatus !== 'granted') {
-        console.log('[Push] Permission not granted. Push notifications disabled.');
+        // Permission not granted
         return;
     }
 
@@ -62,13 +62,13 @@ export async function registerForPushNotifications(): Promise<void> {
             projectId: Constants.expoConfig?.extra?.eas?.projectId,
         });
         const token = tokenData.data;
-        console.log('[Push] Expo Push Token:', token);
+        // Token received
 
         // Save token to the backend
         await apiClient.put('/users/push-token', { expoPushToken: token });
-        console.log('[Push] Token saved to backend successfully.');
+        // Token saved
 
     } catch (error) {
-        console.warn('[Push] Failed to get/save push token:', error);
+        // Push token error
     }
 }

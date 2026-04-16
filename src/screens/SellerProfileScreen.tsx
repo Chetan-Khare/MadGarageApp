@@ -49,7 +49,6 @@ export default function SellerProfileScreen({ navigation }: Props) {
                 }
             }
         } catch (error) {
-            console.error('Error fetching profile:', error);
             Alert.alert('Error', 'Could not load your merchant profile.');
         } finally {
             setLoading(false);
@@ -90,7 +89,6 @@ export default function SellerProfileScreen({ navigation }: Props) {
                     Alert.alert('Success', 'Merchant photo updated!');
                 }
             } catch (error: any) {
-                console.error('Image upload failed:', error);
                 const errorMsg = error.response?.data?.message || error.message || 'Check your connection.';
                 Alert.alert('Upload Failed', `Could not upload photo: ${errorMsg}`);
             } finally {

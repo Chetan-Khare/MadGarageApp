@@ -27,7 +27,7 @@ export default function SellerOrderHistoryScreen({ navigation }: Props) {
             const response = await apiClient.get('/orders/seller-orders');
             setOrders(response.data);
         } catch (error) {
-            console.error('Failed to fetch seller orders:', error);
+            setOrders([]);
             Alert.alert('Error', 'Could not load your order history.');
         } finally {
             setLoading(false);
@@ -39,9 +39,8 @@ export default function SellerOrderHistoryScreen({ navigation }: Props) {
             await apiClient.put(`/orders/${orderId}/status?status=${newStatus}`);
             fetchOrders();
             Alert.alert('Status Updated', `Order marked as ${newStatus}.`);
-        } catch (error: any) {
-            console.error('Failed to update status', error);
-            Alert.alert('Error', error.response?.data?.message || 'Could not update order status.');
+        } catch (error) {
+            Alert.alert('Error', 'Failed to update order status.');
         }
     };
 

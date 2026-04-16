@@ -6,7 +6,7 @@ import {
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { NativeStackScreenProps } from '@react-navigation/native-stack';
-import { RootStackParamList } from '../../App';
+import { RootStackParamList } from '../types';
 import { useThemeStore, DARK_THEME, LIGHT_THEME } from '../store/themeStore';
 import apiClient, { BASE_SERVER_URL } from '../services/apiClient';
 
@@ -34,7 +34,6 @@ export default function SellerFlaggedProductsScreen({ navigation }: Props) {
             const flagged = response.data.filter((p: any) => p.flagged);
             setProducts(flagged);
         } catch (error) {
-            console.error('Failed to fetch flagged products:', error);
             Alert.alert('Error', 'Could not load compliance data.');
         } finally {
             setLoading(false);
@@ -218,7 +217,7 @@ const styles = StyleSheet.create({
     container: { flex: 1 },
     header: { flexDirection: 'row', alignItems: 'center', paddingHorizontal: 20, paddingTop: 60, paddingBottom: 20, gap: 15 },
     backBtn: { width: 44, height: 44, borderRadius: 12, justifyContent: 'center', alignItems: 'center', backgroundColor: 'rgba(223, 35, 36, 0.05)' },
-    title: { fontSize: 24, fontWeight: '900', letterSpacing: -0.5, italic: true },
+    title: { fontSize: 24, fontWeight: '900', letterSpacing: -0.5, fontStyle: 'italic' },
     subtitle: { fontSize: 10, fontWeight: '900', letterSpacing: 2, color: '#FF9B3E', textTransform: 'uppercase', marginTop: -2 },
     list: { paddingHorizontal: 20, paddingBottom: 40 },
     productCard: { borderRadius: 24, padding: 20, marginBottom: 20, borderWidth: 1, elevation: 4, shadowColor: '#000', shadowOffset: { width: 0, height: 4 }, shadowOpacity: 0.1, shadowRadius: 8 },
@@ -227,7 +226,7 @@ const styles = StyleSheet.create({
     productImage: { width: 80, height: 80, borderRadius: 16, backgroundColor: '#F0F0F0' },
     flagIcon: { position: 'absolute', top: -5, left: -5, backgroundColor: '#FF9B3E', width: 22, height: 22, borderRadius: 11, justifyContent: 'center', alignItems: 'center', borderWidth: 2, borderColor: '#FFF' },
     headerInfo: { flex: 1, justifyContent: 'center' },
-    productName: { fontSize: 16, fontWeight: '800', italic: true },
+    productName: { fontSize: 16, fontWeight: '800', fontStyle: 'italic' },
     productBrand: { fontSize: 11, fontWeight: '600', marginTop: 2, textTransform: 'uppercase' },
     priceRow: { marginTop: 6 },
     price: { fontSize: 18, fontWeight: '900' },
@@ -250,13 +249,13 @@ const styles = StyleSheet.create({
 
     emptyContainer: { flex: 1, justifyContent: 'center', alignItems: 'center', paddingHorizontal: 40 },
     emptyIconCircle: { width: 120, height: 120, borderRadius: 60, backgroundColor: 'rgba(76, 175, 80, 0.05)', justifyContent: 'center', alignItems: 'center', marginBottom: 20 },
-    emptyTitle: { fontSize: 20, fontWeight: '900', italic: true, letterSpacing: 1 },
+    emptyTitle: { fontSize: 20, fontWeight: '900', fontStyle: 'italic', letterSpacing: 1 },
     emptyText: { textAlign: 'center', marginTop: 10, fontSize: 13, fontWeight: '600', lineHeight: 20 },
 
     modalOverlay: { flex: 1, backgroundColor: 'rgba(0,0,0,0.6)', justifyContent: 'flex-end' },
     modalContent: { borderTopLeftRadius: 32, borderTopRightRadius: 32, padding: 24, paddingBottom: 40 },
     modalHeader: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 10 },
-    modalTitle: { fontSize: 22, fontWeight: '900', italic: true },
+    modalTitle: { fontSize: 22, fontWeight: '900', fontStyle: 'italic' },
     modalSub: { fontSize: 12, color: '#888', fontWeight: '600', marginBottom: 20 },
     modalInputBox: { borderRadius: 16, borderWidth: 1, padding: 15, marginBottom: 20 },
     modalInput: { fontSize: 15, fontWeight: '600', minHeight: 120 },
