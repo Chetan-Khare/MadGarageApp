@@ -111,7 +111,7 @@ export default function SellerProfileScreen({ navigation }: Props) {
                 email,
                 password: password.trim() ? password : null
             });
-            
+
             if (response.data?.token) {
                 const { setAuth, role, user } = useAuthStore.getState();
                 await setAuth(response.data.token, role as any, user || undefined);

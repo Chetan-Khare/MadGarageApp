@@ -29,6 +29,7 @@ export default function AdminDashboardScreen({ navigation }: Props) {
     const logout = useAuthStore((state) => state.logout);
     const [stats, setStats] = useState<AdminStats | null>(null);
     const [loading, setLoading] = useState(true);
+    const [syncError, setSyncError] = useState('');
     const [showProfileMenu, setShowProfileMenu] = useState(false);
 
     const [newUserFirstName, setNewUserFirstName] = useState('');
@@ -55,9 +56,12 @@ export default function AdminDashboardScreen({ navigation }: Props) {
 
     const fetchAnalytics = async () => {
         try {
+            setSyncError('');
             const response = await apiClient.get('/admin/analytics');
             setStats(response.data);
-        } catch (error) {
+        } catch (error: any) {
+            const msg = error.response?.data || error.message || 'Unknown Link Failure';
+            setSyncError(typeof msg === 'object' ? (msg.message || JSON.stringify(msg)) : msg);
             console.error('Failed to fetch admin stats:', error);
         } finally {
             setLoading(false);
@@ -87,7 +91,8 @@ export default function AdminDashboardScreen({ navigation }: Props) {
             setNewUserPhone('');
             fetchAnalytics();
         } catch (error: any) {
-            Alert.alert('Creation Failed', error.response?.data || error.message);
+            const msg = error.response?.data || error.message || 'Provisioning Failed';
+            Alert.alert('Creation Failed', typeof msg === 'object' ? (msg.message || JSON.stringify(msg)) : msg);
         } finally {
             setCreatingUser(false);
         }
@@ -132,6 +137,19 @@ export default function AdminDashboardScreen({ navigation }: Props) {
                     <Ionicons name="person" size={20} color="#FFF" />
                 </TouchableOpacity>
             </View>
+
+            {syncError ? (
+                <View style={[styles.errorBanner, { backgroundColor: isDark ? 'rgba(223,35,36,0.1)' : '#FFF5F5' }]}>
+                    <Ionicons name="warning" size={18} color="#DF2324" />
+                    <View style={{ flex: 1, marginLeft: 10 }}>
+                        <Text style={[styles.errorText, { color: textPrimary }]}>SYSTEM SYNCHRONISATION FAILURE</Text>
+                        <Text style={[styles.errorSubtext, { color: textMuted }]} numberOfLines={1}>{syncError}</Text>
+                    </View>
+                    <TouchableOpacity onPress={() => { setLoading(true); fetchAnalytics(); }}>
+                        <Text style={{ color: '#DF2324', fontWeight: '900', fontSize: 12 }}>RETRY</Text>
+                    </TouchableOpacity>
+                </View>
+            ) : null}
 
             {showProfileMenu && (
                 <View style={[styles.profileMenu, { backgroundColor: bgSecondary, borderColor: borderSubtle, top: 110, right: 20 }]}>
@@ -600,5 +618,26 @@ const styles = StyleSheet.create({
         fontWeight: '900',
         fontStyle: 'italic',
         letterSpacing: 2,
+    },
+    errorBanner: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        padding: 16,
+        marginHorizontal: 16,
+        marginBottom: 10,
+        borderRadius: 12,
+        borderWidth: 1,
+        borderColor: 'rgba(223, 35, 36, 0.2)',
+    },
+    errorText: {
+        fontSize: 12,
+        fontWeight: '900',
+        fontStyle: 'italic',
+        letterSpacing: 1,
+    },
+    errorSubtext: {
+        fontSize: 10,
+        fontWeight: '700',
+        marginTop: 2,
     },
 });
