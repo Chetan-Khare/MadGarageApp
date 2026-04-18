@@ -29,7 +29,7 @@ export const GarageSection: React.FC = () => {
                                     "Enter the city name to find garages there:",
                                     [
                                         { text: "Cancel", style: "cancel" },
-                                        { text: "Find", onPress: (val) => val && setManualCity(val) }
+                                        { text: "Find", onPress: (val?: string) => val && setManualCity(val) }
                                     ]
                                 );
                             }}
@@ -66,7 +66,7 @@ export const GarageSection: React.FC = () => {
                                         "Enter the city name:",
                                         [
                                             { text: "Cancel", style: "cancel" },
-                                            { text: "Find", onPress: (val) => val && setManualCity(val) }
+                                            { text: "Find", onPress: (val?: string) => val && setManualCity(val) }
                                         ]
                                     );
                                 }
@@ -134,6 +134,11 @@ const styles = StyleSheet.create({
         flexDirection: 'row',
         justifyContent: 'space-between',
         alignItems: 'center',
+    },
+    title: {
+        fontSize: 16,
+        fontWeight: '900',
+        letterSpacing: -0.5,
     },
     headerActions: {
         flexDirection: 'row',
