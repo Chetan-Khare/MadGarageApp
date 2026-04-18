@@ -33,6 +33,12 @@ export default function SellerProfileScreen({ navigation }: Props) {
     const [profileImageUrl, setProfileImageUrl] = useState<string | null>(null);
     const [uploadingImage, setUploadingImage] = useState(false);
 
+    // Location State
+    const [city, setCity] = useState('');
+    const [address, setAddress] = useState('');
+    const [latitude, setLatitude] = useState('');
+    const [longitude, setLongitude] = useState('');
+
     useEffect(() => {
         fetchProfile();
     }, []);
@@ -44,6 +50,10 @@ export default function SellerProfileScreen({ navigation }: Props) {
                 setFirstName(response.data.firstName || '');
                 setLastName(response.data.lastName || '');
                 setEmail(response.data.email || '');
+                setCity(response.data.city || '');
+                setAddress(response.data.address || '');
+                setLatitude(response.data.latitude?.toString() || '');
+                setLongitude(response.data.longitude?.toString() || '');
                 if (response.data.profileImageUrl) {
                     setProfileImageUrl(`${BASE_SERVER_URL}${response.data.profileImageUrl}`);
                 }
@@ -109,7 +119,11 @@ export default function SellerProfileScreen({ navigation }: Props) {
                 firstName,
                 lastName,
                 email,
-                password: password.trim() ? password : null
+                password: password.trim() ? password : null,
+                city,
+                address,
+                latitude,
+                longitude
             });
 
             if (response.data?.token) {
@@ -205,6 +219,62 @@ export default function SellerProfileScreen({ navigation }: Props) {
                                 value={email}
                                 onChangeText={setEmail}
                             />
+                        </View>
+                    </View>
+
+                    <View style={[styles.card, { backgroundColor: T.card, borderColor: T.cardBorder }]}>
+                        <View style={styles.cardHeader}>
+                            <Ionicons name="location-outline" size={20} color={T.text} />
+                            <Text style={[styles.cardTitle, { color: T.text }]}>Business Location</Text>
+                        </View>
+
+                        <View style={styles.inputGroup}>
+                            <Text style={[styles.label, { color: T.subText }]}>Operating City / Area</Text>
+                            <TextInput
+                                style={[styles.input, { backgroundColor: T.inputBg, color: T.text, borderColor: T.inputBorder }]}
+                                placeholder="e.g. Mumbai"
+                                placeholderTextColor={T.subText}
+                                value={city}
+                                onChangeText={setCity}
+                            />
+                        </View>
+
+                        <View style={styles.inputGroup}>
+                            <Text style={[styles.label, { color: T.subText }]}>Store Address</Text>
+                            <TextInput
+                                style={[styles.input, { backgroundColor: T.inputBg, color: T.text, borderColor: T.inputBorder, minHeight: 80, textAlignVertical: 'top' }]}
+                                placeholder="e.g. 123 Racing St, Worli"
+                                placeholderTextColor={T.subText}
+                                value={address}
+                                onChangeText={setAddress}
+                                multiline
+                            />
+                        </View>
+
+                        <View style={styles.row}>
+                            <View style={[styles.inputGroup, { flex: 1, marginRight: 10 }]}>
+                                <Text style={[styles.label, { color: T.subText }]}>Latitude</Text>
+                                <TextInput
+                                    style={[styles.input, { backgroundColor: T.inputBg, color: T.text, borderColor: T.inputBorder }]}
+                                    placeholder="19.0760"
+                                    placeholderTextColor={T.subText}
+                                    value={latitude}
+                                    onChangeText={setLatitude}
+                                    keyboardType="numeric"
+                                />
+                            </View>
+                            
+                            <View style={[styles.inputGroup, { flex: 1 }]}>
+                                <Text style={[styles.label, { color: T.subText }]}>Longitude</Text>
+                                <TextInput
+                                    style={[styles.input, { backgroundColor: T.inputBg, color: T.text, borderColor: T.inputBorder }]}
+                                    placeholder="72.8777"
+                                    placeholderTextColor={T.subText}
+                                    value={longitude}
+                                    onChangeText={setLongitude}
+                                    keyboardType="numeric"
+                                />
+                            </View>
                         </View>
                     </View>
 

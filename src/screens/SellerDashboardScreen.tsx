@@ -52,6 +52,7 @@ export default function SellerDashboardScreen({ navigation }: Props) {
             setFlaggedCount(flagged);
         } catch (error) {
             setStats(null);
+        } finally {
             setLoading(false);
         }
     };

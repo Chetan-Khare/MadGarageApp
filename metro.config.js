@@ -8,4 +8,7 @@ const config = getDefaultConfig(__dirname);
 // to correctly resolve internal relative imports within core packages.
 config.resolver.unstable_enablePackageExports = false;
 
+// Optimization: Limit workers to prevent OOM on Windows/OneDrive
+config.maxWorkers = 2;
+
 module.exports = config;

@@ -1,41 +1,54 @@
 import React, { useState } from 'react';
 import {
     View, Text, StyleSheet, TextInput, TouchableOpacity,
-    ActivityIndicator, Alert, SafeAreaView, StatusBar, ScrollView,
+    ActivityIndicator, Alert, StatusBar, ScrollView,
     KeyboardAvoidingView, Platform
 } from 'react-native';
+import { SafeAreaView } from 'react-native-safe-area-context';
 import { LinearGradient } from 'expo-linear-gradient';
 import { Ionicons } from '@expo/vector-icons';
 import { NativeStackNavigationProp } from '@react-navigation/native-stack';
-import { RootStackParamList } from '../../App';
+import { RootStackParamList } from '../types';
 import { useCartStore } from '../store/cartStore';
 import { useThemeStore, DARK_THEME, LIGHT_THEME } from '../store/themeStore';
 import apiClient from '../services/apiClient';
 import { PRICING } from '../constants/pricing';
+
+import { useLocationStore } from '../store/locationStore';
 
 type Props = { navigation: NativeStackNavigationProp<RootStackParamList, 'Checkout'>; };
 
 export default function CheckoutScreen({ navigation }: Props) {
     const { items, clearCart, getTotalPrice } = useCartStore();
     const { isDark } = useThemeStore();
+    const { city: detectedCity, address: detectedAddr, nearbyGarages } = useLocationStore();
     const T = isDark ? DARK_THEME : LIGHT_THEME;
     
     const [loading, setLoading] = useState(false);
     
     // Form State
-    const [address, setAddress] = useState('');
-    const [city, setCity] = useState('');
+    const [address, setAddress] = useState(detectedAddr || '');
+    const [city, setCity] = useState(detectedCity || '');
     const [state, setState] = useState('');
     const [pincode, setPincode] = useState('');
+    const [deliveryType, setDeliveryType] = useState<'HOME_DELIVERY' | 'GARAGE_FITTING'>('HOME_DELIVERY');
+    const [selectedGarageId, setSelectedGarageId] = useState<number | null>(null);
 
     const subtotal = getTotalPrice();
     const taxAmount = 0;
+    // If fitting at garage, we might waive shipping or keep it. Plan says "Part price online". 
+    // I'll keep regular shipping for now.
     const delivery = subtotal > 0 ? PRICING.SHIPPING_FEE : 0;
     const total = subtotal + delivery;
 
     const handlePayment = async () => {
         if (!address.trim() || !city.trim() || !state.trim() || !pincode.trim()) {
             Alert.alert('Missing Details', 'Please fill in your complete shipping address.');
+            return;
+        }
+
+        if (deliveryType === 'GARAGE_FITTING' && !selectedGarageId) {
+            Alert.alert('Select Garage', 'Please select a tie-up garage for fitting.');
             return;
         }
 
@@ -46,23 +59,22 @@ export default function CheckoutScreen({ navigation }: Props) {
 
         setLoading(true);
 
-        // FE-02 FIX: Removed the fake 2-second setTimeout wrapper.
-        // The setTimeout caused: (a) a memory leak if user navigated away, and
-        // (b) setState firing on an unmounted component. API call is now direct.
         try {
             await apiClient.post('/orders/checkout', {
                 items: items.map(i => ({ productId: parseInt(i.id, 10), quantity: i.quantity })),
                 shippingAddress: address,
                 city: city,
                 state: state,
-                pincode: pincode
+                pincode: pincode,
+                deliveryType: deliveryType,
+                fittingGarageId: selectedGarageId
             });
             
             clearCart();
             
-            Alert.alert('Payment Successful! 🎉', 'Order Placed.', [
+            Alert.alert('Order Placed! 🏎️', 'Your part is on its way.', [
                 {
-                    text: 'View Receipt',
+                    text: 'View My Orders',
                     onPress: () => {
                         navigation.popToTop(); 
                         navigation.navigate('OrderHistory');
@@ -96,6 +108,24 @@ export default function CheckoutScreen({ navigation }: Props) {
             >
                 <ScrollView contentContainerStyle={styles.scrollContent}>
                     
+                    {/* Delivery Option Toggle */}
+                    <View style={styles.deliveryToggleRow}>
+                        <TouchableOpacity 
+                            style={[styles.toggleBtn, deliveryType === 'HOME_DELIVERY' && styles.toggleBtnActive, { backgroundColor: T.inputBg }]}
+                            onPress={() => setDeliveryType('HOME_DELIVERY')}
+                        >
+                            <Ionicons name="home-outline" size={18} color={deliveryType === 'HOME_DELIVERY' ? '#FFF' : T.subText} />
+                            <Text style={[styles.toggleText, { color: deliveryType === 'HOME_DELIVERY' ? '#FFF' : T.subText }]}>Home</Text>
+                        </TouchableOpacity>
+                        <TouchableOpacity 
+                            style={[styles.toggleBtn, deliveryType === 'GARAGE_FITTING' && styles.toggleBtnActive, { backgroundColor: T.inputBg }]}
+                            onPress={() => setDeliveryType('GARAGE_FITTING')}
+                        >
+                            <Ionicons name="construct-outline" size={18} color={deliveryType === 'GARAGE_FITTING' ? '#FFF' : T.subText} />
+                            <Text style={[styles.toggleText, { color: deliveryType === 'GARAGE_FITTING' ? '#FFF' : T.subText }]}>Garage Fit</Text>
+                        </TouchableOpacity>
+                    </View>
+
                     {/* Order Summary */}
                     <View style={[styles.card, { backgroundColor: T.card, borderColor: T.cardBorder }]}>
                         <View style={styles.cardHeader}>
@@ -110,17 +140,57 @@ export default function CheckoutScreen({ navigation }: Props) {
                             <Text style={[styles.summaryLabel, { color: T.subText }]}>Delivery</Text>
                             <Text style={[styles.summaryValue, { color: T.text }]}>₹{delivery}</Text>
                         </View>
+                        
+                        {deliveryType === 'GARAGE_FITTING' && (
+                            <View style={[styles.infoBox, { backgroundColor: isDark ? '#1A0808' : '#FFF0F0' }]}>
+                                <Ionicons name="information-circle" size={16} color="#DF2324" />
+                                <Text style={styles.infoText}>Fitting labor is payable at the garage after inspection.</Text>
+                            </View>
+                        )}
+
                         <View style={[styles.summaryRow, styles.totalRow, { borderTopColor: T.cardBorder }]}>
                             <Text style={[styles.totalLabel, { color: T.text }]}>Grand Total</Text>
                             <Text style={styles.totalValue}>₹{total.toLocaleString()}</Text>
                         </View>
                     </View>
 
+                    {/* Garage Selection (Only if fitting) */}
+                    {deliveryType === 'GARAGE_FITTING' && (
+                        <View style={[styles.card, { backgroundColor: T.card, borderColor: T.cardBorder }]}>
+                            <View style={styles.cardHeader}>
+                                <Ionicons name="location-outline" size={20} color={T.text} />
+                                <Text style={[styles.cardTitle, { color: T.text }]}>Select Fitting Garage</Text>
+                            </View>
+                            
+                            {nearbyGarages.length > 0 ? (
+                                nearbyGarages.map(garage => (
+                                    <TouchableOpacity 
+                                        key={garage.id} 
+                                        style={[styles.garageSelectItem, selectedGarageId === garage.id && styles.garageSelectActive, { borderColor: T.cardBorder }]}
+                                        onPress={() => setSelectedGarageId(garage.id)}
+                                    >
+                                        <View style={{ flex: 1 }}>
+                                            <Text style={[styles.garageName, { color: T.text }]}>{garage.firstName} {garage.lastName}</Text>
+                                            <Text style={[styles.garageAddr, { color: T.subText }]}>{garage.distance?.toFixed(1)} km away • {garage.city}</Text>
+                                        </View>
+                                        {selectedGarageId === garage.id && (
+                                            <Ionicons name="checkmark-circle" size={20} color="#DF2324" />
+                                        )}
+                                    </TouchableOpacity>
+                                ))
+                            ) : (
+                                <Text style={[styles.noneText, { color: T.subText }]}>No tie-up garages found in your 10km radius for {city}. Try Home Delivery.</Text>
+                            )}
+                        </View>
+                    )}
+
                     {/* Shipping Address Form */}
                     <View style={[styles.card, { backgroundColor: T.card, borderColor: T.cardBorder }]}>
                         <View style={styles.cardHeader}>
-                            <Ionicons name="location-outline" size={20} color={T.text} />
-                            <Text style={[styles.cardTitle, { color: T.text }]}>Shipping Address</Text>
+                            <Ionicons name={deliveryType === 'HOME_DELIVERY' ? "location-outline" : "person-outline"} size={20} color={T.text} />
+                            <Text style={[styles.cardTitle, { color: T.text }]}>
+                                {deliveryType === 'HOME_DELIVERY' ? 'Shipping Address' : 'Contact Details'}
+                            </Text>
                         </View>
 
                         <View style={styles.inputGroup}>
@@ -284,5 +354,74 @@ const styles = StyleSheet.create({
         flexDirection: 'row',
         alignItems: 'center',
         justifyContent: 'center'
+    },
+
+    // New Styles for Delivery Selection
+    deliveryToggleRow: {
+        flexDirection: 'row',
+        gap: 12,
+        marginBottom: 8,
+    },
+    toggleBtn: {
+        flex: 1,
+        flexDirection: 'row',
+        alignItems: 'center',
+        justifyContent: 'center',
+        paddingVertical: 14,
+        borderRadius: 12,
+        borderWidth: 1,
+        borderColor: 'transparent',
+        gap: 8,
+    },
+    toggleBtnActive: {
+        backgroundColor: '#DF2324',
+        borderColor: '#DF2324',
+    },
+    toggleText: {
+        fontSize: 14,
+        fontWeight: '800',
+    },
+    infoBox: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        padding: 10,
+        borderRadius: 8,
+        marginBottom: 16,
+        gap: 8,
+    },
+    infoText: {
+        fontSize: 11,
+        fontWeight: '600',
+        color: '#DF2324',
+        flex: 1,
+    },
+    
+    // Garage Picker Styles
+    garageSelectItem: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        padding: 12,
+        borderRadius: 12,
+        borderWidth: 1,
+        marginBottom: 10,
+    },
+    garageSelectActive: {
+        borderColor: '#DF2324',
+        backgroundColor: 'rgba(223, 35, 36, 0.05)',
+    },
+    garageName: {
+        fontSize: 14,
+        fontWeight: '700',
+    },
+    garageAddr: {
+        fontSize: 11,
+        fontWeight: '500',
+        marginTop: 2,
+    },
+    noneText: {
+        fontSize: 12,
+        textAlign: 'center',
+        fontStyle: 'italic',
+        paddingVertical: 10,
     }
 });

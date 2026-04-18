@@ -1,12 +1,13 @@
 import React, { useState } from 'react';
 import {
     View, Text, StyleSheet, FlatList, TouchableOpacity,
-    Image, ActivityIndicator, Alert, SafeAreaView, StatusBar, Platform
+    Image, ActivityIndicator, Alert, StatusBar, Platform
 } from 'react-native';
+import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { NativeStackNavigationProp } from '@react-navigation/native-stack';
-import { RootStackParamList } from '../../App';
+import { RootStackParamList } from '../types';
 import { useCartStore } from '../store/cartStore';
 import { BASE_SERVER_URL } from '../services/apiClient';
 import { useThemeStore, DARK_THEME, LIGHT_THEME } from '../store/themeStore';

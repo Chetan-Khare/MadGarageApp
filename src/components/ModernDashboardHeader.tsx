@@ -5,10 +5,13 @@ import { LinearGradient } from 'expo-linear-gradient';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useThemeStore, DARK_THEME, LIGHT_THEME } from '../store/themeStore';
 
+import { LocationHeader } from './LocationHeader';
+
 interface ModernDashboardHeaderProps {
     title: string;
     subtitle?: string;
     showCart?: boolean;
+    showLocation?: boolean; // New prop
     cartItemCount?: number;
     onProfilePress: () => void;
     onCartPress?: () => void;
@@ -23,6 +26,7 @@ export const ModernDashboardHeader: React.FC<ModernDashboardHeaderProps> = ({
     title,
     subtitle,
     showCart,
+    showLocation = true, // Default to true
     cartItemCount,
     onProfilePress,
     onCartPress,
@@ -117,6 +121,12 @@ export const ModernDashboardHeader: React.FC<ModernDashboardHeaderProps> = ({
                     </View>
                 </View>
             </LinearGradient>
+
+            {showLocation && (
+                <View style={{ marginTop: 12 }}>
+                    <LocationHeader />
+                </View>
+            )}
         </View>
     );
 };

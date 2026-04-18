@@ -1,9 +1,9 @@
 import React, { useEffect, useState } from 'react';
 import {
     View, Text, StyleSheet, ScrollView, TouchableOpacity,
-    ActivityIndicator, SafeAreaView, StatusBar, Alert, Platform, TextInput
+    ActivityIndicator, StatusBar, Alert, Platform, TextInput
 } from 'react-native';
-import { useSafeAreaInsets } from 'react-native-safe-area-context';
+import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
 import { NativeStackScreenProps } from '@react-navigation/native-stack';
 import * as FileSystem from 'expo-file-system/legacy';
@@ -43,10 +43,17 @@ interface Order {
     pincode: string;
     isOwner: boolean;
     items: OrderItem[];
+    // Fitting fields
+    deliveryType: 'HOME_DELIVERY' | 'GARAGE_FITTING';
+    fittingGarageId?: number;
+    fittingStatus?: 'PENDING_INVOICE' | 'PENDING_INSPECTION' | 'INSPECTED' | 'FITTING_IN_PROGRESS' | 'COMPLETED';
     // Rating fields
     partRating?: number;
     deliveryRating?: number;
     ratingComment?: string;
+    // Garage details (included in DTO if fitting)
+    fittingGarageName?: string;
+    fittingGarageAddress?: string;
 }
 
 export default function OrderDetailsScreen({ route, navigation }: Props) {
@@ -206,12 +213,38 @@ export default function OrderDetailsScreen({ route, navigation }: Props) {
 
                 {/* Shipping Section */}
                 <View style={[styles.statusCard, { backgroundColor: T.card, borderColor: T.cardBorder, marginTop: 0 }]}>
-                    <Text style={[styles.infoLabel, { color: T.subText, marginBottom: 10 }]}>CUSTOMER & SHIPPING</Text>
-                    <Text style={[styles.infoValue, { color: T.text, fontSize: 16 }]}>{order.customerName}</Text>
-                    <Text style={[styles.receiptSub, { color: T.subText, marginTop: 4, lineHeight: 18 }]}>
-                        {order.shippingAddress}{'\n'}
-                        {order.city}, {order.state} - {order.pincode}
-                    </Text>
+                    <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 12 }}>
+                        <Text style={[styles.infoLabel, { color: T.subText, marginBottom: 0 }]}>
+                            {order.deliveryType === 'GARAGE_FITTING' ? 'FITTING DETAILS' : 'SHIPPING DETAILS'}
+                        </Text>
+                        <View style={[styles.deliveryTypeBadge, { backgroundColor: order.deliveryType === 'GARAGE_FITTING' ? '#DF232422' : T.statBg }]}>
+                            <Text style={[styles.deliveryTypeText, { color: order.deliveryType === 'GARAGE_FITTING' ? '#DF2324' : T.subText }]}>
+                                {order.deliveryType === 'GARAGE_FITTING' ? 'GARAGE FIT' : 'HOME DELIVERY'}
+                            </Text>
+                        </View>
+                    </View>
+
+                    {order.deliveryType === 'GARAGE_FITTING' ? (
+                        <>
+                            <Text style={[styles.infoValue, { color: T.text, fontSize: 16 }]}>{order.fittingGarageName || 'Selected Garage'}</Text>
+                            <View style={styles.fittingStatusRow}>
+                                <Ionicons name="cog-outline" size={14} color="#DF2324" />
+                                <Text style={[styles.fittingStatusLabel, { color: T.subText }]}>FITTING STATUS: </Text>
+                                <Text style={[styles.fittingStatusValue, { color: '#DF2324' }]}>{order.fittingStatus?.replace('_', ' ') || 'PENDING'}</Text>
+                            </View>
+                            <Text style={[styles.receiptSub, { color: T.subText, marginTop: 8, lineHeight: 18 }]}>
+                                {order.fittingGarageAddress || order.city + ', ' + order.state}
+                            </Text>
+                        </>
+                    ) : (
+                        <>
+                            <Text style={[styles.infoValue, { color: T.text, fontSize: 16 }]}>{order.customerName}</Text>
+                            <Text style={[styles.receiptSub, { color: T.subText, marginTop: 4, lineHeight: 18 }]}>
+                                {order.shippingAddress}{'\n'}
+                                {order.city}, {order.state} - {order.pincode}
+                            </Text>
+                        </>
+                    )}
                 </View>
 
                 {/* Items Section */}
@@ -514,4 +547,29 @@ const styles = StyleSheet.create({
     },
     feedbackComment: { fontSize: 14, fontStyle: 'italic', fontWeight: '600', marginBottom: 8, lineHeight: 20 },
     feedbackDate: { fontSize: 11, fontWeight: '800', textAlign: 'center' },
+    deliveryTypeBadge: {
+        paddingHorizontal: 8,
+        paddingVertical: 4,
+        borderRadius: 6,
+    },
+    deliveryTypeText: {
+        fontSize: 9,
+        fontWeight: '900',
+        letterSpacing: 0.5,
+    },
+    fittingStatusRow: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        marginTop: 6,
+    },
+    fittingStatusLabel: {
+        fontSize: 10,
+        fontWeight: '800',
+        marginLeft: 4,
+    },
+    fittingStatusValue: {
+        fontSize: 10,
+        fontWeight: '900',
+        textTransform: 'uppercase',
+    },
 });

@@ -14,6 +14,7 @@ import { useAuthStore } from '../store/authStore';
 import { useThemeStore, DARK_THEME, LIGHT_THEME } from '../store/themeStore';
 import ModernDashboardHeader from '../components/ModernDashboardHeader';
 import ModernDropdown from '../components/ModernDropdown';
+import { GarageSection } from '../components/GarageSection';
 import { useWishlistStore } from '../store/wishlistStore';
 import { ProductCardSkeleton } from '../components/SkeletonLoader';
 import { Toast } from '../components/Toast';
@@ -409,7 +410,6 @@ export default function HomeScreen({ navigation }: Props) {
                 >
                     <Ionicons name="options-outline" size={20} color={T.primary} />
                 </TouchableOpacity>
-
                 {showSortMenu && (
                     <View style={[styles.sortMenu, { backgroundColor: T.statBg, borderColor: T.statBorder }]}>
                         {['Featured', 'Price: Low to High', 'Price: High to Low', 'Name: A to Z'].map((option) => (
@@ -431,6 +431,8 @@ export default function HomeScreen({ navigation }: Props) {
                     </View>
                 )}
             </View>
+
+            <GarageSection />
 
             {/* Dedicated Vehicle Selection Bar */}
             <View style={styles.vehicleBarWrapper}>

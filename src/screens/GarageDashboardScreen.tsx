@@ -76,6 +76,10 @@ export default function GarageDashboardScreen({ navigation }: Props) {
     const [currentPage, setCurrentPage] = useState(1);
     const pageSize = 10;
 
+    // Fitting Management State
+    const [fittingOrders, setFittingOrders] = useState<any[]>([]);
+    const [fittingLoading, setFittingLoading] = useState(false);
+
     const { addItem, items } = useCartStore();
     const cartItemsCount = items.reduce((acc, item) => acc + item.quantity, 0);
     const { logout, token, isGuest } = useAuthStore();
@@ -89,6 +93,7 @@ export default function GarageDashboardScreen({ navigation }: Props) {
     useEffect(() => {
         fetchProducts(activeCategory);
         fetchMakes();
+        fetchFittingOrders();
     }, [selectedEngine]);
 
     const fetchMakes = async () => {
@@ -272,6 +277,28 @@ export default function GarageDashboardScreen({ navigation }: Props) {
         fetchProducts(activeCategory);
     };
 
+    const fetchFittingOrders = async () => {
+        setFittingLoading(true);
+        try {
+            const response = await apiClient.get('/orders/garage-fittings');
+            setFittingOrders(response.data);
+        } catch (error) {
+            console.error('Error fetching fitting orders:', error);
+        } finally {
+            setFittingLoading(false);
+        }
+    };
+
+    const updateFittingStatus = async (orderId: number, status: string) => {
+        try {
+            await apiClient.patch(`/orders/${orderId}/fitting-status?status=${status}`);
+            fetchFittingOrders();
+            Toast.show({ message: `Fitting marked as ${status.replace('_', ' ')}`, type: 'success' });
+        } catch (error) {
+            Alert.alert("Error", "Could not update fitting status.");
+        }
+    };
+
     const handleLogout = async () => {
         await logout();
     };
@@ -449,6 +476,69 @@ export default function GarageDashboardScreen({ navigation }: Props) {
                     </View>
                 )}
             </View>
+
+            {/* Incoming Fitting Requests Section */}
+            {fittingOrders.length > 0 && (
+                <View style={[styles.fittingSection, { backgroundColor: T.headerBg }]}>
+                    <View style={styles.sectionHeader}>
+                        <View style={styles.sectionTitleRow}>
+                            <View style={[styles.iconBox, { backgroundColor: '#DF232422' }]}>
+                                <Ionicons name="construct" size={18} color="#DF2324" />
+                            </View>
+                            <View>
+                                <Text style={[styles.sectionTitle, { color: T.text }]}>INCOMING FITTINGS</Text>
+                                <Text style={[styles.sectionSubtitle, { color: T.subText }]}>Local Installation Network</Text>
+                            </View>
+                        </View>
+                        <TouchableOpacity onPress={fetchFittingOrders}>
+                            <Ionicons name="refresh" size={20} color={T.subText} />
+                        </TouchableOpacity>
+                    </View>
+
+                    <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.fittingScroll}>
+                        {fittingOrders.map((order) => (
+                            <View key={order.id} style={[styles.fittingCard, { backgroundColor: T.statBg, borderColor: T.statBorder }]}>
+                                <View style={styles.fittingHeader}>
+                                    <View style={styles.orderIdBadge}>
+                                        <Text style={styles.orderIdText}>#{order.id}</Text>
+                                    </View>
+                                    <Text style={[styles.fittingStatus, { color: order.fittingStatus === 'COMPLETED' ? '#00FF00' : '#FFA500' }]}>
+                                        {order.fittingStatus?.replace('_', ' ')}
+                                    </Text>
+                                </View>
+                                
+                                <Text style={[styles.customerName, { color: T.text }]}>{order.customerName}</Text>
+                                <Text style={[styles.customerAddress, { color: T.subText }]} numberOfLines={1}>{order.shippingAddress}</Text>
+
+                                <View style={styles.fittingActions}>
+                                    {order.fittingStatus === 'PENDING' && (
+                                        <TouchableOpacity 
+                                            style={[styles.statusBtn, { backgroundColor: '#FFA50022' }]}
+                                            onPress={() => updateFittingStatus(order.id, 'INSPECTED')}
+                                        >
+                                            <Text style={[styles.statusBtnText, { color: '#FFA500' }]}>MARK INSPECTED</Text>
+                                        </TouchableOpacity>
+                                    )}
+                                    {order.fittingStatus === 'INSPECTED' && (
+                                        <TouchableOpacity 
+                                            style={[styles.statusBtn, { backgroundColor: '#00FF0022' }]}
+                                            onPress={() => updateFittingStatus(order.id, 'COMPLETED')}
+                                        >
+                                            <Text style={[styles.statusBtnText, { color: '#00FF00' }]}>COMPLETE FITTING</Text>
+                                        </TouchableOpacity>
+                                    )}
+                                    <TouchableOpacity 
+                                        style={[styles.statusBtn, { backgroundColor: T.inputBg }]}
+                                        onPress={() => navigation.navigate('OrderDetails' as any, { orderId: order.id })}
+                                    >
+                                        <Ionicons name="eye-outline" size={14} color={T.text} />
+                                    </TouchableOpacity>
+                                </View>
+                            </View>
+                        ))}
+                    </ScrollView>
+                </View>
+            )}
 
             {/* Dedicated Vehicle Selection Bar */}
             <View style={styles.vehicleBarWrapper}>
@@ -789,6 +879,23 @@ const styles = StyleSheet.create({
         backgroundColor: 'rgba(0,0,0,0.05)',
         marginHorizontal: 10,
     },
+    fittingSection: { paddingVertical: 20, marginBottom: 10 },
+    sectionHeader: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', paddingHorizontal: 20, marginBottom: 15 },
+    sectionTitleRow: { flexDirection: 'row', alignItems: 'center', gap: 12 },
+    iconBox: { width: 36, height: 36, borderRadius: 10, justifyContent: 'center', alignItems: 'center' },
+    sectionTitle: { fontSize: 13, fontWeight: '900', letterSpacing: 0.5 },
+    sectionSubtitle: { fontSize: 9, fontWeight: '700', textTransform: 'uppercase' },
+    fittingScroll: { paddingHorizontal: 20, gap: 12 },
+    fittingCard: { width: 260, padding: 16, borderRadius: 20, borderWidth: 1 },
+    fittingHeader: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 10 },
+    orderIdBadge: { backgroundColor: '#DF232411', paddingHorizontal: 8, paddingVertical: 4, borderRadius: 6 },
+    orderIdText: { fontSize: 10, fontWeight: '900', color: '#DF2324' },
+    fittingStatus: { fontSize: 9, fontWeight: '900', textTransform: 'uppercase' },
+    customerName: { fontSize: 14, fontWeight: '800', marginBottom: 2 },
+    customerAddress: { fontSize: 11, fontWeight: '600', marginBottom: 15 },
+    fittingActions: { flexDirection: 'row', gap: 8 },
+    statusBtn: { flex: 1, height: 34, borderRadius: 8, justifyContent: 'center', alignItems: 'center' },
+    statusBtnText: { fontSize: 9, fontWeight: '900' },
     title: { fontSize: 20, fontWeight: '900', letterSpacing: 0.5 },
     subtitle: { fontSize: 13, marginTop: 2 },
     cartIconContainer: { position: 'relative' },

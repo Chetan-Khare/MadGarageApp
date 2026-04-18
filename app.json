@@ -35,6 +35,12 @@
           "photosPermission": "Mad Garage AI needs access to your photos to analyse vehicle parts.",
           "cameraPermission": "Mad Garage AI needs camera access to photograph parts or damage."
         }
+      ],
+      [
+        "expo-location",
+        {
+          "locationAlwaysAndWhenInUsePermission": "Allow Mad Garage to use your location to find the nearest tie-up garages for part fitting."
+        }
       ]
     ],
     "extra": {

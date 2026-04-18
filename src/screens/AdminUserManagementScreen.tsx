@@ -22,7 +22,18 @@ export default function AdminUserManagementScreen({ navigation, route }: Props) 
 
     // Revision State (Edit)
     const [editingUser, setEditingUser] = useState<any | null>(null);
-    const [editForm, setEditForm] = useState({ firstName: '', lastName: '', email: '', phone: '', role: '' });
+    const [editForm, setEditForm] = useState({ 
+        firstName: '', 
+        lastName: '', 
+        email: '', 
+        phone: '', 
+        role: '',
+        isTieUp: false,
+        city: '',
+        address: '',
+        latitude: '',
+        longitude: ''
+    });
     const [activeTab, setActiveTab] = useState<'ACTIVE' | 'ARCHIVED'>('ACTIVE');
     const [actionLoading, setActionLoading] = useState(false);
 
@@ -85,7 +96,12 @@ export default function AdminUserManagementScreen({ navigation, route }: Props) 
             lastName: user.lastName,
             email: user.email,
             phone: user.phone || '',
-            role: user.role
+            role: user.role,
+            isTieUp: user.tieUp || false,
+            city: user.city || '',
+            address: user.address || '',
+            latitude: user.latitude?.toString() || '',
+            longitude: user.longitude?.toString() || ''
         });
     };
 
@@ -291,6 +307,68 @@ export default function AdminUserManagementScreen({ navigation, route }: Props) 
                             keyboardType="phone-pad"
                         />
 
+                        {(editForm.role === 'ROLE_GARAGE' || editForm.role === 'ROLE_SELLER') && (
+                            <View style={{ marginTop: 10, padding: 15, backgroundColor: T.inputBg, borderRadius: 12, borderWidth: 1, borderColor: T.statBorder }}>
+                                {editForm.role === 'ROLE_GARAGE' && (
+                                    <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', marginBottom: 15 }}>
+                                        <View>
+                                            <Text style={{ color: T.text, fontSize: 12, fontWeight: '900' }}>VERIFIED PARTNER</Text>
+                                            <Text style={{ color: T.subText, fontSize: 9 }}>Enable for local fitting network</Text>
+                                        </View>
+                                        <TouchableOpacity 
+                                            onPress={() => setEditForm({...editForm, isTieUp: !editForm.isTieUp})}
+                                            style={[styles.miniBtn, { backgroundColor: editForm.isTieUp ? '#DF2324' : T.statBorder }]}
+                                        >
+                                            <Ionicons name={editForm.isTieUp ? "checkbox" : "square-outline"} size={20} color="#FFF" />
+                                        </TouchableOpacity>
+                                    </View>
+                                )}
+
+                                <Text style={{ color: T.subText, fontSize: 10, fontWeight: '900', marginBottom: 5 }}>OPERATING CITY / AREA</Text>
+                                <TextInput 
+                                    style={[styles.modalInput, { backgroundColor: T.statBg, color: T.text, marginBottom: 15 }]}
+                                    placeholder="e.g. Mumbai"
+                                    placeholderTextColor={T.subText}
+                                    value={editForm.city}
+                                    onChangeText={txt => setEditForm({...editForm, city: txt})}
+                                />
+
+                                <Text style={{ color: T.subText, fontSize: 10, fontWeight: '900', marginBottom: 5 }}>STREET ADDRESS</Text>
+                                <TextInput 
+                                    style={[styles.modalInput, { backgroundColor: T.statBg, color: T.text, marginBottom: 15 }]}
+                                    placeholder="e.g. 123 Racing St, Worli"
+                                    placeholderTextColor={T.subText}
+                                    value={editForm.address}
+                                    onChangeText={txt => setEditForm({...editForm, address: txt})}
+                                />
+
+                                <View style={{ flexDirection: 'row', gap: 10 }}>
+                                    <View style={{ flex: 1 }}>
+                                        <Text style={{ color: T.subText, fontSize: 10, fontWeight: '900', marginBottom: 5 }}>LATITUDE</Text>
+                                        <TextInput 
+                                            style={[styles.modalInput, { backgroundColor: T.statBg, color: T.text }]}
+                                            placeholder="19.0760"
+                                            placeholderTextColor={T.subText}
+                                            value={editForm.latitude}
+                                            onChangeText={txt => setEditForm({...editForm, latitude: txt})}
+                                            keyboardType="numeric"
+                                        />
+                                    </View>
+                                    <View style={{ flex: 1 }}>
+                                        <Text style={{ color: T.subText, fontSize: 10, fontWeight: '900', marginBottom: 5 }}>LONGITUDE</Text>
+                                        <TextInput 
+                                            style={[styles.modalInput, { backgroundColor: T.statBg, color: T.text }]}
+                                            placeholder="72.8777"
+                                            placeholderTextColor={T.subText}
+                                            value={editForm.longitude}
+                                            onChangeText={txt => setEditForm({...editForm, longitude: txt})}
+                                            keyboardType="numeric"
+                                        />
+                                    </View>
+                                </View>
+                            </View>
+                        )}
+
                         <View style={styles.modalActions}>
                             <TouchableOpacity 
                                 style={[styles.modalBtn, { backgroundColor: T.inputBg }]}
@@ -353,4 +431,5 @@ const styles = StyleSheet.create({
     modalActions: { flexDirection: 'row', gap: 10, marginTop: 10 },
     modalBtn: { flex: 1, paddingVertical: 15, borderRadius: 12, alignItems: 'center' },
     modalBtnText: { color: '#FFF', fontSize: 12, fontWeight: '900' },
+    miniBtn: { width: 36, height: 36, borderRadius: 8, justifyContent: 'center', alignItems: 'center' }
 });

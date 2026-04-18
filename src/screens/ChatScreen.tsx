@@ -2,21 +2,21 @@ import React, { useState, useCallback, useRef } from 'react';
 import {
     View, StyleSheet, TouchableOpacity, Text, Image, TextInput,
     FlatList, KeyboardAvoidingView, Platform, ActivityIndicator,
-    SafeAreaView, Alert, StatusBar
+    Alert, StatusBar
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
-import { useSafeAreaInsets } from 'react-native-safe-area-context';
+import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
 import * as ImagePicker from 'expo-image-picker';
 import { LinearGradient } from 'expo-linear-gradient';
 import { useNavigation } from '@react-navigation/native';
 import apiClient, { BASE_SERVER_URL } from '../services/apiClient';
 import { useCartStore } from '../store/cartStore';
 import { useThemeStore, DARK_THEME, LIGHT_THEME } from '../store/themeStore';
-import Animated, { 
-    useSharedValue, 
-    useAnimatedStyle, 
-    withRepeat, 
-    withSequence, 
+import Animated, {
+    useSharedValue,
+    useAnimatedStyle,
+    withRepeat,
+    withSequence,
     withTiming,
     Easing,
     FadeInUp,
@@ -206,7 +206,7 @@ export default function ChatScreen() {
     const renderMessage = ({ item }: { item: ChatMessage }) => {
         const isUser = item.role === 'user';
         return (
-            <Animated.View 
+            <Animated.View
                 entering={FadeInUp.duration(400)}
                 layout={Layout.springify()}
                 style={[styles.msgRow, isUser ? styles.msgRowRight : styles.msgRowLeft]}
@@ -250,8 +250,8 @@ export default function ChatScreen() {
                             {item.products && item.products.length > 0 && (
                                 <View style={styles.productGrid}>
                                     {item.products.map((p: any, i: number) => (
-                                        <TouchableOpacity 
-                                            key={i} 
+                                        <TouchableOpacity
+                                            key={i}
                                             activeOpacity={0.9}
                                             style={[styles.productCard, { backgroundColor: isDark ? '#1a1a20' : '#F9F9F9', borderColor: isDark ? 'rgba(255,255,255,0.05)' : '#EEE' }]}
                                         >
@@ -374,7 +374,7 @@ export default function ChatScreen() {
                             onChangeText={setInputText}
                             multiline
                         />
-                        
+
                         <TouchableOpacity style={styles.sendBtn} onPress={sendMessage} disabled={isThinking}>
                             <Ionicons name="arrow-up" size={22} color="#FFF" />
                         </TouchableOpacity>
