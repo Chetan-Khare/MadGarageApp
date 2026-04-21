@@ -58,6 +58,7 @@ export type RootStackParamList = {
   SellerFlaggedProducts: undefined;
   PartRequest: undefined;
   Wishlist: undefined;
+  Address: undefined;
   CompleteProfile: { registrationToken: string };
 };
 

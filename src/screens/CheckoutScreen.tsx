@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import {
     View, Text, StyleSheet, TextInput, TouchableOpacity,
     ActivityIndicator, Alert, StatusBar, ScrollView,
@@ -21,10 +21,24 @@ type Props = { navigation: NativeStackNavigationProp<RootStackParamList, 'Checko
 export default function CheckoutScreen({ navigation }: Props) {
     const { items, clearCart, getTotalPrice } = useCartStore();
     const { isDark } = useThemeStore();
-    const { city: detectedCity, address: detectedAddr, nearbyGarages } = useLocationStore();
+    const { city: detectedCity, address: detectedAddr, nearbyGarages, detectLocation, isLoading: detectionLoading } = useLocationStore();
     const T = isDark ? DARK_THEME : LIGHT_THEME;
     
     const [loading, setLoading] = useState(false);
+    const [savedAddresses, setSavedAddresses] = useState<any[]>([]);
+
+    useEffect(() => {
+        fetchSavedAddresses();
+    }, []);
+
+    const fetchSavedAddresses = async () => {
+        try {
+            const response = await apiClient.get('/api/addresses');
+            setSavedAddresses(response.data);
+        } catch (error) {
+            console.error('Failed to fetch addresses for checkout:', error);
+        }
+    };
     
     // Form State
     const [address, setAddress] = useState(detectedAddr || '');
@@ -193,15 +207,68 @@ export default function CheckoutScreen({ navigation }: Props) {
                             </Text>
                         </View>
 
+                        <View style={styles.quickFillRow}>
+                            {savedAddresses.map(addr => (
+                                <TouchableOpacity 
+                                    key={addr.id}
+                                    style={[styles.chip, { backgroundColor: T.inputBg, borderColor: T.inputBorder }]}
+                                    onPress={() => {
+                                        setAddress(addr.address || '');
+                                        setCity(addr.city || '');
+                                        setState(addr.state || '');
+                                        setPincode(addr.pincode || '');
+                                    }}
+                                >
+                                    <Ionicons 
+                                        name={addr.tag === 'HOME' ? 'home-outline' : addr.tag === 'OFFICE' ? 'business-outline' : 'location-outline'} 
+                                        size={14} 
+                                        color={T.subText} 
+                                    />
+                                    <Text style={[styles.chipText, { color: T.text }]}>{addr.tag}</Text>
+                                </TouchableOpacity>
+                            ))}
+
+                            <TouchableOpacity 
+                                style={[styles.chip, { backgroundColor: T.inputBg, borderColor: T.inputBorder }]}
+                                onPress={detectLocation}
+                                disabled={detectionLoading}
+                            >
+                                <Ionicons name="location-outline" size={14} color={T.subText} />
+                                <Text style={[styles.chipText, { color: T.text }]}>{detectionLoading ? 'Detecting...' : 'Detect'}</Text>
+                            </TouchableOpacity>
+
+                            <TouchableOpacity 
+                                style={[styles.chip, { backgroundColor: T.inputBg, borderColor: T.inputBorder }]}
+                                onPress={() => {
+                                    setAddress('');
+                                    setCity('');
+                                    setState('');
+                                    setPincode('');
+                                }}
+                            >
+                                <Ionicons name="close-circle-outline" size={14} color="#DF2324" />
+                                <Text style={[styles.chipText, { color: T.text }]}>Manual</Text>
+                            </TouchableOpacity>
+                        </View>
+
                         <View style={styles.inputGroup}>
                             <Text style={[styles.label, { color: T.subText }]}>Full Address</Text>
-                            <TextInput
-                                style={[styles.input, { backgroundColor: T.inputBg, color: T.text, borderColor: T.inputBorder }]}
-                                placeholder="123 Performance Street, Apt #4"
-                                placeholderTextColor={T.subText}
-                                value={address}
-                                onChangeText={setAddress}
-                            />
+                            <View style={[styles.inputWrapper, { backgroundColor: T.inputBg, borderColor: T.inputBorder }]}>
+                                <TextInput
+                                    style={[styles.wrappedInput, { color: T.text }]}
+                                    placeholder="123 Performance Street, Apt #4"
+                                    placeholderTextColor={T.subText}
+                                    value={address}
+                                    onChangeText={setAddress}
+                                />
+                                <TouchableOpacity onPress={detectLocation} disabled={detectionLoading} style={styles.inlineAction}>
+                                    {detectionLoading ? (
+                                        <ActivityIndicator size="small" color="#DF2324" />
+                                    ) : (
+                                        <Ionicons name="locate" size={18} color="#DF2324" />
+                                    )}
+                                </TouchableOpacity>
+                            </View>
                         </View>
                         
                         <View style={styles.inputGroup}>
@@ -423,5 +490,43 @@ const styles = StyleSheet.create({
         textAlign: 'center',
         fontStyle: 'italic',
         paddingVertical: 10,
+    },
+    // Enhanced Input Styles
+    quickFillRow: {
+        flexDirection: 'row',
+        gap: 10,
+        marginBottom: 20,
+        flexWrap: 'wrap'
+    },
+    chip: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        paddingHorizontal: 12,
+        paddingVertical: 8,
+        borderRadius: 20,
+        borderWidth: 1,
+        gap: 6
+    },
+    chipText: {
+        fontSize: 11,
+        fontWeight: '700',
+        textTransform: 'uppercase'
+    },
+    inputWrapper: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        borderRadius: 12,
+        borderWidth: 1,
+        overflow: 'hidden'
+    },
+    wrappedInput: {
+        flex: 1,
+        paddingHorizontal: 16,
+        paddingVertical: 15,
+        fontSize: 15,
+        fontWeight: '600',
+    },
+    inlineAction: {
+        paddingHorizontal: 14,
     }
 });

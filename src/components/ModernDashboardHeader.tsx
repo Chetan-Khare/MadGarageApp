@@ -15,6 +15,7 @@ interface ModernDashboardHeaderProps {
     cartItemCount?: number;
     onProfilePress: () => void;
     onCartPress?: () => void;
+    onAddressPress?: () => void;
     onThemeToggle?: () => void;
     showThemeToggle?: boolean;
     profileIcon?: keyof typeof Ionicons.glyphMap;
@@ -30,6 +31,7 @@ export const ModernDashboardHeader: React.FC<ModernDashboardHeaderProps> = ({
     cartItemCount,
     onProfilePress,
     onCartPress,
+    onAddressPress,
     onThemeToggle,
     showThemeToggle = true,
     profileIcon = 'person',
@@ -108,6 +110,16 @@ export const ModernDashboardHeader: React.FC<ModernDashboardHeaderProps> = ({
                                         <Text style={styles.badgeText}>{cartItemCount}</Text>
                                     </View>
                                 )}
+                            </TouchableOpacity>
+                        )}
+
+                        {onAddressPress && (
+                            <TouchableOpacity
+                                style={[styles.iconBtn, { backgroundColor: isDark ? '#262626' : '#F0F0F0' }]}
+                                onPress={onAddressPress}
+                                activeOpacity={0.7}
+                            >
+                                <Ionicons name="location-outline" size={20} color={T.text} />
                             </TouchableOpacity>
                         )}
 

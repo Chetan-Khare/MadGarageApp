@@ -35,6 +35,7 @@ import GarageProfileScreen from '../screens/GarageProfileScreen';
 import EditProductScreen from '../screens/EditProductScreen';
 import PartRequestScreen from '../screens/PartRequestScreen';
 import WishlistScreen from '../screens/WishlistScreen';
+import AddressScreen from '../screens/AddressScreen';
 
 const Stack = createNativeStackNavigator<RootStackParamList>();
 
@@ -107,6 +108,7 @@ const RoleNavigator: React.FC = () => {
       <Stack.Screen name="SellerProfile" component={SellerProfileScreen} />
       <Stack.Screen name="PartRequest" component={PartRequestScreen} />
       <Stack.Screen name="Wishlist" component={WishlistScreen} />
+      <Stack.Screen name="Address" component={AddressScreen} />
     </Stack.Navigator>
   );
 };

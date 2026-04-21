@@ -682,6 +682,7 @@ export default function HomeScreen({ navigation }: Props) {
                     cartItemCount={cartItemCount}
                     onProfilePress={handleProfilePress}
                     onCartPress={() => navigation.navigate('Cart')}
+                    onAddressPress={() => navigation.navigate('Address')}
                     onThemeToggle={toggleTheme}
                     logo={require('../../assets/app_logo.png')}
                     profileIcon={token ? 'person' : 'person-outline'}

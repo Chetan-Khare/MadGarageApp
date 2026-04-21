@@ -14,6 +14,7 @@ import { RootStackParamList } from '../types';
 import { useThemeStore, DARK_THEME, LIGHT_THEME } from '../store/themeStore';
 import { useAuthStore } from '../store/authStore';
 import apiClient, { BASE_SERVER_URL } from '../services/apiClient';
+import * as Location from 'expo-location';
 
 type Props = { navigation: NativeStackNavigationProp<RootStackParamList, 'GarageProfile'>; };
 
@@ -40,6 +41,7 @@ export default function GarageProfileScreen({ navigation }: Props) {
     const [address, setAddress] = useState('');
     const [latitude, setLatitude] = useState('');
     const [longitude, setLongitude] = useState('');
+    const [detectingLocation, setDetectingLocation] = useState(false);
 
     useEffect(() => {
         fetchProfile();
@@ -150,6 +152,45 @@ export default function GarageProfileScreen({ navigation }: Props) {
         }
     };
 
+    const handleDetectLocation = async () => {
+        setDetectingLocation(true);
+        try {
+            const { status } = await Location.requestForegroundPermissionsAsync();
+            if (status !== 'granted') {
+                Alert.alert('Permission Denied', 'Please allow location access to fetch your coordinates.');
+                return;
+            }
+
+            const location = await Location.getCurrentPositionAsync({
+                accuracy: Location.Accuracy.Balanced,
+            });
+
+            const { latitude: lat, longitude: lng } = location.coords;
+            setLatitude(lat.toString());
+            setLongitude(lng.toString());
+
+            const reverseGeocode = await Location.reverseGeocodeAsync({ latitude: lat, longitude: lng });
+            if (reverseGeocode.length > 0) {
+                const addr = reverseGeocode[0];
+                const cityName = addr.city || addr.subregion || addr.region || '';
+                const formattedAddr = [
+                    addr.name,
+                    addr.street,
+                    addr.district,
+                    addr.city || addr.subregion
+                ].filter(Boolean).join(', ');
+                
+                if (cityName) setCity(cityName);
+                if (formattedAddr) setAddress(formattedAddr);
+            }
+        } catch (error) {
+            console.error('Error fetching location:', error);
+            Alert.alert('Error', 'Could not detect your current location.');
+        } finally {
+            setDetectingLocation(false);
+        }
+    };
+
     if (loading) {
         return (
             <View style={[styles.safe, { backgroundColor: T.bg, justifyContent: 'center', alignItems: 'center' }]}>
@@ -240,8 +281,24 @@ export default function GarageProfileScreen({ navigation }: Props) {
                     
                     <View style={[styles.card, { backgroundColor: T.card, borderColor: T.cardBorder }]}>
                         <View style={styles.cardHeader}>
-                            <Ionicons name="location-outline" size={20} color={T.text} />
-                            <Text style={[styles.cardTitle, { color: T.text }]}>Workshop Logistics</Text>
+                            <View style={{ flexDirection: 'row', alignItems: 'center', flex: 1, gap: 8 }}>
+                                <Ionicons name="location-outline" size={20} color={T.text} />
+                                <Text style={[styles.cardTitle, { color: T.text }]}>Workshop Logistics</Text>
+                            </View>
+                            <TouchableOpacity 
+                                style={[styles.detectBtn, { backgroundColor: T.inputBg, borderColor: T.inputBorder }]}
+                                onPress={handleDetectLocation}
+                                disabled={detectingLocation}
+                            >
+                                {detectingLocation ? (
+                                    <ActivityIndicator size="small" color="#DF2324" />
+                                ) : (
+                                    <>
+                                        <Ionicons name="locate" size={16} color="#DF2324" />
+                                        <Text style={[styles.detectBtnText, { color: T.text }]}>Detect</Text>
+                                    </>
+                                )}
+                            </TouchableOpacity>
                         </View>
 
                         <View style={styles.inputGroup}>
@@ -405,6 +462,19 @@ const styles = StyleSheet.create({
     cardTitle: {
         fontSize: 16,
         fontWeight: '800',
+    },
+    detectBtn: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        paddingHorizontal: 12,
+        paddingVertical: 6,
+        borderRadius: 20,
+        borderWidth: 1,
+        gap: 4
+    },
+    detectBtnText: {
+        fontSize: 12,
+        fontWeight: '700',
     },
     
     // Form Styles
