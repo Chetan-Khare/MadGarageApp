@@ -5,21 +5,23 @@ import {
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
-import { useSafeAreaInsets } from 'react-native-safe-area-context';
+
 import { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import { RootStackParamList } from '../types';
 import { useCartStore } from '../store/cartStore';
 import { BASE_SERVER_URL } from '../services/apiClient';
 import { useThemeStore, DARK_THEME, LIGHT_THEME } from '../store/themeStore';
+import { useConfigStore } from '../store/configStore';
 import { PRICING } from '../constants/pricing';
 
 type Props = { navigation: NativeStackNavigationProp<RootStackParamList, 'Cart'>; };
 
 export default function CartScreen({ navigation }: Props) {
     const { items, removeItem, updateQuantity, clearCart, getTotalPrice } = useCartStore();
+    const { shippingFee, freeShippingThreshold } = useConfigStore();
     const { isDark } = useThemeStore();
     const T = isDark ? DARK_THEME : LIGHT_THEME;
-    const insets = useSafeAreaInsets();
+
     const [loading, setLoading] = useState(false);
 
     const handleCheckout = () => {
@@ -77,7 +79,7 @@ export default function CartScreen({ navigation }: Props) {
     );
 
     const subtotal = getTotalPrice();
-    const delivery = subtotal > 0 ? PRICING.SHIPPING_FEE : 0;
+    const delivery = (subtotal > 0 && subtotal < freeShippingThreshold) ? shippingFee : 0;
     const total = subtotal + delivery;
 
     return (
@@ -86,7 +88,7 @@ export default function CartScreen({ navigation }: Props) {
             <View style={{ height: 2, backgroundColor: '#DF2324' }} />
 
             {/* Header */}
-            <View style={[styles.header, { backgroundColor: T.headerBg, borderBottomWidth: 1, borderBottomColor: T.headerBorder, paddingTop: Platform.OS === 'android' ? (insets.top + 8) : 8 }]}>
+            <View style={[styles.header, { backgroundColor: T.headerBg, borderBottomWidth: 1, borderBottomColor: T.headerBorder, paddingTop: 8 }]}>
                 <TouchableOpacity
                     style={[styles.backBtn, { backgroundColor: isDark ? '#1A1A1A' : '#F0F0F0' }]}
                     onPress={() => navigation.goBack()}
@@ -127,7 +129,7 @@ export default function CartScreen({ navigation }: Props) {
             />
 
             {items.length > 0 && (
-                <View style={[styles.footer, { backgroundColor: T.headerBg, borderTopColor: T.headerBorder, paddingBottom: insets.bottom + 16 }]}>
+                <View style={[styles.footer, { backgroundColor: T.headerBg, borderTopColor: T.headerBorder, paddingBottom: 16 }]}>
                     {/* Glassmorphism Summary */}
                     <View style={[styles.summaryCard, { backgroundColor: isDark ? 'rgba(30,30,30,0.6)' : '#FFF', borderColor: T.cardBorder }]}>
                         <View style={styles.summaryRow}>
@@ -136,7 +138,9 @@ export default function CartScreen({ navigation }: Props) {
                         </View>
                         <View style={styles.summaryRow}>
                             <Text style={[styles.summaryLabel, { color: T.subText }]}>Packaging & Shipping</Text>
-                            <Text style={[styles.summaryValue, { color: T.text }]}>₹{delivery.toLocaleString()}</Text>
+                            <Text style={[styles.summaryValue, { color: delivery === 0 && subtotal > 0 ? '#00FF00' : T.text }]}>
+                                {delivery === 0 && subtotal > 0 ? 'FREE' : `₹${delivery.toLocaleString()}`}
+                            </Text>
                         </View>
                         <View style={[styles.divider, { backgroundColor: T.headerBorder }]} />
                         <View style={styles.summaryRow}>

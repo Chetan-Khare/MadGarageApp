@@ -26,6 +26,7 @@ interface LocationState {
     setLocation: (location: Location.LocationObject, city: string, address: string) => void;
     setManualCity: (city: string) => Promise<void>;
     saveLocationToProfile: () => Promise<void>;
+    syncWithSavedAddress: () => Promise<void>;
 }
 
 // Helper to calculate distance in km using Haversine formula
@@ -128,16 +129,52 @@ export const useLocationStore = create<LocationState>((set, get) => ({
         const { city, address, location } = get();
         if (!city) return;
         try {
-            await apiClient.put('/users/profile', { 
+            // NEW PROTOCOL: Register as a primary hub in the multi-address system
+            await apiClient.post('/addresses', { 
                 city, 
-                address, 
+                address: address || 'Detected Location', 
+                pincode: '', 
+                state: '',
+                tag: 'OTHER',
+                isDefault: true,
                 latitude: location?.coords.latitude, 
                 longitude: location?.coords.longitude 
             });
-            // Alert in React Native is handled in components usually, but we can log it here
-            console.log('Location saved to profile');
+            console.log('Location registered as primary hub');
         } catch (err) {
-            console.error('Failed to save location to profile:', err);
+            console.error('Failed to register location hub:', err);
+        }
+    },
+
+    syncWithSavedAddress: async () => {
+        try {
+            set({ isLoading: true });
+            const res = await apiClient.get('/addresses');
+            const defaultAddr = res.data.find((a: any) => a.isDefault);
+            
+            if (defaultAddr) {
+                const coords = defaultAddr.latitude && defaultAddr.longitude ? {
+                    latitude: defaultAddr.latitude,
+                    longitude: defaultAddr.longitude
+                } : null;
+
+                set({
+                    city: defaultAddr.city,
+                    address: defaultAddr.address,
+                    location: coords ? { 
+                        coords: { ...coords, accuracy: 0, altitude: 0, heading: 0, speed: 0, altitudeAccuracy: 0 }, 
+                        timestamp: Date.now() 
+                    } : null
+                });
+
+                if (defaultAddr.city) {
+                    await get().fetchGarages(defaultAddr.city, coords || undefined);
+                }
+            }
+        } catch (err) {
+            console.error('Failed to sync mobile location with saved addresses:', err);
+        } finally {
+            set({ isLoading: false });
         }
     }
 }));

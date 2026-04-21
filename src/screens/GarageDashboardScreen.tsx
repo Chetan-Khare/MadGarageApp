@@ -1,6 +1,6 @@
 import React, { useEffect, useState } from 'react';
 import { View, Text, StyleSheet, TouchableOpacity, ScrollView, Dimensions, ActivityIndicator, TextInput, Alert, StatusBar, Image, FlatList, Platform } from 'react-native';
-import { useSafeAreaInsets } from 'react-native-safe-area-context';
+import { useSafeAreaInsets, SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
 import { LinearGradient } from 'expo-linear-gradient';
 import { NativeStackNavigationProp } from '@react-navigation/native-stack';
@@ -10,8 +10,8 @@ import { useCartStore, CartItem } from '../store/cartStore';
 import { useAuthStore } from '../store/authStore';
 import { useThemeStore, DARK_THEME, LIGHT_THEME } from '../store/themeStore';
 import { useWishlistStore } from '../store/wishlistStore';
+import { useLocationStore } from '../store/locationStore';
 
-import ModernDashboardHeader from '../components/ModernDashboardHeader';
 import ModernDropdown from '../components/ModernDropdown';
 import { ListCardSkeleton } from '../components/SkeletonLoader';
 import { Toast } from '../components/Toast';
@@ -86,7 +86,6 @@ export default function GarageDashboardScreen({ navigation }: Props) {
     const { isDark, toggleTheme } = useThemeStore();
     const T = isDark ? DARK_THEME : LIGHT_THEME;
     const PRIMARY = '#DF2324';
-    const insets = useSafeAreaInsets();
     const wishlistItems = useWishlistStore(s => s.items);
     const toggleWishlist = useWishlistStore(s => s.toggleWishlist);
 
@@ -736,23 +735,35 @@ export default function GarageDashboardScreen({ navigation }: Props) {
     );
 
     return (
-        <View style={[styles.container, { backgroundColor: T.bg2 }]}>
+        <SafeAreaView edges={['top', 'left', 'right']} style={[styles.container, { backgroundColor: T.bg2 }]}>
             <StatusBar barStyle={T.statusBar} backgroundColor={T.headerBg} />
-            {/* Modern Header */}
-            <ModernDashboardHeader
-                title="MAD GARAGE"
-                subtitle="Wholesale Portal"
-                showCart={Boolean(token && !isGuest)}
-                cartItemCount={cartItemsCount}
-                onProfilePress={() => setShowProfileMenu(!showProfileMenu)}
-                onCartPress={() => navigation.navigate('Cart')}
-                onThemeToggle={toggleTheme}
-                logo={require('../../assets/app_logo.png')}
-                profileIcon="person"
-            />
+            {/* Minimalist Clayful-Inspired Header */}
+            <View style={[styles.clayfulHeaderTop, { backgroundColor: T.bg }]}>
+                <TouchableOpacity onPress={() => setShowProfileMenu(!showProfileMenu)} style={styles.clayfulHeaderBtn}>
+                    <Image 
+                        source={require('../../assets/app_logo.png')} 
+                        style={{ width: 28, height: 28, borderRadius: 14, overflow: 'hidden' }} 
+                        resizeMode="cover" 
+                    />
+                </TouchableOpacity>
+                
+                <View style={{ flex: 1, alignItems: 'center' }}>
+                    <Text style={styles.clayfulHeaderTitle}>MAD GARAGE</Text>
+                    <Text style={[styles.clayfulHeaderSubtitle, { color: T.subText }]}>WHOLESALE PORTAL</Text>
+                </View>
+                
+                <TouchableOpacity onPress={() => navigation.navigate('Cart')} style={styles.clayfulHeaderBtn}>
+                    <Ionicons name="bag-outline" size={22} color={T.text} />
+                    {(cartItemsCount ?? 0) > 0 && (
+                        <View style={styles.clayfulBadge}>
+                            <Text style={styles.clayfulBadgeText}>{cartItemsCount}</Text>
+                        </View>
+                    )}
+                </TouchableOpacity>
+            </View>
 
             {showProfileMenu && (
-                <View style={[styles.profileMenu, { backgroundColor: T.statBg, borderColor: T.statBorder, top: 75, right: 16 }]}>
+                <View style={[styles.profileMenu, { backgroundColor: T.statBg, borderColor: T.statBorder, top: 40, left: 16 }]}>
                     <TouchableOpacity
                         style={styles.profileMenuItem}
                         onPress={() => { setShowProfileMenu(false); navigation.navigate('GarageProfile' as any); }}
@@ -761,6 +772,13 @@ export default function GarageDashboardScreen({ navigation }: Props) {
                         <Text style={[styles.profileMenuText, { color: T.text }]}>Garage Profile</Text>
                     </TouchableOpacity>
                     <View style={styles.profileMenuDivider} />
+
+                    <TouchableOpacity style={styles.profileMenuItem} onPress={() => { setShowProfileMenu(false); navigation.navigate('Address' as any); }}>
+                        <Ionicons name="map-outline" size={18} color={T.text} />
+                        <Text style={[styles.profileMenuText, { color: T.text }]}>Manage Addresses</Text>
+                    </TouchableOpacity>
+                    <View style={styles.profileMenuDivider} />
+
                     <TouchableOpacity
                         style={styles.profileMenuItem}
                         onPress={() => { setShowProfileMenu(false); navigation.navigate('OrderHistory' as any); }}
@@ -829,26 +847,12 @@ export default function GarageDashboardScreen({ navigation }: Props) {
                     <Ionicons name="chatbubble-ellipses" size={24} color="#FFF" />
                 </LinearGradient>
             </TouchableOpacity>
-        </View>
+        </SafeAreaView>
     );
 }
 
 const styles = StyleSheet.create({
     container: { flex: 1 },
-    header: {
-        flexDirection: 'row',
-        justifyContent: 'space-between',
-        alignItems: 'center',
-        padding: 20,
-    },
-    headerIcons: { flexDirection: 'row', alignItems: 'center', gap: 10 },
-    iconBtn: {
-        width: 38,
-        height: 38,
-        borderRadius: 19,
-        justifyContent: 'center',
-        alignItems: 'center',
-    },
     profileMenu: {
         position: 'absolute',
         top: 50,
@@ -1276,5 +1280,56 @@ const styles = StyleSheet.create({
     },
     pageTextActive: {
         color: '#FFF',
+    },
+    clayfulHeaderTop: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        paddingVertical: 10,
+        justifyContent: 'space-between',
+        paddingHorizontal: 20,
+    },
+    clayfulHeaderBtn: {
+        width: 40,
+        height: 40,
+        justifyContent: 'center',
+        alignItems: 'center',
+        position: 'relative',
+    },
+    clayfulHeaderTitle: {
+        fontSize: 22,
+        fontWeight: '900',
+        fontStyle: 'italic',
+        textTransform: 'uppercase',
+        letterSpacing: -1,
+        color: '#DF2324',
+        textAlign: 'center',
+    },
+    clayfulHeaderSubtitle: {
+        fontSize: 10,
+        fontWeight: '900',
+        fontStyle: 'italic',
+        textTransform: 'uppercase',
+        letterSpacing: 1.2,
+        opacity: 0.8,
+        textAlign: 'center',
+        marginTop: -2,
+    },
+    clayfulBadge: {
+        position: 'absolute',
+        top: 4,
+        right: 4,
+        backgroundColor: '#DF2324',
+        borderRadius: 8,
+        width: 14,
+        height: 14,
+        justifyContent: 'center',
+        alignItems: 'center',
+        borderWidth: 1,
+        borderColor: '#FFF',
+    },
+    clayfulBadgeText: {
+        color: '#FFF',
+        fontSize: 8,
+        fontWeight: 'bold',
     },
 });

@@ -5,6 +5,7 @@ import { createNativeStackNavigator } from '@react-navigation/native-stack';
 import { SafeAreaProvider } from 'react-native-safe-area-context';
 
 import { useAuthStore } from './src/store/authStore';
+import { useConfigStore } from './src/store/configStore';
 import LoginScreen from './src/screens/LoginScreen';
 import RoleNavigator from './src/navigation/RoleNavigator';
 import { ToastProvider } from './src/components/Toast';
@@ -30,7 +31,10 @@ export default function App() {
 
   useEffect(() => {
     const init = async () => {
-      await initializeAuth();
+      await Promise.all([
+        initializeAuth(),
+        useConfigStore.getState().fetchSettings()
+      ]);
       // Wait for the RPM Pulse/Rev animation (2.5s)
       await new Promise(resolve => setTimeout(resolve, 2800));
       if (fontsLoaded) {

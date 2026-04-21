@@ -1,4 +1,5 @@
-import { View, Text, StyleSheet, ScrollView, TouchableOpacity, Image, Alert, Platform } from 'react-native';
+import React, { useState } from 'react';
+import { View, Text, StyleSheet, ScrollView, TouchableOpacity, Image, Platform, TextInput } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { useLocationStore } from '../store/locationStore';
 import { useAuthStore } from '../store/authStore';
@@ -6,217 +7,317 @@ import { useThemeStore, DARK_THEME, LIGHT_THEME } from '../store/themeStore';
 import { BASE_SERVER_URL } from '../services/apiClient';
 
 export const GarageSection: React.FC = () => {
-    const { city, nearbyGarages, isLoading, setManualCity, saveLocationToProfile } = useLocationStore();
+    const { city, nearbyGarages, isLoading, setManualCity, saveLocationToProfile, detectLocation } = useLocationStore();
     const { token } = useAuthStore();
     const { isDark } = useThemeStore();
     const T = isDark ? DARK_THEME : LIGHT_THEME;
+    
+    const [isExpanded, setIsExpanded] = useState(false);
+    const [isEditingCity, setIsEditingCity] = useState(false);
+    const [manualCityText, setManualCityText] = useState('');
 
     if (isLoading && nearbyGarages.length === 0) return null;
 
-    // "Coming Soon" State: If city is detected but no garages found within 10km
-    if (city && nearbyGarages.length === 0) {
-        return (
-            <View style={[styles.comingSoonCard, { backgroundColor: isDark ? '#1A0808' : '#FFF5F5', borderColor: '#DF232433' }]}>
-                <View style={styles.comingSoonLeft}>
-                    <Text style={[styles.comingSoonTitle, { color: T.text }]}>MAD GARAGE <Text style={{ color: '#DF2324' }}>LIVE</Text></Text>
-                    <Text style={[styles.comingSoonCity, { color: T.subText }]}>Coming soon to {city}!</Text>
-                    <View style={styles.actionRow}>
-                        <TouchableOpacity 
-                            style={styles.notifyBtn}
-                            onPress={() => {
-                                Alert.prompt(
-                                    "Change City",
-                                    "Enter the city name to find garages there:",
-                                    [
-                                        { text: "Cancel", style: "cancel" },
-                                        { text: "Find", onPress: (val?: string) => val && setManualCity(val) }
-                                    ]
-                                );
-                            }}
-                        >
-                            <Text style={styles.notifyBtnText}>Change City</Text>
-                        </TouchableOpacity>
-                    </View>
-                </View>
-                <Ionicons name="construct" size={48} color="#DF232422" style={styles.bgIcon} />
-            </View>
-        );
-    }
-
-    if (nearbyGarages.length === 0) return null;
-
     return (
         <View style={styles.container}>
-            <View style={styles.header}>
-                <View style={styles.headerTop}>
-                    <Text style={[styles.title, { color: T.text }]}>Verified Fitting Garages {city && `in ${city}`}</Text>
-                    <View style={styles.headerActions}>
-                        <TouchableOpacity onPress={saveLocationToProfile} style={styles.iconAction}>
-                             <Ionicons name="save-outline" size={16} color={T.primary} />
-                        </TouchableOpacity>
-                        <TouchableOpacity 
-                            onPress={() => {
-                                // @ts-ignore - Alert.prompt is available on iOS/Android (via polyfills often)
-                                if (Platform.OS === 'web') {
-                                    const val = prompt("Enter City Name:");
-                                    if (val) setManualCity(val);
-                                } else {
-                                    Alert.prompt(
-                                        "Change City",
-                                        "Enter the city name:",
-                                        [
-                                            { text: "Cancel", style: "cancel" },
-                                            { text: "Find", onPress: (val?: string) => val && setManualCity(val) }
-                                        ]
-                                    );
-                                }
-                            }}
-                        >
-                            <Text style={[styles.changeText, { color: T.primary }]}>Change</Text>
-                        </TouchableOpacity>
+            {/* The Compact Hub Bar */}
+            <TouchableOpacity 
+                activeOpacity={0.9}
+                onPress={() => {
+                    if (nearbyGarages.length > 0) {
+                        if (Platform.OS === 'android' || Platform.OS === 'ios') {
+                            const { LayoutAnimation } = require('react-native');
+                            LayoutAnimation.configureNext(LayoutAnimation.Presets.easeInEaseOut);
+                        }
+                        setIsExpanded(!isExpanded);
+                    }
+                }}
+                style={[styles.hubBar, { backgroundColor: isExpanded ? T.statBg : T.inputBg, borderColor: T.inputBorder }]}
+            >
+                <View style={styles.hubLeft}>
+                    <View style={[styles.hubIcon, { backgroundColor: '#DF232415' }]}>
+                        <Ionicons name="build" size={18} color="#DF2324" />
+                    </View>
+                    <View>
+                        <Text style={[styles.hubTitle, { color: T.text }]}>
+                            FITTING HUB {city && <Text style={{ color: '#DF2324', fontStyle: 'italic' }}>• {city.toUpperCase()}</Text>}
+                        </Text>
+                        <Text style={[styles.hubSubtitle, { color: T.subText }]}>
+                            {nearbyGarages.length > 0 ? `${nearbyGarages.length} Partner Garages Nearby` : 'Detecting local tuners...'}
+                        </Text>
                     </View>
                 </View>
-                <Text style={[styles.subtitle, { color: T.subText }]}>Expert installation partners nearby</Text>
-            </View>
+                <View style={styles.hubRight}>
+                    {nearbyGarages.length > 0 && (
+                        <Ionicons name={isExpanded ? "chevron-up" : "chevron-down"} size={20} color={T.subText} />
+                    )}
+                </View>
+            </TouchableOpacity>
 
-            <ScrollView 
-                horizontal 
-                showsHorizontalScrollIndicator={false}
-                contentContainerStyle={styles.scrollContent}
-            >
-                {nearbyGarages.map((garage) => (
-                    <TouchableOpacity 
-                        key={garage.id}
-                        style={[styles.garageCard, { backgroundColor: T.statBg, borderColor: T.statBorder }]}
-                        activeOpacity={0.8}
-                    >
-                        {garage.profileImageUrl ? (
-                            <Image 
-                                source={{ uri: garage.profileImageUrl.startsWith('http') ? garage.profileImageUrl : `${BASE_SERVER_URL}${garage.profileImageUrl}` }} 
-                                style={styles.garageImg} 
-                            />
-                        ) : (
-                            <View style={[styles.fallbackImg, { backgroundColor: isDark ? '#333' : '#EEE' }]}>
-                                <Ionicons name="business" size={24} color={T.subText} />
-                            </View>
-                        )}
-                        <View style={styles.garageInfo}>
-                            <Text style={[styles.garageName, { color: T.text }]} numberOfLines={1}>
-                                {garage.firstName} {garage.lastName}
-                            </Text>
-                            <View style={styles.distRow}>
-                                <Ionicons name="navigate-circle" size={12} color="#DF2324" />
-                                <Text style={[styles.distText, { color: T.subText }]}>
-                                     {garage.distance?.toFixed(1) || '0.0'} km away
-                                </Text>
-                            </View>
-                            <View style={styles.tag}>
-                                <Text style={styles.tagText}>EXPERT FITTING</Text>
-                            </View>
-                        </View>
+            {/* Quick Actions Row */}
+            {!isExpanded && (
+                <View style={styles.quickActions}>
+                    <TouchableOpacity onPress={detectLocation} style={styles.actionBtn}>
+                        <Ionicons name="locate" size={12} color="#DF2324" />
+                        <Text style={[styles.actionBtnText, { color: '#DF2324' }]}>Detect</Text>
                     </TouchableOpacity>
-                ))}
-            </ScrollView>
+                    <TouchableOpacity onPress={() => setIsEditingCity(!isEditingCity)} style={styles.actionBtn}>
+                        <Ionicons name="map" size={12} color={T.subText} />
+                        <Text style={[styles.actionBtnText, { color: T.subText }]}>{isEditingCity ? 'Cancel' : 'Change City'}</Text>
+                    </TouchableOpacity>
+                    {token && (
+                        <TouchableOpacity onPress={saveLocationToProfile} style={styles.actionBtn}>
+                            <Ionicons name="save" size={12} color="#00FF00" />
+                            <Text style={[styles.actionBtnText, { color: '#00FF00' }]}>Save Hub</Text>
+                        </TouchableOpacity>
+                    )}
+                </View>
+            )}
+
+            {/* Manual City Input */}
+            {isEditingCity && !isExpanded && (
+                <View style={[styles.inlineInput, { backgroundColor: T.inputBg, borderColor: T.inputBorder }]}>
+                    <Ionicons name="search" size={16} color={T.subText} />
+                    <TextInput
+                        style={[styles.textInput, { color: T.text }]}
+                        placeholder="Enter City Name"
+                        placeholderTextColor={T.placeholder}
+                        value={manualCityText}
+                        onChangeText={setManualCityText}
+                        onSubmitEditing={() => {
+                            if (manualCityText) {
+                                setManualCity(manualCityText);
+                                setIsEditingCity(false);
+                            }
+                        }}
+                    />
+                    <TouchableOpacity 
+                        onPress={() => {
+                            if (manualCityText) {
+                                setManualCity(manualCityText);
+                                setIsEditingCity(false);
+                            }
+                        }}
+                        style={styles.goBtn}
+                    >
+                        <Ionicons name="arrow-forward" size={16} color="#FFF" />
+                    </TouchableOpacity>
+                </View>
+            )}
+
+            {/* Expanded Garage List */}
+            {isExpanded && (
+                <View style={[styles.expandedList, { backgroundColor: T.statBg, borderColor: T.statBorder }]}>
+                    {nearbyGarages.map((garage) => (
+                        <TouchableOpacity 
+                            key={garage.id}
+                            style={[styles.garageRow, { borderBottomColor: T.statBorder }]}
+                        >
+                            <View style={styles.rowLeft}>
+                                {garage.profileImageUrl ? (
+                                    <Image 
+                                        source={{ uri: garage.profileImageUrl.startsWith('http') ? garage.profileImageUrl : `${BASE_SERVER_URL}${garage.profileImageUrl}` }} 
+                                        style={styles.rowImg} 
+                                    />
+                                ) : (
+                                    <View style={[styles.rowFallback, { backgroundColor: isDark ? '#333' : '#EEE' }]}>
+                                        <Text style={{ color: T.subText, fontWeight: '900' }}>{garage.firstName[0]}</Text>
+                                    </View>
+                                )}
+                                <View style={styles.rowInfo}>
+                                    <View style={styles.nameRow}>
+                                        <Text style={[styles.rowName, { color: T.text }]}>{garage.firstName} {garage.lastName}</Text>
+                                        <View style={styles.rowBadge}>
+                                            <Ionicons name="shield-checkmark" size={10} color="#DF2324" />
+                                            <Text style={styles.badgeText}>ELITE</Text>
+                                        </View>
+                                    </View>
+                                    <Text style={[styles.rowDist, { color: T.subText }]}>
+                                        {garage.distance?.toFixed(1) || '0.0'} km • {garage.city}
+                                    </Text>
+                                </View>
+                            </View>
+                            <Ionicons name="chevron-forward" size={18} color={T.statBorder} />
+                        </TouchableOpacity>
+                    ))}
+                    <TouchableOpacity 
+                        onPress={() => setIsExpanded(false)}
+                        style={styles.closeExpanded}
+                    >
+                        <Text style={[styles.closeExpandedText, { color: T.subText }]}>MINIMIZE HUB</Text>
+                    </TouchableOpacity>
+                </View>
+            )}
+
+            {/* Coming Soon fallback if no garages found */}
+            {city && nearbyGarages.length === 0 && (
+                <View style={[styles.comingSoonCard, { backgroundColor: isDark ? '#1A0808' : '#FFF5F5', borderColor: '#DF232433' }]}>
+                    <View style={styles.comingSoonLeft}>
+                        <Text style={[styles.comingSoonTitle, { color: T.text }]}>MAD GARAGE <Text style={{ color: '#DF2324' }}>LIVE</Text></Text>
+                        <Text style={[styles.comingSoonCity, { color: T.subText }]}>Arriving soon in {city}!</Text>
+                    </View>
+                    <Ionicons name="construct" size={48} color="#DF232422" style={styles.bgIcon} />
+                </View>
+            )}
         </View>
     );
 };
 
 const styles = StyleSheet.create({
     container: {
-        marginTop: 8,
-        marginBottom: 16,
+        marginHorizontal: 16,
+        marginVertical: 10,
     },
-    header: {
-        paddingHorizontal: 20,
-        marginBottom: 12,
-    },
-    headerTop: {
+    hubBar: {
         flexDirection: 'row',
-        justifyContent: 'space-between',
         alignItems: 'center',
+        justifyContent: 'space-between',
+        padding: 16,
+        borderRadius: 24,
+        borderWidth: 1,
+        shadowColor: '#000',
+        shadowOffset: { width: 0, height: 4 },
+        shadowOpacity: 0.1,
+        shadowRadius: 10,
+        elevation: 5,
     },
-    title: {
-        fontSize: 16,
-        fontWeight: '900',
-        letterSpacing: -0.5,
-    },
-    headerActions: {
+    hubLeft: {
         flexDirection: 'row',
         alignItems: 'center',
         gap: 12,
     },
-    iconAction: {
-        padding: 4,
-    },
-    changeText: {
-        fontSize: 11,
-        fontWeight: '800',
-        textTransform: 'uppercase',
-    },
-    subtitle: {
-        fontSize: 11,
-        fontWeight: '500',
-        marginTop: 2,
-    },
-    actionRow: {
-        flexDirection: 'row',
-        gap: 10,
-        marginTop: 12,
-    },
-    scrollContent: {
-        paddingLeft: 20,
-        paddingRight: 10,
-    },
-    garageCard: {
-        width: 160,
-        borderRadius: 20,
-        borderWidth: 1,
-        marginRight: 12,
-        overflow: 'hidden',
-    },
-    garageImg: {
-        width: '100%',
-        height: 90,
-    },
-    fallbackImg: {
-        width: '100%',
-        height: 90,
+    hubIcon: {
+        width: 36,
+        height: 36,
+        borderRadius: 12,
         justifyContent: 'center',
         alignItems: 'center',
     },
-    garageInfo: {
-        padding: 12,
+    hubTitle: {
+        fontSize: 12,
+        fontWeight: '900',
+        letterSpacing: -0.5,
     },
-    garageName: {
-        fontSize: 13,
-        fontWeight: '700',
-    },
-    distRow: {
-        flexDirection: 'row',
-        alignItems: 'center',
-        marginTop: 4,
-    },
-    distText: {
+    hubSubtitle: {
         fontSize: 10,
         fontWeight: '600',
-        marginLeft: 4,
+        marginTop: 2,
     },
-    tag: {
-        backgroundColor: '#DF232415',
-        alignSelf: 'flex-start',
-        paddingHorizontal: 6,
-        paddingVertical: 2,
-        borderRadius: 4,
+    hubRight: {
+        padding: 4,
+    },
+    quickActions: {
+        flexDirection: 'row',
+        gap: 12,
         marginTop: 8,
+        paddingHorizontal: 8,
     },
-    tagText: {
-        color: '#DF2324',
+    actionBtn: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        gap: 4,
+        paddingVertical: 4,
+    },
+    actionBtnText: {
+        fontSize: 10,
+        fontWeight: '800',
+        textTransform: 'uppercase',
+    },
+    inlineInput: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        paddingHorizontal: 12,
+        paddingVertical: 6,
+        borderRadius: 16,
+        borderWidth: 1,
+        marginTop: 8,
+        gap: 8,
+    },
+    textInput: {
+        flex: 1,
+        fontSize: 12,
+        fontWeight: '700',
+        paddingVertical: 8,
+    },
+    goBtn: {
+        backgroundColor: '#DF2324',
+        width: 32,
+        height: 32,
+        borderRadius: 10,
+        justifyContent: 'center',
+        alignItems: 'center',
+    },
+    expandedList: {
+        marginTop: 12,
+        borderRadius: 24,
+        borderWidth: 1,
+        padding: 16,
+    },
+    garageRow: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        justifyContent: 'space-between',
+        paddingVertical: 12,
+        borderBottomWidth: 1,
+    },
+    rowLeft: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        gap: 12,
+    },
+    rowImg: {
+        width: 48,
+        height: 48,
+        borderRadius: 12,
+    },
+    rowFallback: {
+        width: 48,
+        height: 48,
+        borderRadius: 12,
+        justifyContent: 'center',
+        alignItems: 'center',
+    },
+    rowInfo: {
+        gap: 2,
+    },
+    nameRow: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        gap: 6,
+    },
+    rowName: {
+        fontSize: 14,
+        fontWeight: '800',
+    },
+    rowBadge: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        gap: 2,
+        backgroundColor: '#DF232415',
+        paddingHorizontal: 4,
+        paddingVertical: 1,
+        borderRadius: 4,
+    },
+    badgeText: {
         fontSize: 8,
         fontWeight: '900',
+        color: '#DF2324',
+    },
+    rowDist: {
+        fontSize: 10,
+        fontWeight: '600',
+    },
+    closeExpanded: {
+        alignItems: 'center',
+        paddingTop: 16,
+    },
+    closeExpandedText: {
+        fontSize: 9,
+        fontWeight: '900',
+        letterSpacing: 2,
     },
     comingSoonCard: {
-        marginHorizontal: 16,
-        marginVertical: 10,
+        marginTop: 12,
         borderRadius: 24,
         padding: 20,
         borderWidth: 1,
@@ -238,19 +339,6 @@ const styles = StyleSheet.create({
         fontWeight: '600',
         marginTop: 4,
         opacity: 0.8,
-    },
-    notifyBtn: {
-        backgroundColor: '#DF2324',
-        paddingHorizontal: 12,
-        paddingVertical: 6,
-        borderRadius: 10,
-        marginTop: 12,
-        alignSelf: 'flex-start',
-    },
-    notifyBtnText: {
-        color: '#FFF',
-        fontSize: 11,
-        fontWeight: '800',
     },
     bgIcon: {
         position: 'absolute',

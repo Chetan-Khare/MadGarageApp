@@ -11,6 +11,7 @@ import AdminUserManagementScreen from '../screens/AdminUserManagementScreen';
 import AdminVehicleManagementScreen from '../screens/AdminVehicleManagementScreen';
 import AdminRequestsView from '../screens/AdminRequestsView';
 import AdminProfileScreen from '../screens/AdminProfileScreen';
+import AdminSettingsScreen from '../screens/AdminSettingsScreen';
 
 // Role-specific dashboards
 import GarageDashboardScreen from '../screens/GarageDashboardScreen';
@@ -75,6 +76,7 @@ const RoleNavigator: React.FC = () => {
           <Stack.Screen name="AdminVehicleManagement" component={AdminVehicleManagementScreen} />
           <Stack.Screen name="AdminRequests" component={AdminRequestsView} />
           <Stack.Screen name="AdminProfile" component={AdminProfileScreen} />
+          <Stack.Screen name="AdminSettings" component={AdminSettingsScreen} />
         </>
       )}
 

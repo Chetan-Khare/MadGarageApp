@@ -11,6 +11,7 @@ import { useAuthStore } from '../store/authStore';
 import { Alert } from 'react-native';
 import apiClient, { BASE_SERVER_URL } from '../services/apiClient';
 import { useWishlistStore } from '../store/wishlistStore';
+import { useConfigStore } from '../store/configStore';
 import { Toast } from '../components/Toast';
 import { ProductImage } from '../components/ProductImage';
 
@@ -27,6 +28,7 @@ export default function ProductDetailsScreen({ route, navigation }: Props) {
     const [activeIndex, setActiveIndex] = useState(0);
     const wishlistItems = useWishlistStore(s => s.items);
     const toggleWishlist = useWishlistStore(s => s.toggleWishlist);
+    const { freeShippingThreshold } = useConfigStore();
     const isInWishlist = wishlistItems.some(w => w.id === product.id);
 
     const isWholesale = !isGuest && !!product.garagePrice;
@@ -166,6 +168,14 @@ export default function ProductDetailsScreen({ route, navigation }: Props) {
                             <Text style={[styles.strikePrice, { color: T.placeholder }]}>MSRP: ₹{product.originalPrice?.toFixed(2)}</Text>
                         )}
                         <Text style={styles.price}>₹{price.toLocaleString()}</Text>
+                        
+                        {(price >= freeShippingThreshold) && (
+                            <View style={styles.shippingBadge}>
+                                <Ionicons name="flash" size={14} color="#00FF00" />
+                                <Text style={styles.shippingText}>FREE EXPEDITED SHIPPING</Text>
+                            </View>
+                        )}
+
                         {hasDiscount && (
                             <View style={styles.savingsBadge}>
                                 <Text style={styles.savingsText}>5% GARAGE DISCOUNT APPLIED</Text>
@@ -346,6 +356,18 @@ const styles = StyleSheet.create({
         paddingVertical: 6,
         marginTop: 12,
     },
+    shippingBadge: {
+        alignSelf: 'flex-start',
+        backgroundColor: '#00FF0015',
+        borderRadius: 6,
+        paddingHorizontal: 12,
+        paddingVertical: 6,
+        marginTop: 12,
+        flexDirection: 'row',
+        alignItems: 'center',
+        gap: 6,
+    },
+    shippingText: { color: '#00FF00', fontSize: 11, fontWeight: '900', letterSpacing: 0.5 },
     savingsText: { color: '#DF2324', fontSize: 11, fontWeight: '800', letterSpacing: 0.5 },
     sectionTitle: { fontSize: 16, fontWeight: '800', marginBottom: 14, textTransform: 'uppercase', letterSpacing: 0.5 },
     specsCard: {

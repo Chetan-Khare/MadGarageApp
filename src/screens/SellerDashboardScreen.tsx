@@ -1,5 +1,5 @@
 import React, { useEffect, useState } from 'react';
-import { View, Text, StyleSheet, TouchableOpacity, ScrollView, StatusBar, ActivityIndicator, Image } from 'react-native';
+import { View, Text, StyleSheet, TouchableOpacity, ScrollView, StatusBar, ActivityIndicator, Image, TextInput } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
 import { LinearGradient } from 'expo-linear-gradient';
@@ -25,16 +25,18 @@ export default function SellerDashboardScreen({ navigation }: Props) {
     const [flaggedCount, setFlaggedCount] = useState(0);
     const [loading, setLoading] = useState(true);
     const [showProfileMenu, setShowProfileMenu] = useState(false);
+    const [searchQuery, setSearchQuery] = useState('');
+    const [statusFilter, setStatusFilter] = useState('ALL');
+    const [showStatusFilter, setShowStatusFilter] = useState(false);
     const { isDark, toggleTheme } = useThemeStore();
     const insets = useSafeAreaInsets();
 
-    // Force premium dark aesthetic for seller hub layout metrics
-    const bgPrimary = isDark ? '#08080C' : '#F4F5F7';
-    const bgSecondary = isDark ? '#121216' : '#FFFFFF';
-    const textPrimary = isDark ? '#FFFFFF' : '#1A1A1A';
-    const textMuted = isDark ? '#7A7A85' : '#8A8A95';
-    const borderSubtle = isDark ? 'rgba(255,255,255,0.05)' : 'rgba(0,0,0,0.05)';
-    const cardGlow = isDark ? 'rgba(223, 35, 36, 0.15)' : 'rgba(223, 35, 36, 0.05)';
+    const bgPrimary = isDark ? '#000000' : '#E0E1E3';
+    const bgSecondary = isDark ? '#0A0A0A' : '#F0F1F3';
+    const textPrimary = isDark ? '#FFFFFF' : '#000000';
+    const textMuted = isDark ? '#B0B0C0' : '#55555C';
+    const borderSubtle = isDark ? 'rgba(255,255,255,0.1)' : 'rgba(0,0,0,0.12)';
+    const cardGlow = isDark ? 'rgba(223, 35, 36, 0.15)' : 'rgba(223, 35, 36, 0.1)';
 
     useEffect(() => {
         fetchAnalytics();
@@ -66,6 +68,18 @@ export default function SellerDashboardScreen({ navigation }: Props) {
         }
     };
 
+    const filteredOrders = orders.filter(o => {
+        const query = searchQuery.toLowerCase();
+        const matchesId = o.id.toString().includes(query);
+        const matchesQueryStatus = o.status.toLowerCase().includes(query);
+        const matchesItems = o.items && o.items.some((item: any) => item.productName.toLowerCase().includes(query));
+        const matchesSearch = matchesId || matchesQueryStatus || matchesItems;
+
+        const matchesDropdown = statusFilter === 'ALL' || (o.status && o.status.toUpperCase() === statusFilter);
+
+        return matchesSearch && matchesDropdown;
+    });
+
     if (loading) {
         return (
             <View style={[styles.centerPanel, { backgroundColor: bgPrimary }]}>
@@ -79,31 +93,42 @@ export default function SellerDashboardScreen({ navigation }: Props) {
         <View style={[styles.root, { backgroundColor: bgPrimary, paddingTop: Math.max(insets.top, 8) }]}>
             <StatusBar barStyle={isDark ? 'light-content' : 'dark-content'} backgroundColor={bgPrimary} />
 
-            {/* ── Custom Centered Header (Mockup matched) ── */}
-            <View style={styles.customHeader}>
-                <TouchableOpacity style={[styles.headerBtn, { backgroundColor: isDark ? '#1C1C22' : '#E5E5E5' }]} onPress={toggleTheme}>
-                    <Ionicons name={isDark ? 'sunny' : 'moon'} size={20} color={isDark ? '#FFD700' : '#5B5BFF'} />
-                </TouchableOpacity>
-
-                <View style={styles.headerCenter}>
-                    <View style={styles.headerLogoWrap}>
-                        <Image 
-                            source={require('../../assets/app_logo.png')} 
-                            style={styles.headerLogo} 
-                            resizeMode="cover"
-                        />
-                    </View>
-                    <Text style={[styles.headerTitle, { color: textPrimary }]}>MAD GARAGE</Text>
-                    <Text style={[styles.headerSubtitle, { color: textMuted }]}>MERCHANT HUB</Text>
+            {/* ── Custom Centered Header ── */}
+            <View style={[styles.customHeader, { paddingTop: 20 }]}>
+                <View style={styles.headerLeft}>
+                    <Text style={[styles.telemetryTag, { color: '#DF2324' }]}>MAD GARAGE</Text>
                 </View>
 
-                <TouchableOpacity style={[styles.headerBtn, { backgroundColor: '#DF2324' }]} onPress={() => setShowProfileMenu(!showProfileMenu)}>
-                    <Ionicons name="person" size={20} color="#FFF" />
-                </TouchableOpacity>
+                <View style={styles.headerRight}>
+                    <TouchableOpacity style={[styles.headerProfileCircle, { borderColor: borderSubtle }]} onPress={() => setShowProfileMenu(!showProfileMenu)}>
+                        <Image source={require('../../assets/app_logo.png')} style={styles.headerProfileImg} />
+                    </TouchableOpacity>
+                </View>
+            </View>
+
+            <View style={styles.mainTitleSection}>
+                <Text style={[styles.mainTitle, { color: textPrimary }]}>MERCHANT{"\n"}OVERRIDE</Text>
+                <View style={styles.statusRow}>
+                    <View style={styles.statusDot} />
+                    <Text style={[styles.statusText, { color: textMuted }]}>SYSTEMS STATUS: SECURE | THE MAD GARAGE HO</Text>
+                </View>
+
+                <View style={[styles.tpsBox, { backgroundColor: bgSecondary, borderColor: borderSubtle }]}>
+                    <Text style={styles.tpsLabel}>LIVE PING</Text>
+                    <Text style={[styles.tpsValue, { color: textPrimary }]}>24.1ms</Text>
+                </View>
             </View>
 
             {showProfileMenu && (
-                <View style={[styles.profileMenu, { backgroundColor: bgSecondary, borderColor: borderSubtle, top: 120, right: 20 }]}>
+                <View style={[styles.profileMenu, { backgroundColor: bgSecondary, borderColor: borderSubtle, top: 110, right: 20 }]}>
+                    <TouchableOpacity 
+                        style={styles.profileMenuItem} 
+                        onPress={() => { setShowProfileMenu(false); toggleTheme(); }}
+                    >
+                        <Ionicons name={isDark ? 'sunny-outline' : 'moon-outline'} size={18} color={textPrimary} />
+                        <Text style={[styles.profileMenuText, { color: textPrimary }]}>Switch Theme</Text>
+                    </TouchableOpacity>
+                    <View style={[styles.profileMenuDivider, { backgroundColor: borderSubtle }]} />
                     <TouchableOpacity 
                         style={styles.profileMenuItem} 
                         onPress={() => { setShowProfileMenu(false); navigation.navigate('SellerProfile'); }}
@@ -223,15 +248,59 @@ export default function SellerDashboardScreen({ navigation }: Props) {
                 </TouchableOpacity>
 
                 {/* ── Orders Board ── */}
-                <View style={styles.boardHeader}>
+                <View style={[styles.boardHeader, { zIndex: 50 }]}>
                     <Text style={[styles.boardTitle, { color: textPrimary }]}>RECENT ORDERS</Text>
-                    <Text style={[styles.boardBadge, { color: '#DF2324', backgroundColor: 'rgba(223,35,36,0.1)' }]}>
-                        REQUIRES SHIPMENT
-                    </Text>
+                    
+                    <View style={{ zIndex: 100 }}>
+                        <TouchableOpacity 
+                            style={[styles.filterBtn, { backgroundColor: bgSecondary, borderColor: borderSubtle }]}
+                            onPress={() => setShowStatusFilter(!showStatusFilter)}
+                        >
+                            <Text style={[styles.filterBtnText, { color: textPrimary }]}>{statusFilter}</Text>
+                            <Ionicons name="funnel" size={12} color={textMuted} />
+                        </TouchableOpacity>
+
+                        {showStatusFilter && (
+                            <View style={[styles.filterMenu, { backgroundColor: bgSecondary, borderColor: borderSubtle }]}>
+                                {['ALL', 'PENDING', 'SHIPPED', 'DELIVERED', 'CANCELLED'].map((status) => (
+                                    <TouchableOpacity 
+                                        key={status}
+                                        style={styles.filterMenuItem}
+                                        onPress={() => {
+                                            setStatusFilter(status);
+                                            setShowStatusFilter(false);
+                                        }}
+                                    >
+                                        <Text style={[
+                                            styles.filterMenuText, 
+                                            statusFilter === status ? { color: '#DF2324', fontWeight: '900' } : { color: textPrimary }
+                                        ]}>
+                                            {status}
+                                        </Text>
+                                        {statusFilter === status && <Ionicons name="checkmark" size={14} color="#DF2324" />}
+                                    </TouchableOpacity>
+                                ))}
+                            </View>
+                        )}
+                    </View>
                 </View>
 
-                {orders.length > 0 ? (
-                    orders.map((order) => (
+                {/* Search Bar */}
+                <View style={[styles.searchContainer, { backgroundColor: isDark ? '#14141A' : '#FFFFFF', borderColor: borderSubtle }]}>
+                    <Ionicons name="search" size={18} color={textMuted} style={styles.searchIcon} />
+                    <TextInput
+                        style={[styles.searchInput, { color: textPrimary }]}
+                        placeholder="SEARCH ORDERS OR PARTS..."
+                        placeholderTextColor={textMuted}
+                        value={searchQuery}
+                        onChangeText={setSearchQuery}
+                        autoCapitalize="none"
+                        autoCorrect={false}
+                    />
+                </View>
+
+                {filteredOrders.length > 0 ? (
+                    filteredOrders.map((order) => (
                         <TouchableOpacity 
                             key={order.id}
                             activeOpacity={0.7}
@@ -281,53 +350,27 @@ const styles = StyleSheet.create({
     // Custom Header
     customHeader: {
         flexDirection: 'row',
-        alignItems: 'flex-start',
+        alignItems: 'center',
         justifyContent: 'space-between',
         paddingHorizontal: 20,
-        paddingTop: 10,
-        marginBottom: 20,
+        marginBottom: 10,
     },
-    headerCenter: {
-        alignItems: 'center',
-        flex: 1,
-    },
-    headerLogoWrap: {
-        width: 60,
-        height: 60,
-        borderRadius: 30,
-        overflow: 'hidden',
-        borderWidth: 1,
-        borderColor: 'rgba(223, 35, 36, 0.3)',
-        marginBottom: 6,
-        shadowColor: '#DF2324',
-        shadowOffset: { width: 0, height: 4 },
-        shadowOpacity: 0.2,
-        shadowRadius: 8,
-        elevation: 5,
-        backgroundColor: 'transparent',
-    },
-    headerLogo: {
-        width: '100%',
-        height: '100%',
-    },
-    headerTitle: {
-        fontSize: 16,
-        fontWeight: '900',
-        letterSpacing: 2,
-    },
-    headerSubtitle: {
-        fontSize: 10,
-        fontWeight: '700',
-        letterSpacing: 2,
-        marginTop: 2,
-    },
-    headerBtn: {
-        width: 40,
-        height: 40,
-        borderRadius: 20,
-        justifyContent: 'center',
-        alignItems: 'center',
-    },
+    headerLeft: { flex: 1 },
+    telemetryTag: { fontSize: 14, fontWeight: '900', fontStyle: 'italic', letterSpacing: 1 },
+    headerRight: { flexDirection: 'row', alignItems: 'center', gap: 15 },
+    headerIconBtn: { padding: 4 },
+    headerProfileCircle: { width: 32, height: 32, borderRadius: 16, overflow: 'hidden', borderWidth: 1 },
+    headerProfileImg: { width: '100%', height: '100%' },
+
+    // Main Title Section
+    mainTitleSection: { paddingHorizontal: 20, marginBottom: 25 },
+    mainTitle: { fontSize: 34, fontWeight: '900', fontStyle: 'italic', lineHeight: 34, textTransform: 'uppercase', letterSpacing: -1 },
+    statusRow: { flexDirection: 'row', alignItems: 'center', marginTop: 12, gap: 8 },
+    statusDot: { width: 4, height: 4, borderRadius: 2, backgroundColor: '#DF2324' },
+    statusText: { fontSize: 10, fontWeight: '800', textTransform: 'uppercase', letterSpacing: 0.5 },
+    tpsBox: { flexDirection: 'row', alignItems: 'baseline', marginTop: 20, alignSelf: 'flex-start', paddingHorizontal: 12, paddingVertical: 8, borderRadius: 4, borderWidth: 1 },
+    tpsLabel: { color: '#DF2324', fontSize: 10, fontWeight: '900', marginRight: 10 },
+    tpsValue: { fontSize: 16, fontWeight: '900' },
 
     profileMenu: {
         position: 'absolute',
@@ -438,6 +481,47 @@ const styles = StyleSheet.create({
         borderRadius: 6,
         overflow: 'hidden',
     },
+    filterBtn: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        paddingHorizontal: 12,
+        paddingVertical: 8,
+        borderRadius: 6,
+        borderWidth: 1,
+        gap: 6,
+    },
+    filterBtnText: {
+        fontSize: 10,
+        fontWeight: '900',
+        letterSpacing: 1,
+    },
+    filterMenu: {
+        position: 'absolute',
+        top: 36,
+        right: 0,
+        width: 140,
+        borderRadius: 8,
+        borderWidth: 1,
+        paddingVertical: 6,
+        zIndex: 1000,
+        shadowColor: '#000',
+        shadowOffset: { width: 0, height: 5 },
+        shadowOpacity: 0.3,
+        shadowRadius: 10,
+        elevation: 8,
+    },
+    filterMenuItem: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        justifyContent: 'space-between',
+        paddingHorizontal: 16,
+        paddingVertical: 12,
+    },
+    filterMenuText: {
+        fontSize: 11,
+        fontWeight: '800',
+        letterSpacing: 1,
+    },
     orderCard: {
         padding: 18,
         borderRadius: 16,
@@ -489,6 +573,24 @@ const styles = StyleSheet.create({
         fontSize: 12,
         fontWeight: '800',
         letterSpacing: 2,
+    },
+    searchContainer: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        paddingHorizontal: 16,
+        borderWidth: 1,
+        borderRadius: 12,
+        marginBottom: 16,
+        height: 50,
+    },
+    searchIcon: {
+        marginRight: 12,
+    },
+    searchInput: {
+        flex: 1,
+        fontSize: 12,
+        fontWeight: '700',
+        letterSpacing: 1,
     },
 
     // Compliance Styles

@@ -51,6 +51,7 @@ export type RootStackParamList = {
   AdminVehicleManagement: undefined;
   AdminUserManagement: { roleFilter?: string };
   AdminRequests: undefined;
+  AdminSettings: undefined;
   AdminProfile: undefined;
   SellerProfile: undefined;
   SellerInventory: undefined;

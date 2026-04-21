@@ -12,13 +12,13 @@ import apiClient, { BASE_SERVER_URL } from '../services/apiClient';
 import { useCartStore } from '../store/cartStore';
 import { useAuthStore } from '../store/authStore';
 import { useThemeStore, DARK_THEME, LIGHT_THEME } from '../store/themeStore';
-import ModernDashboardHeader from '../components/ModernDashboardHeader';
 import ModernDropdown from '../components/ModernDropdown';
 import { GarageSection } from '../components/GarageSection';
 import { useWishlistStore } from '../store/wishlistStore';
 import { ProductCardSkeleton } from '../components/SkeletonLoader';
 import { Toast } from '../components/Toast';
 import { ProductImage } from '../components/ProductImage';
+import { useLocationStore } from '../store/locationStore';
 
 type HomeScreenNavigationProp = NativeStackNavigationProp<RootStackParamList, 'Home'>;
 interface Props { navigation: HomeScreenNavigationProp; }
@@ -85,11 +85,15 @@ export default function HomeScreen({ navigation }: Props) {
         const controller = new AbortController();
         fetchDevices(selectedEngine ? undefined : controller.signal);
         fetchMakes();
-        if (!isGuest && token) {
+        
+        // SYNC-PROTOCOL: Prioritize saved address over browser detection
+        if (token && !isGuest) {
+            useLocationStore.getState().syncWithSavedAddress();
             useWishlistStore.getState().loadWishlist();
         }
+        
         return () => controller.abort();
-    }, [selectedEngine, activeCategory, activeCondition]);
+    }, [selectedEngine, activeCategory, activeCondition, token]);
 
     const fetchMakes = async () => {
         try {
@@ -389,11 +393,11 @@ export default function HomeScreen({ navigation }: Props) {
     const renderHeader = () => (
         <View>
             <View style={styles.searchRow}>
-                <View style={[styles.searchBar, { backgroundColor: T.inputBg, borderColor: T.inputBorder }]}>
-                    <Ionicons name="search-outline" size={18} color={T.placeholder} />
+                <View style={[styles.searchBar, { backgroundColor: isDark ? '#1F1F1F' : '#F5EFEB', borderColor: 'transparent' }]}>
+                    <Ionicons name="search-outline" size={18} color={T.subText} />
                     <TextInput
                         style={[styles.searchInput, { color: T.text }]}
-                        placeholder="Search parts, brands..."
+                        placeholder="Search for parts..."
                         placeholderTextColor={T.placeholder}
                         value={searchQuery}
                         onChangeText={setSearchQuery}
@@ -664,7 +668,7 @@ export default function HomeScreen({ navigation }: Props) {
     );
 
     return (
-        <View style={[styles.root, { backgroundColor: T.bg }]}>
+        <SafeAreaView edges={['top', 'left', 'right']} style={[styles.root, { backgroundColor: T.bg }]}>
             {(showProfileMenu || showSortMenu) && (
                 <Pressable
                     style={[StyleSheet.absoluteFill, { zIndex: 999 }]}
@@ -675,26 +679,57 @@ export default function HomeScreen({ navigation }: Props) {
                 />
             )}
             <StatusBar barStyle={T.statusBar} backgroundColor={T.bg} translucent />
-                <ModernDashboardHeader
-                    title="MAD GARAGE"
-                    subtitle="Performance Parts"
-                    showCart={Boolean(token && !isGuest)}
-                    cartItemCount={cartItemCount}
-                    onProfilePress={handleProfilePress}
-                    onCartPress={() => navigation.navigate('Cart')}
-                    onAddressPress={() => navigation.navigate('Address')}
-                    onThemeToggle={toggleTheme}
-                    logo={require('../../assets/app_logo.png')}
-                    profileIcon={token ? 'person' : 'person-outline'}
-                />
+                {/* Minimalist Clayful-Inspired Header */}
+                <View style={[styles.clayfulHeaderTop, { backgroundColor: T.bg }]}>
+                    <TouchableOpacity onPress={handleProfilePress} style={styles.clayfulHeaderBtn}>
+                        <Image 
+                            source={require('../../assets/app_logo.png')} 
+                            style={{ width: 28, height: 28, borderRadius: 14, overflow: 'hidden' }} 
+                            resizeMode="cover" 
+                        />
+                    </TouchableOpacity>
+                    
+                    <View style={{ flex: 1, alignItems: 'center' }}>
+                        <Text style={styles.clayfulHeaderTitle}>MAD GARAGE</Text>
+                        <Text style={[styles.clayfulHeaderSubtitle, { color: T.subText }]}>PERFORMANCE & HI-END PARTS</Text>
+                    </View>
+                    <TouchableOpacity onPress={() => navigation.navigate('Cart')} style={styles.clayfulHeaderBtn}>
+                        <Ionicons name="bag-outline" size={22} color={T.text} />
+                        {(cartItemCount ?? 0) > 0 && (
+                            <View style={styles.clayfulBadge}>
+                                <Text style={styles.clayfulBadgeText}>{cartItemCount}</Text>
+                            </View>
+                        )}
+                    </TouchableOpacity>
+                </View>
 
                 {showProfileMenu && (
-                    <View style={[styles.profileMenu, { backgroundColor: T.statBg, borderColor: T.statBorder, top: 75, right: 16 }]}>
+                    <View style={[styles.profileMenu, { backgroundColor: T.statBg, borderColor: T.statBorder, top: 50, left: 16 }]}>
                         <TouchableOpacity style={styles.menuItem} onPress={() => { setShowProfileMenu(false); navigation.navigate('CustomerProfile' as any); }}>
                             <Ionicons name="person-circle-outline" size={18} color={T.text} />
                             <Text style={[styles.menuText, { color: T.text }]}>My Profile</Text>
                         </TouchableOpacity>
                         <View style={styles.menuDivider} />
+                        
+                        <TouchableOpacity style={styles.menuItem} onPress={() => { setShowProfileMenu(false); navigation.navigate('Address' as any); }}>
+                            <Ionicons name="map-outline" size={18} color={T.text} />
+                            <Text style={[styles.menuText, { color: T.text }]}>Manage Addresses</Text>
+                        </TouchableOpacity>
+                        <View style={styles.menuDivider} />
+                        
+                        <TouchableOpacity 
+                            style={styles.menuItem} 
+                            onPress={() => { 
+                                toggleTheme();
+                            }}
+                        >
+                            <Ionicons name={isDark ? "sunny-outline" : "moon-outline"} size={18} color={T.text} />
+                            <Text style={[styles.menuText, { color: T.text }]}>{isDark ? 'Light' : 'Dark'} Mode</Text>
+                        </TouchableOpacity>
+                        <View style={styles.menuDivider} />
+
+
+
                         <TouchableOpacity style={styles.menuItem} onPress={() => { setShowProfileMenu(false); navigation.navigate('OrderHistory'); }}>
                             <Ionicons name="receipt-outline" size={18} color={T.text} />
                             <Text style={[styles.menuText, { color: T.text }]}>Order History</Text>
@@ -751,7 +786,7 @@ export default function HomeScreen({ navigation }: Props) {
                         <Ionicons name="chatbubble-ellipses" size={24} color="#FFF" />
                     </LinearGradient>
                 </TouchableOpacity>
-            </View>
+        </SafeAreaView>
     );
 }
 
@@ -1131,5 +1166,56 @@ const styles = StyleSheet.create({
     },
     pageTextActive: {
         color: '#FFF',
+    },
+    clayfulHeaderTop: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        paddingVertical: 10,
+        justifyContent: 'space-between',
+        paddingHorizontal: 20,
+    },
+    clayfulHeaderBtn: {
+        width: 40,
+        height: 40,
+        justifyContent: 'center',
+        alignItems: 'center',
+        position: 'relative',
+    },
+    clayfulHeaderTitle: {
+        fontSize: 22,
+        fontWeight: '900',
+        fontStyle: 'italic',
+        textTransform: 'uppercase',
+        letterSpacing: -1,
+        color: '#DF2324',
+        textAlign: 'center',
+    },
+    clayfulHeaderSubtitle: {
+        fontSize: 10,
+        fontWeight: '900',
+        fontStyle: 'italic',
+        textTransform: 'uppercase',
+        letterSpacing: 1.2,
+        opacity: 0.8,
+        textAlign: 'center',
+        marginTop: -2,
+    },
+    clayfulBadge: {
+        position: 'absolute',
+        top: 4,
+        right: 4,
+        backgroundColor: '#DF2324',
+        borderRadius: 8,
+        width: 14,
+        height: 14,
+        justifyContent: 'center',
+        alignItems: 'center',
+        borderWidth: 1,
+        borderColor: '#FFF',
+    },
+    clayfulBadgeText: {
+        color: '#FFF',
+        fontSize: 8,
+        fontWeight: 'bold',
     },
 });

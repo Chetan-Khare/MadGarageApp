@@ -11,6 +11,7 @@ import { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import { RootStackParamList } from '../types';
 import { useCartStore } from '../store/cartStore';
 import { useThemeStore, DARK_THEME, LIGHT_THEME } from '../store/themeStore';
+import { useConfigStore } from '../store/configStore';
 import apiClient from '../services/apiClient';
 import { PRICING } from '../constants/pricing';
 
@@ -19,7 +20,8 @@ import { useLocationStore } from '../store/locationStore';
 type Props = { navigation: NativeStackNavigationProp<RootStackParamList, 'Checkout'>; };
 
 export default function CheckoutScreen({ navigation }: Props) {
-    const { items, clearCart, getTotalPrice } = useCartStore();
+    const { items, getTotalPrice, clearCart } = useCartStore();
+    const { shippingFee, platformFee, freeShippingThreshold } = useConfigStore();
     const { isDark } = useThemeStore();
     const { city: detectedCity, address: detectedAddr, nearbyGarages, detectLocation, isLoading: detectionLoading } = useLocationStore();
     const T = isDark ? DARK_THEME : LIGHT_THEME;
@@ -33,7 +35,7 @@ export default function CheckoutScreen({ navigation }: Props) {
 
     const fetchSavedAddresses = async () => {
         try {
-            const response = await apiClient.get('/api/addresses');
+            const response = await apiClient.get('/addresses');
             setSavedAddresses(response.data);
         } catch (error) {
             console.error('Failed to fetch addresses for checkout:', error);
@@ -41,7 +43,11 @@ export default function CheckoutScreen({ navigation }: Props) {
     };
     
     // Form State
-    const [address, setAddress] = useState(detectedAddr || '');
+    const [flatNo, setFlatNo] = useState('');
+    const [floorNo, setFloorNo] = useState('');
+    const [buildingName, setBuildingName] = useState('');
+    const [streetAddress, setStreetAddress] = useState(detectedAddr || '');
+    const [landmark, setLandmark] = useState('');
     const [city, setCity] = useState(detectedCity || '');
     const [state, setState] = useState('');
     const [pincode, setPincode] = useState('');
@@ -50,13 +56,11 @@ export default function CheckoutScreen({ navigation }: Props) {
 
     const subtotal = getTotalPrice();
     const taxAmount = 0;
-    // If fitting at garage, we might waive shipping or keep it. Plan says "Part price online". 
-    // I'll keep regular shipping for now.
-    const delivery = subtotal > 0 ? PRICING.SHIPPING_FEE : 0;
-    const total = subtotal + delivery;
+    const delivery = (subtotal > 0 && subtotal < freeShippingThreshold) ? shippingFee : 0;
+    const total = subtotal + delivery + (subtotal > 0 ? platformFee : 0);
 
     const handlePayment = async () => {
-        if (!address.trim() || !city.trim() || !state.trim() || !pincode.trim()) {
+        if (!streetAddress.trim() || !city.trim() || !state.trim() || !pincode.trim()) {
             Alert.alert('Missing Details', 'Please fill in your complete shipping address.');
             return;
         }
@@ -73,10 +77,19 @@ export default function CheckoutScreen({ navigation }: Props) {
 
         setLoading(true);
 
+        // CONCATENATION PROTOCOL: Combine detailed fields into a single address string for order placement
+        const fullAddress = [
+            flatNo && `Flat ${flatNo}`,
+            floorNo && `Floor ${floorNo}`,
+            buildingName && `Bldg ${buildingName}`,
+            streetAddress,
+            landmark && `Near ${landmark}`
+        ].filter(Boolean).join(', ');
+
         try {
             await apiClient.post('/orders/checkout', {
                 items: items.map(i => ({ productId: parseInt(i.id, 10), quantity: i.quantity })),
-                shippingAddress: address,
+                shippingAddress: fullAddress,
                 city: city,
                 state: state,
                 pincode: pincode,
@@ -151,9 +164,18 @@ export default function CheckoutScreen({ navigation }: Props) {
                             <Text style={[styles.summaryValue, { color: T.text }]}>₹{subtotal.toLocaleString()}</Text>
                         </View>
                         <View style={styles.summaryRow}>
-                            <Text style={[styles.summaryLabel, { color: T.subText }]}>Delivery</Text>
-                            <Text style={[styles.summaryValue, { color: T.text }]}>₹{delivery}</Text>
+                            <Text style={[styles.summaryLabel, { color: T.subText }]}>Delivery Fee</Text>
+                            <Text style={[styles.summaryValue, { color: delivery === 0 && subtotal > 0 ? '#00FF00' : T.text }]}>
+                                {delivery === 0 && subtotal > 0 ? 'FREE' : `₹${delivery.toLocaleString()}`}
+                            </Text>
                         </View>
+                        
+                        {subtotal > 0 && (
+                            <View style={styles.summaryRow}>
+                                <Text style={[styles.summaryLabel, { color: T.subText }]}>Platform Fee</Text>
+                                <Text style={[styles.summaryValue, { color: T.text }]}>₹{platformFee.toLocaleString()}</Text>
+                            </View>
+                        )}
                         
                         {deliveryType === 'GARAGE_FITTING' && (
                             <View style={[styles.infoBox, { backgroundColor: isDark ? '#1A0808' : '#FFF0F0' }]}>
@@ -213,7 +235,7 @@ export default function CheckoutScreen({ navigation }: Props) {
                                     key={addr.id}
                                     style={[styles.chip, { backgroundColor: T.inputBg, borderColor: T.inputBorder }]}
                                     onPress={() => {
-                                        setAddress(addr.address || '');
+                                        setStreetAddress(addr.address || '');
                                         setCity(addr.city || '');
                                         setState(addr.state || '');
                                         setPincode(addr.pincode || '');
@@ -240,7 +262,10 @@ export default function CheckoutScreen({ navigation }: Props) {
                             <TouchableOpacity 
                                 style={[styles.chip, { backgroundColor: T.inputBg, borderColor: T.inputBorder }]}
                                 onPress={() => {
-                                    setAddress('');
+                                    setFlatNo('');
+                                    setFloorNo('');
+                                    setBuildingName('');
+                                    setStreetAddress('');
                                     setCity('');
                                     setState('');
                                     setPincode('');
@@ -251,15 +276,51 @@ export default function CheckoutScreen({ navigation }: Props) {
                             </TouchableOpacity>
                         </View>
 
+                        <View style={styles.row}>
+                            <View style={[styles.inputGroup, { flex: 1, marginRight: 10 }]}>
+                                <Text style={[styles.label, { color: T.subText }]}>Flat/Unit</Text>
+                                <TextInput
+                                    style={[styles.input, { backgroundColor: T.inputBg, color: T.text, borderColor: T.inputBorder }]}
+                                    placeholder="402"
+                                    placeholderTextColor={T.subText}
+                                    value={flatNo}
+                                    onChangeText={setFlatNo}
+                                />
+                            </View>
+                            <View style={[styles.inputGroup, { flex: 1 }]}>
+                                <Text style={[styles.label, { color: T.subText }]}>Floor</Text>
+                                <TextInput
+                                    style={[styles.input, { backgroundColor: T.inputBg, color: T.text, borderColor: T.inputBorder }]}
+                                    placeholder="4th"
+                                    placeholderTextColor={T.subText}
+                                    value={floorNo}
+                                    onChangeText={setFloorNo}
+                                />
+                            </View>
+                        </View>
+
+
+
                         <View style={styles.inputGroup}>
-                            <Text style={[styles.label, { color: T.subText }]}>Full Address</Text>
+                            <Text style={[styles.label, { color: T.subText }]}>Landmark</Text>
+                            <TextInput
+                                style={[styles.input, { backgroundColor: T.inputBg, color: T.text, borderColor: T.inputBorder }]}
+                                placeholder="Near Phoenix Mall"
+                                placeholderTextColor={T.subText}
+                                value={landmark}
+                                onChangeText={setLandmark}
+                            />
+                        </View>
+
+                        <View style={styles.inputGroup}>
+                            <Text style={[styles.label, { color: T.subText }]}>Street / Area</Text>
                             <View style={[styles.inputWrapper, { backgroundColor: T.inputBg, borderColor: T.inputBorder }]}>
                                 <TextInput
                                     style={[styles.wrappedInput, { color: T.text }]}
-                                    placeholder="123 Performance Street, Apt #4"
+                                    placeholder="123 Performance Street"
                                     placeholderTextColor={T.subText}
-                                    value={address}
-                                    onChangeText={setAddress}
+                                    value={streetAddress}
+                                    onChangeText={setStreetAddress}
                                 />
                                 <TouchableOpacity onPress={detectLocation} disabled={detectionLoading} style={styles.inlineAction}>
                                     {detectionLoading ? (
@@ -395,7 +456,6 @@ const styles = StyleSheet.create({
     // Footer
     footer: {
         padding: 16,
-        paddingBottom: Platform.OS === 'ios' ? 30 : 20,
     },
     payBtn: {
         height: 56,

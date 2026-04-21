@@ -35,7 +35,11 @@ export default function AddressScreen({ navigation }: Props) {
     
     // Form State
     const [tag, setTag] = useState<'HOME' | 'OFFICE' | 'OTHER'>('HOME');
-    const [address, setAddress] = useState('');
+    const [flatNo, setFlatNo] = useState('');
+    const [floorNo, setFloorNo] = useState('');
+    const [buildingName, setBuildingName] = useState('');
+    const [streetAddress, setStreetAddress] = useState('');
+    const [landMark, setLandMark] = useState('');
     const [city, setCity] = useState('');
     const [pincode, setPincode] = useState('');
     const [isDefault, setIsDefault] = useState(false);
@@ -47,7 +51,7 @@ export default function AddressScreen({ navigation }: Props) {
     const fetchAddresses = async () => {
         try {
             setLoading(true);
-            const response = await apiClient.get('/api/addresses');
+            const response = await apiClient.get('/addresses');
             setAddresses(response.data);
         } catch (error) {
             console.error('Fetch addresses failed:', error);
@@ -74,7 +78,7 @@ export default function AddressScreen({ navigation }: Props) {
 
             if (geo) {
                 setCity(geo.city || '');
-                setAddress(`${geo.name || ''} ${geo.street || ''} ${geo.district || ''}`.trim());
+                setStreetAddress(`${geo.name || ''} ${geo.street || ''} ${geo.district || ''}`.trim());
                 setPincode(geo.postalCode || '');
             }
         } catch (e) {
@@ -85,15 +89,24 @@ export default function AddressScreen({ navigation }: Props) {
     };
 
     const handleSave = async () => {
-        if (!address.trim() || !city.trim() || !pincode.trim()) {
-            Alert.alert('Missing Details', 'Please fill in all required fields.');
+        if (!streetAddress.trim() || !city.trim() || !pincode.trim()) {
+            Alert.alert('Missing Details', 'Please fill in required fields (Street, City, Pincode).');
             return;
         }
 
+        // CONCATENATION PROTOCOL: Combine detailed fields into a single address string
+        const fullAddress = [
+            flatNo && `Flat ${flatNo}`,
+            floorNo && `Floor ${floorNo}`,
+            buildingName && `Bldg ${buildingName}`,
+            landMark && `Lnd: ${landMark}`,
+            streetAddress
+        ].filter(Boolean).join(', ');
+
         setSaving(true);
         try {
-            const response = await apiClient.post('/api/addresses', {
-                address, city, pincode, tag, isDefault
+            const response = await apiClient.post('/addresses', {
+                address: fullAddress, city, pincode, tag, isDefault
             });
             setAddresses([...addresses, response.data]);
             setShowForm(false);
@@ -107,7 +120,11 @@ export default function AddressScreen({ navigation }: Props) {
     };
 
     const resetForm = () => {
-        setAddress('');
+        setFlatNo('');
+        setFloorNo('');
+        setBuildingName('');
+        setStreetAddress('');
+        setLandMark('');
         setCity('');
         setPincode('');
         setTag('HOME');
@@ -125,7 +142,7 @@ export default function AddressScreen({ navigation }: Props) {
                     style: 'destructive',
                     onPress: async () => {
                         try {
-                            await apiClient.delete(`/api/addresses/${id}`);
+                            await apiClient.delete(`/addresses/${id}`);
                             setAddresses(addresses.filter(a => a.id !== id));
                         } catch (e) { Alert.alert('Error', 'Deletion failed.'); }
                     }
@@ -136,7 +153,7 @@ export default function AddressScreen({ navigation }: Props) {
 
     const setAsPrimary = async (addr: UserAddress) => {
         try {
-            await apiClient.put(`/api/addresses/${addr.id}`, { ...addr, isDefault: true });
+            await apiClient.put(`/addresses/${addr.id}`, { ...addr, isDefault: true });
             fetchAddresses();
         } catch (e) { Alert.alert('Error', 'Could not update primary status.'); }
     };
@@ -198,15 +215,60 @@ export default function AddressScreen({ navigation }: Props) {
                             ))}
                         </View>
 
+                        <View style={styles.row}>
+                            <View style={[styles.inputGroup, { flex: 1, marginRight: 10 }]}>
+                                <Text style={[styles.label, { color: T.subText }]}>Flat / Unit No</Text>
+                                <TextInput
+                                    style={[styles.input, { backgroundColor: T.inputBg, color: T.text, borderColor: T.inputBorder }]}
+                                    placeholder="402"
+                                    placeholderTextColor={T.subText}
+                                    value={flatNo}
+                                    onChangeText={setFlatNo}
+                                />
+                            </View>
+                            <View style={[styles.inputGroup, { flex: 1 }]}>
+                                <Text style={[styles.label, { color: T.subText }]}>Floor No</Text>
+                                <TextInput
+                                    style={[styles.input, { backgroundColor: T.inputBg, color: T.text, borderColor: T.inputBorder }]}
+                                    placeholder="4th Floor"
+                                    placeholderTextColor={T.subText}
+                                    value={floorNo}
+                                    onChangeText={setFloorNo}
+                                />
+                            </View>
+                        </View>
+
                         <View style={styles.inputGroup}>
-                            <Text style={[styles.label, { color: T.subText }]}>Street Address</Text>
+                            <Text style={[styles.label, { color: T.subText }]}>Building Name</Text>
                             <TextInput
                                 style={[styles.input, { backgroundColor: T.inputBg, color: T.text, borderColor: T.inputBorder }]}
-                                placeholder="House No, Street, Area"
+                                placeholder="Speedway Apartments"
                                 placeholderTextColor={T.subText}
-                                value={address}
-                                onChangeText={setAddress}
+                                value={buildingName}
+                                onChangeText={setBuildingName}
+                            />
+                        </View>
+
+                        <View style={styles.inputGroup}>
+                            <Text style={[styles.label, { color: T.subText }]}>Street / Detailed Area</Text>
+                            <TextInput
+                                style={[styles.input, { backgroundColor: T.inputBg, color: T.text, borderColor: T.inputBorder }]}
+                                placeholder="Lower Parel, Phoenix Mall Road"
+                                placeholderTextColor={T.subText}
+                                value={streetAddress}
+                                onChangeText={setStreetAddress}
                                 multiline
+                            />
+                        </View>
+
+                        <View style={styles.inputGroup}>
+                            <Text style={[styles.label, { color: T.subText }]}>Landmark (Optional)</Text>
+                            <TextInput
+                                style={[styles.input, { backgroundColor: T.inputBg, color: T.text, borderColor: T.inputBorder }]}
+                                placeholder="Behind HP Petrol Pump"
+                                placeholderTextColor={T.subText}
+                                value={landMark}
+                                onChangeText={setLandMark}
                             />
                         </View>
 
@@ -341,11 +403,11 @@ const styles = StyleSheet.create({
     primaryText: { fontSize: 9, fontWeight: '900', color: '#FFF', textTransform: 'uppercase' },
     cardAddress: { fontSize: 15, fontWeight: '800', marginBottom: 5 },
     cardSub: { fontSize: 12, fontWeight: '600' },
-    cardActions: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', pt: 15, mt: 15, borderTopWidth: 0.5, borderTopColor: 'rgba(0,0,0,0.05)' },
+    cardActions: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', paddingTop: 15, marginTop: 15, borderTopWidth: 0.5, borderTopColor: 'rgba(0,0,0,0.05)' },
     actionLink: { fontSize: 11, fontWeight: '900', color: '#DF2324', textTransform: 'uppercase' },
     deleteBtn: { width: 36, height: 36, borderRadius: 10, backgroundColor: 'rgba(255,77,77,0.1)', justifyContent: 'center', alignItems: 'center' },
 
-    emptyState: { alignItems: 'center', py: 60, opacity: 0.6 },
-    emptyTitle: { fontSize: 20, fontWeight: '900', fontStyle: 'italic', uppercase: true, mt: 15 },
-    emptySub: { fontSize: 12, textAlign: 'center', fontWeight: '600', mt: 10, px: 40 }
+    emptyState: { alignItems: 'center', paddingVertical: 60, opacity: 0.6 },
+    emptyTitle: { fontSize: 20, fontWeight: '900', fontStyle: 'italic', textTransform: 'uppercase', marginTop: 15 },
+    emptySub: { fontSize: 12, textAlign: 'center', fontWeight: '600', marginTop: 10, paddingHorizontal: 40 }
 });
