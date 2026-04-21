@@ -50,6 +50,7 @@ interface Order {
     // Rating fields
     partRating?: number;
     deliveryRating?: number;
+    platformFee?: number;
     ratingComment?: string;
     // Garage details (included in DTO if fitting)
     fittingGarageName?: string;
@@ -169,7 +170,7 @@ export default function OrderDetailsScreen({ route, navigation }: Props) {
 
     if (!order) return null;
 
-    const { subtotal, taxAmount, shippingFee, grandTotal } = order;
+    const { subtotal, taxAmount, shippingFee, platformFee, grandTotal } = order;
 
     return (
         <View style={[styles.container, { backgroundColor: T.bg, paddingTop: Math.max(insets.top, 10) }]}>
@@ -282,6 +283,10 @@ export default function OrderDetailsScreen({ route, navigation }: Props) {
                     <View style={styles.summaryRow}>
                         <Text style={[styles.summaryLabel, { color: T.subText }]}>Shipping Fee</Text>
                         <Text style={[styles.summaryValue, { color: T.text }]}>₹{(shippingFee ?? 0).toLocaleString()}</Text>
+                    </View>
+                    <View style={styles.summaryRow}>
+                        <Text style={[styles.summaryLabel, { color: T.subText }]}>Platform Fee</Text>
+                        <Text style={[styles.summaryValue, { color: T.text }]}>₹{(platformFee ?? 0).toLocaleString()}</Text>
                     </View>
                     <View style={[styles.summaryRow, styles.totalRow]}>
                         <Text style={[styles.totalLabel, { color: T.text }]}>Grand Total</Text>

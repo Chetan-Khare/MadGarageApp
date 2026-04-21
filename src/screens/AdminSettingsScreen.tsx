@@ -78,7 +78,8 @@ export default function AdminSettingsScreen({ navigation }: any) {
                         <View style={styles.cardHeader}>
                             <View style={styles.iconBox}>
                                 <Ionicons 
-                                    name={setting.configKey.includes('SHIPPING') ? "bus-outline" : "cube-outline"} 
+                                    name={setting.configKey.includes('SHIPPING') ? "bus-outline" : 
+                                          setting.configKey.includes('PLATFORM') ? "shield-checkmark-outline" : "cube-outline"} 
                                     size={20} 
                                     color="#DF2324" 
                                 />

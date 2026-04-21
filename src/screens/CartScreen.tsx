@@ -18,7 +18,7 @@ type Props = { navigation: NativeStackNavigationProp<RootStackParamList, 'Cart'>
 
 export default function CartScreen({ navigation }: Props) {
     const { items, removeItem, updateQuantity, clearCart, getTotalPrice } = useCartStore();
-    const { shippingFee, freeShippingThreshold } = useConfigStore();
+    const { shippingFee, platformFee, freeShippingThreshold } = useConfigStore();
     const { isDark } = useThemeStore();
     const T = isDark ? DARK_THEME : LIGHT_THEME;
 
@@ -80,7 +80,7 @@ export default function CartScreen({ navigation }: Props) {
 
     const subtotal = getTotalPrice();
     const delivery = (subtotal > 0 && subtotal < freeShippingThreshold) ? shippingFee : 0;
-    const total = subtotal + delivery;
+    const total = subtotal + delivery + (subtotal > 0 ? platformFee : 0);
 
     return (
         <SafeAreaView style={[styles.safe, { backgroundColor: T.bg }]}>
@@ -141,6 +141,10 @@ export default function CartScreen({ navigation }: Props) {
                             <Text style={[styles.summaryValue, { color: delivery === 0 && subtotal > 0 ? '#00FF00' : T.text }]}>
                                 {delivery === 0 && subtotal > 0 ? 'FREE' : `₹${delivery.toLocaleString()}`}
                             </Text>
+                        </View>
+                        <View style={styles.summaryRow}>
+                            <Text style={[styles.summaryLabel, { color: T.subText }]}>Platform Fee</Text>
+                            <Text style={[styles.summaryValue, { color: T.text }]}>₹{platformFee.toLocaleString()}</Text>
                         </View>
                         <View style={[styles.divider, { backgroundColor: T.headerBorder }]} />
                         <View style={styles.summaryRow}>
