@@ -1,7 +1,8 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import { View, Text, StyleSheet, FlatList, TouchableOpacity, ActivityIndicator, StatusBar, Alert } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
+import { useFocusEffect } from '@react-navigation/native';
 import { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import { RootStackParamList } from '../types';
 import { useThemeStore, DARK_THEME, LIGHT_THEME } from '../store/themeStore';
@@ -18,9 +19,11 @@ export default function SellerOrderHistoryScreen({ navigation }: Props) {
     const T = isDark ? DARK_THEME : LIGHT_THEME;
     const insets = useSafeAreaInsets();
 
-    useEffect(() => {
-        fetchOrders();
-    }, []);
+    useFocusEffect(
+        useCallback(() => {
+            fetchOrders();
+        }, [])
+    );
 
     const fetchOrders = async () => {
         try {

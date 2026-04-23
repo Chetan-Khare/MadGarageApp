@@ -17,7 +17,7 @@ import { PRICING } from '../constants/pricing';
 type Props = { navigation: NativeStackNavigationProp<RootStackParamList, 'Cart'>; };
 
 export default function CartScreen({ navigation }: Props) {
-    const { items, removeItem, updateQuantity, clearCart, getTotalPrice } = useCartStore();
+    const { items, removeItem, updateQuantity, clearCart, getTotalPrice, getBaseTotal, getDiscountAmount } = useCartStore();
     const { shippingFee, platformFee, freeShippingThreshold } = useConfigStore();
     const { isDark } = useThemeStore();
     const T = isDark ? DARK_THEME : LIGHT_THEME;
@@ -78,7 +78,9 @@ export default function CartScreen({ navigation }: Props) {
         </View>
     );
 
-    const subtotal = getTotalPrice();
+    const baseTotal = getBaseTotal();
+    const discount = getDiscountAmount();
+    const subtotal = baseTotal - discount;
     const delivery = (subtotal > 0 && subtotal < freeShippingThreshold) ? shippingFee : 0;
     const total = subtotal + delivery + (subtotal > 0 ? platformFee : 0);
 
@@ -134,8 +136,14 @@ export default function CartScreen({ navigation }: Props) {
                     <View style={[styles.summaryCard, { backgroundColor: isDark ? 'rgba(30,30,30,0.6)' : '#FFF', borderColor: T.cardBorder }]}>
                         <View style={styles.summaryRow}>
                             <Text style={[styles.summaryLabel, { color: T.subText }]}>Subtotal ({items.reduce((a, i) => a + i.quantity, 0)} items)</Text>
-                            <Text style={[styles.summaryValue, { color: T.text }]}>₹{subtotal.toLocaleString()}</Text>
+                            <Text style={[styles.summaryValue, { color: T.text }]}>₹{baseTotal.toLocaleString()}</Text>
                         </View>
+                        {discount > 0 && (
+                            <View style={styles.summaryRow}>
+                                <Text style={[styles.summaryLabel, { color: '#00FF00', fontWeight: '900' }]}>Wholesale Discount (5%)</Text>
+                                <Text style={[styles.summaryValue, { color: '#00FF00' }]}>-₹{discount.toLocaleString()}</Text>
+                            </View>
+                        )}
                         <View style={styles.summaryRow}>
                             <Text style={[styles.summaryLabel, { color: T.subText }]}>Packaging & Shipping</Text>
                             <Text style={[styles.summaryValue, { color: delivery === 0 && subtotal > 0 ? '#00FF00' : T.text }]}>

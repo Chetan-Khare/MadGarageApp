@@ -1,17 +1,18 @@
-import React, { useState, useCallback, useRef } from 'react';
+import React, { useState, useCallback, useRef, useEffect } from 'react';
 import {
     View, StyleSheet, TouchableOpacity, Text, Image, TextInput,
     FlatList, KeyboardAvoidingView, Platform, ActivityIndicator,
-    Alert, StatusBar
+    Alert, StatusBar, ImageBackground, Keyboard
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
-import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import * as ImagePicker from 'expo-image-picker';
 import { LinearGradient } from 'expo-linear-gradient';
+import { BlurView } from 'expo-blur';
 import { useNavigation } from '@react-navigation/native';
 import apiClient, { BASE_SERVER_URL } from '../services/apiClient';
 import { useCartStore } from '../store/cartStore';
-import { useThemeStore, DARK_THEME, LIGHT_THEME } from '../store/themeStore';
+import { useThemeStore } from '../store/themeStore';
 import Animated, {
     useSharedValue,
     useAnimatedStyle,
@@ -20,24 +21,49 @@ import Animated, {
     withTiming,
     Easing,
     FadeInUp,
-    Layout
+    Layout,
+    FadeInDown
 } from 'react-native-reanimated';
-import { ModernDashboardHeader } from '../components/ModernDashboardHeader';
 
 interface ChatMessage {
     id: string;
     role: 'user' | 'ai';
     text: string;
-    imageUri?: string;   // local image attached by user
+    imageUri?: string;
     products?: any[];
 }
+
+// ─── Theme Definitions ────────────────────────────────────────────────────────
+const DARK = {
+    bg: ['#050505', '#0A0A0A', '#050505'] as const,
+    card: 'rgba(20, 20, 22, 0.65)',
+    cardBorder: 'rgba(255, 255, 255, 0.08)',
+    inputBg: 'rgba(255, 255, 255, 0.03)',
+    text: '#FFFFFF',
+    subText: '#A1A1AA',
+    icon: '#71717A',
+    placeholder: '#71717A',
+    blurTint: 'dark' as const,
+};
+
+const LIGHT = {
+    bg: ['#F4F4F5', '#FFFFFF', '#F4F4F5'] as const,
+    card: 'rgba(255, 255, 255, 0.8)',
+    cardBorder: 'rgba(0, 0, 0, 0.06)',
+    inputBg: 'rgba(0, 0, 0, 0.02)',
+    text: '#18181B',
+    subText: '#71717A',
+    icon: '#A1A1AA',
+    placeholder: '#A1A1AA',
+    blurTint: 'light' as const,
+};
 
 export default function ChatScreen() {
     const [messages, setMessages] = useState<ChatMessage[]>([
         {
             id: '0',
             role: 'ai',
-            text: "Hey there! 👋 I'm your Virtual Mechanic at MAD GARAGE!\n\nI can help you find the right parts for your vehicle. Just tell me:\n• Your vehicle's Year, Make & Model (e.g. \"2019 Hyundai Creta\")\n• What part you're looking for (e.g. brake pads, air filter)\n\nOr upload a photo of the part or damage and I'll take a look! 🔧",
+            text: "Hey there! 👋 I'm your Virtual Mechanic at MAD GARAGE.\n\nTell me what you drive and what you're looking for, or upload a photo of a part, and I'll find it in our inventory.",
         }
     ]);
     const [inputText, setInputText] = useState('');
@@ -47,16 +73,17 @@ export default function ChatScreen() {
     const insets = useSafeAreaInsets();
     const addItem = useCartStore((state) => state.addItem);
     const { isDark } = useThemeStore();
-    const T = isDark ? DARK_THEME : LIGHT_THEME;
+    const theme = isDark ? DARK : LIGHT;
     const navigation = useNavigation();
 
+    // Animations
     const avatarPulse = useSharedValue(1);
 
-    React.useEffect(() => {
+    useEffect(() => {
         avatarPulse.value = withRepeat(
             withSequence(
-                withTiming(1.2, { duration: 2000, easing: Easing.bezier(0.4, 0, 0.2, 1) }),
-                withTiming(1, { duration: 2000, easing: Easing.bezier(0.4, 0, 0.2, 1) })
+                withTiming(1.15, { duration: 1500, easing: Easing.inOut(Easing.ease) }),
+                withTiming(1, { duration: 1500, easing: Easing.inOut(Easing.ease) })
             ),
             -1,
             true
@@ -65,18 +92,16 @@ export default function ChatScreen() {
 
     const animatedAvatarStyle = useAnimatedStyle(() => ({
         transform: [{ scale: avatarPulse.value }],
-        opacity: withTiming(avatarPulse.value === 1 ? 0.4 : 0.8),
+        opacity: withTiming(avatarPulse.value === 1 ? 0.2 : 0.6),
     }));
 
-    const bg = isDark ? '#050505' : '#F6F8FF';
-    const textColor = isDark ? '#FFFFFF' : '#1A1A1A';
-    const subText = isDark ? '#AAAAAA' : '#666666';
-    const inputBarBg = isDark ? '#121216' : '#FFFFFF';
-    const inputBarBorder = isDark ? 'rgba(255,255,255,0.1)' : '#EEE';
-    const thinkingBubbleBg = isDark ? '#121216' : '#FFFFFF';
+    // Consistent Background
+    const BACKGROUND_IMAGE = 'https://images.unsplash.com/photo-1517524008697-84bbe3c3fd98?auto=format&fit=crop&q=80';
+    const overlayGradient = isDark
+        ? ['rgba(5, 5, 5, 0.8)', 'rgba(5, 5, 5, 0.95)', '#050505'] as const
+        : ['rgba(244, 244, 245, 0.8)', 'rgba(244, 244, 245, 0.95)', '#F4F4F5'] as const;
 
-
-    // ── Pick image from gallery ───────────────────────────────────────────────
+    // ── File Handling ──────────────────────────────────────────────────────────
     const pickImage = async () => {
         const { status } = await ImagePicker.requestMediaLibraryPermissionsAsync();
         if (status !== 'granted') {
@@ -93,7 +118,6 @@ export default function ChatScreen() {
         }
     };
 
-    // ── Take a photo ──────────────────────────────────────────────────────────
     const takePhoto = async () => {
         const { status } = await ImagePicker.requestCameraPermissionsAsync();
         if (status !== 'granted') {
@@ -111,34 +135,31 @@ export default function ChatScreen() {
     };
 
     const showImageOptions = () => {
-        Alert.alert('Attach Image', 'Choose a source', [
-            { text: '📷 Camera', onPress: takePhoto },
-            { text: '🖼 Gallery', onPress: pickImage },
+        Keyboard.dismiss();
+        Alert.alert('Attach Image', 'Scan a part or show damage', [
+            { text: '📷 Open Camera', onPress: takePhoto },
+            { text: '🖼 Photo Library', onPress: pickImage },
             { text: 'Cancel', style: 'cancel' },
         ]);
     };
 
-    // ── Send message ──────────────────────────────────────────────────────────
-    // Quick local check — common greetings get an instant reply without hitting the backend
+    // ── Logic ─────────────────────────────────────────────────────────────────
     const isGreeting = (msg: string) => {
         const lower = msg.toLowerCase().replace(/[^a-z ]/g, '').trim();
-        const greetings = ['hi', 'hello', 'hey', 'yo', 'sup', 'hiya', 'howdy',
-            'good morning', 'good evening', 'good afternoon', 'help',
-            'what can you do', 'who are you'];
-        return greetings.includes(lower) || (lower.length <= 4 && !/\d/.test(lower));
+        const greetings = ['hi', 'hello', 'hey', 'yo', 'sup'];
+        return greetings.includes(lower);
     };
 
     const sendMessage = useCallback(async () => {
         const text = inputText.trim();
         if ((!text && !pickedImage) || isThinking) return;
 
-        // ── Fast local greeting path ──────────────────────────────────────────
         if (text && !pickedImage && isGreeting(text)) {
             const userMsg: ChatMessage = { id: Date.now().toString(), role: 'user', text };
             const aiMsg: ChatMessage = {
                 id: (Date.now() + 1).toString(),
                 role: 'ai',
-                text: "Hey! 👋 I'm your Virtual Mechanic at MAD GARAGE!\n\nTell me your vehicle's Year, Make & Model (e.g. \"2019 Hyundai Creta SX\") and what part you need, and I'll find the perfect match for you. 🔧\n\nYou can also upload a photo of the part or damage!",
+                text: "Hey! Let me know your vehicle's Year, Make, and Model, and I'll find exactly what you need.",
             };
             setMessages(prev => [...prev, userMsg, aiMsg]);
             setInputText('');
@@ -148,9 +169,10 @@ export default function ChatScreen() {
         const userMsg: ChatMessage = {
             id: Date.now().toString(),
             role: 'user',
-            text: text || '📷 Image attached — please analyse this.',
+            text: text || 'Can you identify this part?',
             imageUri: pickedImage ?? undefined,
         };
+
         setMessages(prev => [...prev, userMsg]);
         setInputText('');
         const imageToSend = pickedImage;
@@ -158,7 +180,6 @@ export default function ChatScreen() {
         setIsThinking(true);
 
         try {
-            // Posting to assistant
             const formData = new FormData();
             if (text) formData.append('message', text);
 
@@ -167,33 +188,26 @@ export default function ChatScreen() {
                 const match = /\.(\w+)$/.exec(filename);
                 const type = match ? `image/${match[1]}` : 'image/jpeg';
                 formData.append('image', { uri: imageToSend, name: filename, type } as any);
-                // Attachment logic
             }
 
             const response = await apiClient.post('/assistant/chat', formData, {
                 headers: { 'Content-Type': 'multipart/form-data' },
             });
 
-            // Response received
             const result = response.data;
             const aiMsg: ChatMessage = {
                 id: (Date.now() + 1).toString(),
                 role: 'ai',
-                text: result.message || "I found some options for you!",
+                text: result.message || "Here are the best matches for your vehicle.",
                 products: result.products || [],
             };
             setMessages(prev => [...prev, aiMsg]);
         } catch (error: any) {
-            console.error('Chat API error:', {
-                message: error.message,
-                code: error.code,
-                configUrl: error.config?.url,
-                response: error.response?.data
-            });
+            console.error('Chat API error:', error);
             const fallbackMsg: ChatMessage = {
                 id: (Date.now() + 1).toString(),
                 role: 'ai',
-                text: `Connection Failure: ${error.message}\n\nPlease check if your backend is running at ${BASE_SERVER_URL} and your device is on the same network.`,
+                text: `Connection Failure: ${error.message}`,
             };
             setMessages(prev => [...prev, fallbackMsg]);
         } finally {
@@ -202,96 +216,78 @@ export default function ChatScreen() {
 
     }, [inputText, isThinking, pickedImage]);
 
-    // ── Render a single message ───────────────────────────────────────────────
+    // ── Render Message Bubble ─────────────────────────────────────────────────
     const renderMessage = ({ item }: { item: ChatMessage }) => {
         const isUser = item.role === 'user';
+
         return (
             <Animated.View
                 entering={FadeInUp.duration(400)}
-                layout={Layout.springify()}
+                layout={Layout.springify().damping(15)}
                 style={[styles.msgRow, isUser ? styles.msgRowRight : styles.msgRowLeft]}
             >
-
                 {!isUser && (
                     <View style={styles.avatarContainer}>
                         <Animated.View style={[styles.avatarGlow, animatedAvatarStyle]} />
-                        <View style={[styles.avatar, { backgroundColor: isDark ? '#1A0505' : '#F0F0F0' }]}>
-                            <Ionicons name="car-sport" size={18} color="#DF2324" />
+                        <View style={[styles.avatar, { backgroundColor: isDark ? '#1A0B0B' : '#FFF0F0', borderColor: 'rgba(223, 35, 36, 0.4)' }]}>
+                            <Ionicons name="hardware-chip-outline" size={14} color="#DF2324" />
                         </View>
                     </View>
                 )}
-                <View style={{ maxWidth: '85%' }}>
 
-                    {/* Attached image preview inside message */}
+                <View style={{ maxWidth: isUser ? '85%' : '88%' }}>
                     {item.imageUri && (
-                        <Image
-                            source={{ uri: item.imageUri }}
-                            style={styles.attachedImage}
-                            resizeMode="cover"
-                        />
+                        <Image source={{ uri: item.imageUri }} style={styles.attachedImage} resizeMode="cover" />
                     )}
+
                     {isUser ? (
                         <LinearGradient
-                            colors={['#DC2626', '#991B1B']}
-                            start={{ x: 0, y: 0 }}
-                            end={{ x: 1, y: 1 }}
+                            colors={['#DF2324', '#B91C1C']}
+                            start={{ x: 0, y: 0 }} end={{ x: 1, y: 1 }}
                             style={[styles.bubble, styles.bubbleUser]}
                         >
-                            <Text style={styles.bubbleText}>{item.text}</Text>
+                            <Text style={styles.bubbleTextUser}>{item.text}</Text>
                         </LinearGradient>
                     ) : (
-                        <View style={[
-                            styles.bubble,
-                            styles.bubbleAi,
-                            { backgroundColor: isDark ? '#121216' : '#FFFFFF', borderColor: isDark ? 'rgba(255,255,255,0.05)' : '#EEE', borderWidth: 1 }
-                        ]}>
-                            <Text style={[styles.bubbleText, { color: textColor }]}>{item.text}</Text>
+                        <View style={[styles.bubble, styles.bubbleAi, { backgroundColor: theme.card, borderColor: theme.cardBorder }]}>
+                            <Text style={[styles.bubbleTextAi, { color: theme.text }]}>{item.text}</Text>
 
+                            {/* Embedded Product Mini-Widgets */}
                             {item.products && item.products.length > 0 && (
                                 <View style={styles.productGrid}>
                                     {item.products.map((p: any, i: number) => (
-                                        <TouchableOpacity
-                                            key={i}
-                                            activeOpacity={0.9}
-                                            style={[styles.productCard, { backgroundColor: isDark ? '#1a1a20' : '#F9F9F9', borderColor: isDark ? 'rgba(255,255,255,0.05)' : '#EEE' }]}
-                                        >
-                                            <View style={styles.productImageWrap}>
+                                        <TouchableOpacity key={i} activeOpacity={0.85} style={styles.productCardWrap}>
+                                            <BlurView intensity={isDark ? 30 : 60} tint={theme.blurTint} style={[styles.productCardInner, { borderColor: theme.cardBorder }]}>
                                                 <Image
                                                     source={{ uri: (p.imageUrl?.startsWith('/') ? `${BASE_SERVER_URL}${p.imageUrl}` : (p.imageUrl || 'https://via.placeholder.com/150')) }}
                                                     style={styles.productImage}
                                                 />
-                                                <View style={styles.productGradient} />
-                                                <View style={styles.productImageOverlayText}>
-                                                    <Text style={styles.productBrand}>{p.manufacturer || 'OEM Quality'}</Text>
-                                                    <Text style={styles.productNameOverlay} numberOfLines={1}>{p.partName || p.name}</Text>
-                                                </View>
-                                            </View>
-                                            <View style={styles.productInfo}>
-                                                <View style={styles.productFooter}>
-                                                    <View>
-                                                        {p.originalPrice && <Text style={styles.productOriginalPrice}>₹{(p.originalPrice || 0).toLocaleString()}</Text>}
-                                                        <Text style={[styles.productPrice, { color: textColor }]}>₹{(p.garagePrice || p.price || 0).toLocaleString()}</Text>
+                                                <View style={styles.productInfo}>
+                                                    <Text style={styles.productBrand}>{p.manufacturer || 'MAD GARAGE'}</Text>
+                                                    <Text style={[styles.productName, { color: theme.text }]} numberOfLines={2}>{p.partName || p.name}</Text>
+
+                                                    <View style={styles.productFooter}>
+                                                        <Text style={[styles.productPrice, { color: theme.text }]}>₹{(p.garagePrice || p.price || 0).toLocaleString()}</Text>
+                                                        <TouchableOpacity
+                                                            style={styles.addBtn}
+                                                            disabled={(p.stockQuantity ?? 0) <= 0}
+                                                            onPress={() => {
+                                                                addItem({
+                                                                    id: p.id?.toString(),
+                                                                    deviceName: p.partName || p.name,
+                                                                    price: p.price,
+                                                                    imageUrl: p.imageUrl,
+                                                                    manufacturer: p.manufacturer || p.brand || 'MAD GARAGE',
+                                                                    quantity: 1,
+                                                                    stockQuantity: p.stockQuantity ?? 0
+                                                                });
+                                                            }}
+                                                        >
+                                                            <Ionicons name="cart" size={16} color="#FFF" />
+                                                        </TouchableOpacity>
                                                     </View>
-                                                    <TouchableOpacity
-                                                        style={styles.addBtn}
-                                                        disabled={(p.stockQuantity ?? 0) <= 0}
-                                                        onPress={() => {
-                                                            addItem({
-                                                                id: p.id?.toString(),
-                                                                deviceName: p.partName || p.name,
-                                                                price: p.price,
-                                                                imageUrl: p.imageUrl,
-                                                                manufacturer: p.manufacturer || p.brand || 'MAD GARAGE',
-                                                                quantity: 1,
-                                                                stockQuantity: p.stockQuantity ?? 0
-                                                            });
-                                                            Alert.alert("Success", "Added to cart.");
-                                                        }}
-                                                    >
-                                                        <Ionicons name="cart-outline" size={20} color="#FFF" />
-                                                    </TouchableOpacity>
                                                 </View>
-                                            </View>
+                                            </BlurView>
                                         </TouchableOpacity>
                                     ))}
                                 </View>
@@ -303,249 +299,159 @@ export default function ChatScreen() {
         );
     };
 
-
     return (
-        <View style={[styles.safeArea, { backgroundColor: bg }]}>
-            <StatusBar barStyle={isDark ? 'light-content' : 'dark-content'} backgroundColor={bg} />
+        <ImageBackground source={{ uri: BACKGROUND_IMAGE }} style={styles.safeArea} resizeMode="cover">
+            <LinearGradient colors={overlayGradient} style={{ flex: 1 }}>
+                <StatusBar barStyle={isDark ? 'light-content' : 'dark-content'} translucent />
 
-            <ModernDashboardHeader
-                title="MAD GARAGE AI"
-                subtitle="Virtual Mechanic"
-                showThemeToggle={false}
-                profileIcon="chevron-back"
-                onProfilePress={() => navigation.goBack()}
-                logo={require('../../assets/app_logo.png')}
-            />
+                {/* Glass Header */}
+                <BlurView intensity={isDark ? 40 : 80} tint={theme.blurTint} style={[styles.integratedHeader, { paddingTop: insets.top + 10, borderBottomColor: theme.cardBorder }]}>
+                    <TouchableOpacity style={styles.backBtn} onPress={() => navigation.goBack()} activeOpacity={0.7}>
+                        <Ionicons name="chevron-back" size={26} color={theme.text} />
+                    </TouchableOpacity>
 
-            <KeyboardAvoidingView
-                style={styles.container}
-                behavior={Platform.OS === 'ios' ? 'padding' : 'padding'}
-                keyboardVerticalOffset={Platform.OS === 'ios' ? 90 : 0}
-            >
-                <FlatList
-                    ref={flatListRef}
-                    data={messages}
-                    keyExtractor={(item) => item.id}
-                    renderItem={renderMessage}
-                    contentContainerStyle={styles.messageList}
-                    onContentSizeChange={() => flatListRef.current?.scrollToEnd({ animated: true })}
-                    keyboardDismissMode="on-drag"
-                    keyboardShouldPersistTaps="handled"
-                />
+                    <View style={styles.headerCenter}>
+                        <Text style={styles.headerTitle}>MAD GARAGE AI</Text>
+                        <Text style={styles.headerSubtitle}>VIRTUAL MECHANIC</Text>
+                    </View>
 
-                {isThinking && (
-                    <View style={styles.thinkingRow}>
-                        <View style={styles.avatarContainer}>
-                            <Animated.View style={[styles.avatarGlow, animatedAvatarStyle]} />
-                            <View style={[styles.avatar, { backgroundColor: isDark ? 'rgba(255,255,255,0.05)' : '#F0F0F0', borderColor: isDark ? 'rgba(255,255,255,0.1)' : '#EEE', borderWidth: 1 }]}>
-                                <Ionicons name="car-sport" size={18} color="#DF2324" />
+                    <View style={styles.headerRight}>
+                        <Image source={require('../../assets/app_logo.png')} style={styles.headerLogo} />
+                    </View>
+                </BlurView>
+
+                {/* Main Chat Area */}
+                <KeyboardAvoidingView
+                    style={styles.container}
+                    behavior={Platform.OS === 'ios' ? 'padding' : undefined}
+                >
+                    <FlatList
+                        ref={flatListRef}
+                        data={messages}
+                        keyExtractor={(item) => item.id}
+                        renderItem={renderMessage}
+                        contentContainerStyle={[styles.messageList, { paddingTop: 20 }]}
+                        onContentSizeChange={() => flatListRef.current?.scrollToEnd({ animated: true })}
+                        keyboardDismissMode="interactive"
+                        showsVerticalScrollIndicator={false}
+                    />
+
+                    {isThinking && (
+                        <Animated.View entering={FadeInDown} style={styles.thinkingRow}>
+                            <View style={styles.avatarContainer}>
+                                <Animated.View style={[styles.avatarGlow, animatedAvatarStyle]} />
+                                <View style={[styles.avatar, { backgroundColor: isDark ? '#1A0B0B' : '#FFF0F0', borderColor: 'rgba(223, 35, 36, 0.4)' }]}>
+                                    <Ionicons name="hardware-chip-outline" size={14} color="#DF2324" />
+                                </View>
                             </View>
-                        </View>
-                        <View style={[styles.thinkingBubble, { backgroundColor: thinkingBubbleBg, borderColor: isDark ? 'rgba(255,255,255,0.05)' : '#EEE' }]}>
-                            <ActivityIndicator size="small" color="#DF2324" />
-                            <Text style={[styles.thinkingText, { color: subText }]}>Analyzing Machine...</Text>
-                        </View>
+                            <BlurView intensity={isDark ? 30 : 60} tint={theme.blurTint} style={[styles.thinkingBubble, { borderColor: theme.cardBorder }]}>
+                                <ActivityIndicator size="small" color="#DF2324" />
+                                <Text style={[styles.thinkingText, { color: theme.subText }]}>Searching Inventory...</Text>
+                            </BlurView>
+                        </Animated.View>
+                    )}
+
+                    {/* Input Area */}
+                    <View style={[styles.inputContainer, { paddingBottom: Math.max(insets.bottom, 12) }]}>
+                        {pickedImage && (
+                            <BlurView intensity={isDark ? 50 : 80} tint={theme.blurTint} style={[styles.imagePreviewBar, { borderColor: theme.cardBorder }]}>
+                                <Image source={{ uri: pickedImage }} style={styles.imagePreviewThumb} />
+                                <View style={{ flex: 1, marginLeft: 12 }}>
+                                    <Text style={[styles.imagePreviewLabel, { color: theme.text }]}>Image Attached</Text>
+                                    <Text style={{ fontSize: 11, color: theme.subText }}>Ready for analysis</Text>
+                                </View>
+                                <TouchableOpacity onPress={() => setPickedImage(null)} style={styles.removeImageBtn}>
+                                    <Ionicons name="close-circle" size={24} color={theme.subText} />
+                                </TouchableOpacity>
+                            </BlurView>
+                        )}
+
+                        <BlurView intensity={isDark ? 50 : 80} tint={theme.blurTint} style={[styles.floatingInput, { borderColor: theme.cardBorder }]}>
+                            <TouchableOpacity style={styles.attachBtn} onPress={showImageOptions} disabled={isThinking}>
+                                <Ionicons name="add-circle" size={28} color={pickedImage ? '#DF2324' : theme.icon} />
+                            </TouchableOpacity>
+
+                            <TextInput
+                                style={[styles.textInput, { color: theme.text }]}
+                                placeholder="Message Garage AI..."
+                                placeholderTextColor={theme.placeholder}
+                                value={inputText}
+                                onChangeText={setInputText}
+                                multiline
+                                maxLength={500}
+                            />
+
+                            <TouchableOpacity
+                                style={[styles.sendBtn, (!inputText.trim() && !pickedImage) && { backgroundColor: theme.inputBg }]}
+                                onPress={sendMessage}
+                                disabled={isThinking || (!inputText.trim() && !pickedImage)}
+                            >
+                                <Ionicons name="arrow-up" size={18} color={(!inputText.trim() && !pickedImage) ? theme.icon : '#FFF'} />
+                            </TouchableOpacity>
+                        </BlurView>
                     </View>
-                )}
-
-
-                {/* Picked image preview above input bar */}
-                {pickedImage && (
-                    <View style={[styles.imagePreviewBar, { backgroundColor: inputBarBg, borderTopColor: inputBarBorder }]}>
-                        <Image source={{ uri: pickedImage }} style={styles.imagePreviewThumb} />
-                        <Text style={[styles.imagePreviewLabel, { color: textColor }]}>Image ready to send</Text>
-                        <TouchableOpacity onPress={() => setPickedImage(null)} style={styles.removeImageBtn}>
-                            <Ionicons name="close-circle" size={22} color="#DF2324" />
-                        </TouchableOpacity>
-                    </View>
-                )}
-
-                <View style={[styles.inputBar, { paddingBottom: Math.max(insets.bottom, 12) }]}>
-                    <View style={[styles.floatingInput, { backgroundColor: inputBarBg, borderColor: inputBarBorder }]}>
-                        <TouchableOpacity style={styles.attachBtn} onPress={showImageOptions} disabled={isThinking}>
-                            <Ionicons name="camera-outline" size={22} color={pickedImage ? '#DF2324' : (isDark ? '#555' : '#AAA')} />
-                        </TouchableOpacity>
-
-                        <TextInput
-                            style={[styles.textInput, { color: textColor }]}
-                            placeholder="Type vehicle model & part..."
-                            placeholderTextColor={isDark ? '#444' : '#AAA'}
-                            value={inputText}
-                            onChangeText={setInputText}
-                            multiline
-                        />
-
-                        <TouchableOpacity style={styles.sendBtn} onPress={sendMessage} disabled={isThinking}>
-                            <Ionicons name="arrow-up" size={22} color="#FFF" />
-                        </TouchableOpacity>
-                    </View>
-                </View>
-            </KeyboardAvoidingView>
-        </View>
+                </KeyboardAvoidingView>
+            </LinearGradient>
+        </ImageBackground>
     );
 }
 
-
 const styles = StyleSheet.create({
-    safeArea: { flex: 1 },
+    safeArea: { flex: 1, backgroundColor: '#000' },
     container: { flex: 1 },
-    messageList: { padding: 16, paddingBottom: 20 },
-    msgRow: { flexDirection: 'row', marginBottom: 24, alignItems: 'flex-end' },
+
+    // Header
+    integratedHeader: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', paddingHorizontal: 16, paddingBottom: 12, borderBottomWidth: 1 },
+    headerCenter: { flex: 1, alignItems: 'center' },
+    headerRight: { width: 40, alignItems: 'flex-end' },
+    backBtn: { width: 40, height: 40, justifyContent: 'center', alignItems: 'flex-start' },
+    headerTitle: { fontSize: 16, fontWeight: '900', fontStyle: 'italic', color: '#DF2324', letterSpacing: 1 },
+    headerSubtitle: { fontSize: 9, fontWeight: '900', letterSpacing: 1.5, color: '#DF2324', textTransform: 'uppercase', marginTop: 2, opacity: 0.9 },
+    headerLogo: { width: 32, height: 32, borderRadius: 16 },
+
+    // Messages
+    messageList: { paddingHorizontal: 16, paddingBottom: 10 },
+    msgRow: { flexDirection: 'row', marginBottom: 20, alignItems: 'flex-end' },
     msgRowLeft: { justifyContent: 'flex-start' },
     msgRowRight: { justifyContent: 'flex-end' },
-    avatarContainer: {
-        width: 34,
-        height: 34,
-        marginRight: 10,
-        justifyContent: 'center',
-        alignItems: 'center',
-    },
-    avatarGlow: {
-        position: 'absolute',
-        width: 44,
-        height: 44,
-        borderRadius: 22,
-        backgroundColor: '#DF2324',
-    },
-    avatar: {
-        width: 34,
-        height: 34,
-        borderRadius: 17,
-        justifyContent: 'center',
-        alignItems: 'center',
-        borderWidth: 1,
-        borderColor: '#DF232444',
-        shadowColor: '#000',
-        shadowOffset: { width: 0, height: 2 },
-        shadowOpacity: 0.2,
-        shadowRadius: 4,
-        elevation: 3,
-    },
-    bubble: { padding: 20, borderRadius: 24, shadowColor: '#000', shadowOffset: { width: 0, height: 15 }, shadowOpacity: 0.3, shadowRadius: 20, elevation: 15 },
-    bubbleUser: {
-        borderTopRightRadius: 0,
-    },
-    bubbleAi: {
-        borderTopLeftRadius: 0,
-    },
-    bubbleText: { color: '#FFF', fontSize: 15, lineHeight: 24, fontWeight: '600' },
-    attachedImage: {
-        width: 260,
-        height: 180,
-        borderRadius: 16,
-        marginBottom: 16,
-        borderWidth: 1,
-        borderColor: 'rgba(255,255,255,0.1)',
-    },
-    productGrid: { marginTop: 24, gap: 16 },
-    productCard: {
-        borderRadius: 24,
-        overflow: 'hidden',
-        borderWidth: 1,
-        shadowColor: '#000',
-        shadowOffset: { width: 0, height: 15 },
-        shadowOpacity: 0.3,
-        shadowRadius: 30,
-        elevation: 10,
-    },
-    productImageWrap: { position: 'relative', width: '100%', height: 160 },
-    productImage: { width: '100%', height: '100%', resizeMode: 'cover' },
-    productGradient: { position: 'absolute', bottom: 0, left: 0, right: 0, height: '100%', backgroundColor: 'rgba(0,0,0,0.6)', justifyContent: 'flex-end', paddingTop: 20 },
-    productImageOverlayText: { position: 'absolute', bottom: 16, left: 16, right: 16 },
-    productBrand: { color: '#DF2324', fontSize: 9, fontWeight: '900', textTransform: 'uppercase', letterSpacing: 2, marginBottom: 2 },
-    productNameOverlay: { color: '#FFFFFF', fontSize: 14, fontWeight: '900', fontStyle: 'italic', textTransform: 'uppercase', letterSpacing: -0.5 },
-    productInfo: { padding: 20 },
+
+    avatarContainer: { width: 28, height: 28, marginRight: 10, justifyContent: 'center', alignItems: 'center', marginBottom: 4 },
+    avatarGlow: { position: 'absolute', width: 34, height: 34, borderRadius: 17, backgroundColor: '#DF2324' },
+    avatar: { width: 28, height: 28, borderRadius: 14, justifyContent: 'center', alignItems: 'center', borderWidth: 1 },
+
+    bubble: { padding: 16, borderRadius: 22, borderWidth: 1, borderColor: 'transparent' },
+    bubbleUser: { borderBottomRightRadius: 6 },
+    bubbleAi: { borderBottomLeftRadius: 6 },
+    bubbleTextUser: { color: '#FFF', fontSize: 15, lineHeight: 22, fontWeight: '500' },
+    bubbleTextAi: { fontSize: 15, lineHeight: 24, fontWeight: '400' },
+
+    attachedImage: { width: '100%', height: 200, borderRadius: 18, marginBottom: 8, borderWidth: 1, borderColor: 'rgba(255,255,255,0.1)' },
+
+    // Mini Product Widgets inside Chat
+    productGrid: { marginTop: 16, gap: 12 },
+    productCardWrap: { borderRadius: 16, overflow: 'hidden' },
+    productCardInner: { flexDirection: 'row', padding: 10, borderWidth: 1, borderRadius: 16, alignItems: 'center' },
+    productImage: { width: 70, height: 70, borderRadius: 10, backgroundColor: 'rgba(0,0,0,0.1)' },
+    productInfo: { flex: 1, marginLeft: 12, justifyContent: 'center' },
+    productBrand: { color: '#DF2324', fontSize: 9, fontWeight: '900', textTransform: 'uppercase', letterSpacing: 1, marginBottom: 2 },
+    productName: { fontSize: 14, fontWeight: '700', marginBottom: 6 },
     productFooter: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' },
-    productOriginalPrice: { color: '#AAAAAA', fontSize: 10, fontWeight: '700', textDecorationLine: 'line-through' },
-    productPrice: { fontSize: 18, fontWeight: '900', fontStyle: 'italic', letterSpacing: -0.5 },
-    addBtn: {
-        backgroundColor: '#DF2324',
-        width: 44,
-        height: 44,
-        borderRadius: 22,
-        justifyContent: 'center',
-        alignItems: 'center',
-        shadowColor: '#DF2324',
-        shadowOffset: { width: 0, height: 4 },
-        shadowOpacity: 0.5,
-        shadowRadius: 10,
-        elevation: 10,
-    },
-    thinkingRow: { flexDirection: 'row', alignItems: 'center', paddingHorizontal: 16, marginBottom: 24 },
-    thinkingBubble: {
-        flexDirection: 'row',
-        alignItems: 'center',
-        paddingHorizontal: 22,
-        paddingVertical: 16,
-        borderRadius: 24,
-        borderWidth: 1.5,
-        shadowColor: '#000',
-        shadowOffset: { width: 0, height: 4 },
-        shadowOpacity: 0.1,
-        shadowRadius: 8,
-        elevation: 3,
-    },
-    thinkingText: { marginLeft: 14, fontSize: 13, fontWeight: '800', letterSpacing: 1.2, textTransform: 'uppercase' },
-    imagePreviewBar: {
-        marginHorizontal: 16,
-        marginBottom: 12,
-        flexDirection: 'row',
-        alignItems: 'center',
-        padding: 14,
-        borderRadius: 24,
-        gap: 14,
-        borderWidth: 1,
-        borderColor: 'rgba(255,255,255,0.05)',
-    },
-    imagePreviewThumb: { width: 48, height: 48, borderRadius: 12, borderWidth: 1, borderColor: '#DF232444' },
-    imagePreviewLabel: { flex: 1, fontSize: 14, fontWeight: '800', letterSpacing: 0.5 },
+    productPrice: { fontSize: 15, fontWeight: '900', fontStyle: 'italic' },
+    addBtn: { backgroundColor: '#DF2324', width: 28, height: 28, borderRadius: 14, justifyContent: 'center', alignItems: 'center' },
+
+    // Thinking Indicator
+    thinkingRow: { flexDirection: 'row', alignItems: 'center', paddingHorizontal: 16, marginBottom: 20 },
+    thinkingBubble: { flexDirection: 'row', alignItems: 'center', paddingHorizontal: 16, paddingVertical: 12, borderRadius: 20, borderWidth: 1, overflow: 'hidden' },
+    thinkingText: { marginLeft: 10, fontSize: 12, fontWeight: '600' },
+
+    // Input Area
+    inputContainer: { paddingHorizontal: 16, paddingTop: 8 },
+    imagePreviewBar: { flexDirection: 'row', alignItems: 'center', padding: 12, borderRadius: 20, borderWidth: 1, marginBottom: 12, overflow: 'hidden' },
+    imagePreviewThumb: { width: 44, height: 44, borderRadius: 10 },
+    imagePreviewLabel: { fontSize: 14, fontWeight: '700' },
     removeImageBtn: { padding: 4 },
-    inputBar: {
-        flexDirection: 'row',
-        alignItems: 'center',
-        paddingHorizontal: 16,
-        paddingVertical: 16,
-        gap: 12,
-    },
-    floatingInput: {
-        flex: 1,
-        flexDirection: 'row',
-        alignItems: 'center',
-        borderRadius: 35,
-        paddingHorizontal: 8,
-        paddingVertical: 8,
-        borderWidth: 1.5,
-        shadowColor: '#000',
-        shadowOffset: { width: 0, height: 12 },
-        shadowOpacity: 0.2,
-        shadowRadius: 25,
-        elevation: 15,
-    },
-    attachBtn: {
-        width: 48,
-        height: 48,
-        borderRadius: 24,
-        justifyContent: 'center',
-        alignItems: 'center',
-    },
-    textInput: {
-        flex: 1,
-        maxHeight: 120,
-        paddingHorizontal: 14,
-        fontSize: 16,
-        fontWeight: '700',
-    },
-    sendBtn: {
-        width: 48,
-        height: 48,
-        borderRadius: 24,
-        backgroundColor: '#DF2324',
-        justifyContent: 'center',
-        alignItems: 'center',
-        shadowColor: '#DF2324',
-        shadowOffset: { width: 0, height: 6 },
-        shadowOpacity: 0.6,
-        shadowRadius: 12,
-        elevation: 10,
-    },
+    floatingInput: { flexDirection: 'row', alignItems: 'flex-end', borderRadius: 28, paddingHorizontal: 8, paddingVertical: 8, borderWidth: 1, overflow: 'hidden' },
+    attachBtn: { width: 40, height: 40, justifyContent: 'center', alignItems: 'center' },
+    textInput: { flex: 1, maxHeight: 100, minHeight: 40, paddingHorizontal: 8, paddingTop: 10, paddingBottom: 10, fontSize: 15 },
+    sendBtn: { width: 36, height: 36, borderRadius: 18, backgroundColor: '#DF2324', justifyContent: 'center', alignItems: 'center', marginBottom: 2, marginRight: 2 },
 });

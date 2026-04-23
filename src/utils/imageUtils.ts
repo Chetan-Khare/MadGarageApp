@@ -9,13 +9,27 @@ export const PLACEHOLDER_IMAGE = 'https://via.placeholder.com/400';
  */
 export const resolveSingleImageUrl = (url: string | undefined): string => {
   if (!url || typeof url !== 'string') return PLACEHOLDER_IMAGE;
-  if (url.startsWith('http')) return url;
+  
+  // Handled early for data URIs
   if (url.startsWith('data:image')) return url;
 
-  const cleanBase = BASE_SERVER_URL?.endsWith('/') ? BASE_SERVER_URL.slice(0, -1) : BASE_SERVER_URL;
-  const cleanPath = url.startsWith('/') ? url : `/${url}`;
+  let finalUrl = url;
+
+  // If it's a relative path, we need to build the full server URL
+  if (!url.startsWith('http')) {
+    // 1. Normalize slashes (converts Windows backslashes to standard forward slashes)
+    const normalizedUrl = url.replace(/\\/g, '/');
+
+    const cleanBase = BASE_SERVER_URL?.endsWith('/') ? BASE_SERVER_URL.slice(0, -1) : BASE_SERVER_URL;
+    const cleanPath = normalizedUrl.startsWith('/') ? normalizedUrl : `/${normalizedUrl}`;
+    
+    finalUrl = `${cleanBase}${cleanPath}`;
+  }
   
-  return `${cleanBase}${cleanPath}`;
+  // ── Mobile Rendering Fix ──────────────────────────────────────────────────
+  // Critical for React Native <Image />: We MUST encode the URI even if it's already an absolute http link.
+  // This ensures that spaces (e.g. in "magnetic 5w-40") are converted to %20 correctly.
+  return encodeURI(finalUrl);
 };
 
 /**

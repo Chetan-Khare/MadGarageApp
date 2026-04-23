@@ -10,6 +10,7 @@ export interface CartItem {
     manufacturer: string;
     quantity: number;
     stockQuantity: number;
+    wholesale?: boolean;
 }
 
 interface CartState {
@@ -18,6 +19,8 @@ interface CartState {
     removeItem: (id: string) => void;
     updateQuantity: (id: string, delta: number) => void;
     clearCart: () => void;
+    getBaseTotal: () => number;
+    getDiscountAmount: () => number;
     getTotalPrice: () => number;
 }
 
@@ -84,14 +87,21 @@ export const useCartStore = create<CartState>((set, get) => ({
         set({ items: [] });
     },
 
-    getTotalPrice: () => {
-        const baseTotal = get().items.reduce((total, item) => total + (item.price * item.quantity), 0);
+    getBaseTotal: () => {
+        return get().items.reduce((total, item) => total + (item.price * item.quantity), 0);
+    },
+    getDiscountAmount: () => {
         const userRole = useAuthStore.getState().role;
-
-        // P2 FIX: Use PRICING constant instead of magic number 0.95
-        if (userRole === 'ROLE_GARAGE') {
-            return baseTotal * PRICING.GARAGE_DISCOUNT_MULTIPLIER;
-        }
-        return baseTotal;
+        if (userRole !== 'ROLE_GARAGE') return 0;
+        
+        return get().items.reduce((total, item) => {
+            if (item.wholesale) {
+                return total + (item.price * item.quantity * (1 - PRICING.GARAGE_DISCOUNT_MULTIPLIER));
+            }
+            return total;
+        }, 0);
+    },
+    getTotalPrice: () => {
+        return get().getBaseTotal() - get().getDiscountAmount();
     },
 }));

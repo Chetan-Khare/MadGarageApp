@@ -1,14 +1,18 @@
 /**
  * Centralized pricing constants for the MadGarage application.
  *
- * P2 FIX: Magic numbers extracted from components and stores into
- * this single source of truth. When business rules change (e.g., the
- * garage discount changes from 5% to 8%), this is the only file to update.
+ * NOTE: The garage discount is now a DYNAMIC TIERED SYSTEM managed via
+ * system_settings in the database. The multiplier below is only used as
+ * a local fallback if the API is unreachable. The actual discount is
+ * calculated server-side based on the product's price tier and wholesale flag.
  *
- * Note: The backend mirrors these values in application.yml under app.pricing.
+ * Tier configuration (editable by Admin in Settings):
+ *   LOW:  Products below MID_THRESHOLD  (default 5%)
+ *   MID:  Products MID–HIGH threshold   (default 3%)
+ *   HIGH: Products above HIGH_THRESHOLD  (default 1%)
  */
 export const PRICING = {
-  /** Multiplier applied to the base price for GARAGE role customers (5% discount). */
+  /** Fallback multiplier (5% discount). Real value is fetched from the API. */
   GARAGE_DISCOUNT_MULTIPLIER: 0.95,
 
   /** Standard shipping fee applied at checkout (INR). */

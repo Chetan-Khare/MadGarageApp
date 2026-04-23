@@ -70,8 +70,11 @@ export default function OrderDetailsScreen({ route, navigation }: Props) {
     const [submittingRating, setSubmittingRating] = useState(false);
 
     const { isDark } = useThemeStore();
+    const { role, user: currentUser } = useAuthStore();
     const T = isDark ? DARK_THEME : LIGHT_THEME;
     const insets = useSafeAreaInsets();
+
+    const [updating, setUpdating] = useState(false);
 
     useEffect(() => {
         fetchOrderDetails();
@@ -119,6 +122,34 @@ export default function OrderDetailsScreen({ route, navigation }: Props) {
             Alert.alert('Submission Failed', msg);
         } finally {
             setSubmittingRating(false);
+        }
+    };
+
+    const handleUpdateStatus = async (status: string) => {
+        setUpdating(true);
+        try {
+            await apiClient.put(`/orders/${orderId}/status?status=${status}`);
+            Alert.alert('Success', `Order status updated to ${status.replace('_', ' ')}.`);
+            fetchOrderDetails();
+        } catch (error: any) {
+            console.error('Status update failed:', error);
+            Alert.alert('Error', 'Failed to update order status.');
+        } finally {
+            setUpdating(false);
+        }
+    };
+
+    const handleUpdateFittingStatus = async (status: string) => {
+        setUpdating(true);
+        try {
+            await apiClient.patch(`/orders/${orderId}/fitting-status?status=${status}`);
+            Alert.alert('Success', `Fitting stage updated: ${status.replace('_', ' ')}.`);
+            fetchOrderDetails();
+        } catch (error: any) {
+            console.error('Fitting status update failed:', error);
+            Alert.alert('Error', 'Failed to update fitting status.');
+        } finally {
+            setUpdating(false);
         }
     };
 
@@ -391,6 +422,63 @@ export default function OrderDetailsScreen({ route, navigation }: Props) {
                     )}
                 </TouchableOpacity>
 
+                {/* Seller/Garage Action Center */}
+                {(role === 'ROLE_SELLER' || role === 'ROLE_ADMIN' || role === 'ROLE_GARAGE') && (
+                    <View style={styles.actionCenter}>
+                        <Text style={[styles.sectionTitle, { color: T.text, marginTop: 20 }]}>Status Actions</Text>
+                        
+                        {role === 'ROLE_SELLER' && order.status === 'PAID' && (
+                            <TouchableOpacity 
+                                style={[styles.actionBtn, { backgroundColor: '#2196F3' }]}
+                                onPress={() => handleUpdateStatus('SHIPPED')}
+                                disabled={updating}
+                            >
+                                {updating ? <ActivityIndicator color="#FFF" /> : (
+                                    <>
+                                        <Ionicons name="airplane-outline" size={20} color="#FFF" />
+                                        <Text style={styles.actionBtnText}>MARK AS SHIPPED</Text>
+                                    </>
+                                )}
+                            </TouchableOpacity>
+                        )}
+
+                        {role === 'ROLE_GARAGE' && order.deliveryType === 'GARAGE_FITTING' && (
+                            <View style={{ gap: 10 }}>
+                                {order.status === 'SHIPPED' && (
+                                    <TouchableOpacity 
+                                        style={[styles.actionBtn, { backgroundColor: '#00BCD4' }]}
+                                        onPress={() => handleUpdateFittingStatus('ARRIVED_AT_GARAGE')}
+                                        disabled={updating}
+                                    >
+                                        <Ionicons name="checkmark-circle-outline" size={20} color="#FFF" />
+                                        <Text style={styles.actionBtnText}>VERIFY ARRIVAL</Text>
+                                    </TouchableOpacity>
+                                )}
+                                {order.status === 'ARRIVED_AT_GARAGE' && order.fittingStatus === 'PENDING_INSPECTION' && (
+                                    <TouchableOpacity 
+                                        style={[styles.actionBtn, { backgroundColor: '#FF9800' }]}
+                                        onPress={() => handleUpdateFittingStatus('INSPECTED')}
+                                        disabled={updating}
+                                    >
+                                        <Ionicons name="search-outline" size={20} color="#FFF" />
+                                        <Text style={styles.actionBtnText}>MARK AS INSPECTED</Text>
+                                    </TouchableOpacity>
+                                )}
+                                {order.fittingStatus === 'INSPECTED' && (
+                                    <TouchableOpacity 
+                                        style={[styles.actionBtn, { backgroundColor: '#4CAF50' }]}
+                                        onPress={() => handleUpdateFittingStatus('COMPLETED')}
+                                        disabled={updating}
+                                    >
+                                        <Ionicons name="build-outline" size={20} color="#FFF" />
+                                        <Text style={styles.actionBtnText}>COMPLETE FITTING</Text>
+                                    </TouchableOpacity>
+                                )}
+                            </View>
+                        )}
+                    </View>
+                )}
+
                 <Text style={[styles.footerNote, { color: T.subText }]}>
                     A copy of this invoice has been sent to your email.
                 </Text>
@@ -402,6 +490,7 @@ export default function OrderDetailsScreen({ route, navigation }: Props) {
 const getStatusColor = (status: string) => {
     switch (status.toUpperCase()) {
         case 'DELIVERED': return '#4CAF50';
+        case 'ARRIVED_AT_GARAGE': return '#00BCD4';
         case 'PROCESSING': return '#FF9800';
         case 'CANCELLED': return '#F44336';
         case 'SHIPPED': return '#2196F3';
@@ -576,5 +665,29 @@ const styles = StyleSheet.create({
         fontSize: 10,
         fontWeight: '900',
         textTransform: 'uppercase',
+    },
+    actionCenter: {
+        marginTop: 10,
+        marginBottom: 20,
+    },
+    actionBtn: {
+        height: 56,
+        borderRadius: 12,
+        flexDirection: 'row',
+        alignItems: 'center',
+        justifyContent: 'center',
+        gap: 10,
+        marginTop: 12,
+        shadowColor: '#000',
+        shadowOffset: { width: 0, height: 4 },
+        shadowOpacity: 0.2,
+        shadowRadius: 8,
+        elevation: 6,
+    },
+    actionBtnText: {
+        color: '#FFF',
+        fontSize: 14,
+        fontWeight: '900',
+        letterSpacing: 1,
     },
 });

@@ -27,6 +27,7 @@ export default function AdminProfileScreen({ navigation }: Props) {
     const [firstName, setFirstName] = useState('');
     const [lastName, setLastName] = useState('');
     const [email, setEmail] = useState('');
+    const [phone, setPhone] = useState('');
     const [password, setPassword] = useState('');
     const [showPassword, setShowPassword] = useState(false);
     const [profileImageUrl, setProfileImageUrl] = useState<string | null>(null);
@@ -44,6 +45,7 @@ export default function AdminProfileScreen({ navigation }: Props) {
                 setFirstName(response.data.firstName || '');
                 setLastName(response.data.lastName || '');
                 setEmail(response.data.email || '');
+                setPhone(response.data.phone || '');
                 if (response.data.profileImageUrl) {
                     setProfileImageUrl(`${BASE_SERVER_URL}${response.data.profileImageUrl}`);
                 }
@@ -111,6 +113,7 @@ export default function AdminProfileScreen({ navigation }: Props) {
                 firstName,
                 lastName,
                 email,
+                phone,
                 password: password.trim() ? password : null
             });
 
@@ -206,6 +209,18 @@ export default function AdminProfileScreen({ navigation }: Props) {
                                 autoCapitalize="none"
                                 value={email}
                                 onChangeText={setEmail}
+                            />
+                        </View>
+
+                        <View style={styles.inputGroup}>
+                            <Text style={[styles.label, { color: T.subText }]}>Mobile Number</Text>
+                            <TextInput
+                                style={[styles.input, { backgroundColor: T.inputBg, color: T.text, borderColor: T.inputBorder }]}
+                                placeholder="9876543210"
+                                placeholderTextColor={T.subText}
+                                keyboardType="phone-pad"
+                                value={phone}
+                                onChangeText={setPhone}
                             />
                         </View>
                     </View>

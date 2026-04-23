@@ -50,6 +50,7 @@ export default function AddProductScreen({ navigation }: Props) {
     const [imageUris, setImageUris] = useState<string[]>([]);
     const [uploading, setUploading] = useState(false);
     const [guideUri, setGuideUri] = useState<string | null>(null);
+    const [wholesale, setWholesale] = useState(true);
 
     // Vehicle Selection State
     const [makes, setMakes] = useState<string[]>([]);
@@ -238,7 +239,8 @@ export default function AddProductScreen({ navigation }: Props) {
                 vehicleIds,
                 base64Images,
                 base64Guide,
-                guideExtension: guideExt
+                guideExtension: guideExt,
+                wholesale
             };
 
             await apiClient.post('/seller/inventory/base64', payload);
@@ -403,6 +405,25 @@ export default function AddProductScreen({ navigation }: Props) {
                                 />
                             </View>
 
+
+                            {/* Wholesale Eligibility Toggle */}
+                            <View style={styles.inputGroup}>
+                                <Text style={[styles.label, { color: T.subText }]}>Listing Type</Text>
+                                <View style={[styles.wholesaleCard, { backgroundColor: T.inputBg, borderColor: wholesale ? '#DF232466' : T.inputBorder }]}>
+                                    <View style={{ flex: 1 }}>
+                                        <Text style={[styles.wholesaleTitle, { color: T.text }]}>Wholesale / Garage Discounts</Text>
+                                        <Text style={{ fontSize: 10, color: T.subText, marginTop: 2 }}>
+                                            {wholesale ? 'Garages will receive tiered pricing on this part' : 'Full retail price for all buyers'}
+                                        </Text>
+                                    </View>
+                                    <TouchableOpacity
+                                        onPress={() => setWholesale(!wholesale)}
+                                        style={{ width: 48, height: 26, borderRadius: 13, backgroundColor: wholesale ? '#DF2324' : '#444', padding: 2, justifyContent: 'center' }}
+                                    >
+                                        <View style={{ width: 22, height: 22, borderRadius: 11, backgroundColor: '#FFF', alignSelf: wholesale ? 'flex-end' : 'flex-start' }} />
+                                    </TouchableOpacity>
+                                </View>
+                            </View>
 
                             <View style={styles.inputGroup}>
                                 <Text style={[styles.label, { color: T.subText }]}>Fitment Type</Text>
@@ -693,5 +714,17 @@ const styles = StyleSheet.create({
         fontWeight: '600',
         textTransform: 'uppercase',
         marginTop: 2,
+    },
+    wholesaleCard: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        padding: 16,
+        borderRadius: 12,
+        borderWidth: 1,
+        gap: 12,
+    },
+    wholesaleTitle: {
+        fontSize: 13,
+        fontWeight: '800',
     },
 });

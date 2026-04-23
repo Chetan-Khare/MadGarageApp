@@ -28,6 +28,7 @@ export interface Product {
   flagged?: boolean;
   flagReason?: string;
   sellerResponse?: string;
+  wholesale?: boolean;
 }
 
 export type RootStackParamList = {

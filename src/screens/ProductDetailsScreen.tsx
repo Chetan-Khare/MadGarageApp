@@ -54,7 +54,8 @@ export default function ProductDetailsScreen({ route, navigation }: Props) {
             imageUrl: product.imageUrl ?? '',
             manufacturer: product.manufacturer || product.brand || 'MAD GARAGE. AI',
             quantity,
-            stockQuantity: product.stockQuantity ?? 0
+            stockQuantity: product.stockQuantity ?? 0,
+            wholesale: product.wholesale
         });
 
         if (success) {
@@ -178,7 +179,7 @@ export default function ProductDetailsScreen({ route, navigation }: Props) {
 
                         {hasDiscount && (
                             <View style={styles.savingsBadge}>
-                                <Text style={styles.savingsText}>5% GARAGE DISCOUNT APPLIED</Text>
+                                <Text style={styles.savingsText}>SPECIAL GARAGE PRICING APPLIED</Text>
                             </View>
                         )}
                     </LinearGradient>

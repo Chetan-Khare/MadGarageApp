@@ -28,6 +28,7 @@ export default function SellerProfileScreen({ navigation }: Props) {
     const [firstName, setFirstName] = useState('');
     const [lastName, setLastName] = useState('');
     const [email, setEmail] = useState('');
+    const [phone, setPhone] = useState('');
     const [password, setPassword] = useState('');
     const [showPassword, setShowPassword] = useState(false);
     const [profileImageUrl, setProfileImageUrl] = useState<string | null>(null);
@@ -50,6 +51,7 @@ export default function SellerProfileScreen({ navigation }: Props) {
                 setFirstName(response.data.firstName || '');
                 setLastName(response.data.lastName || '');
                 setEmail(response.data.email || '');
+                setPhone(response.data.phone || '');
                 setCity(response.data.city || '');
                 setAddress(response.data.address || '');
                 setLatitude(response.data.latitude?.toString() || '');
@@ -119,6 +121,7 @@ export default function SellerProfileScreen({ navigation }: Props) {
                 firstName,
                 lastName,
                 email,
+                phone,
                 password: password.trim() ? password : null,
                 city,
                 address,
@@ -218,6 +221,18 @@ export default function SellerProfileScreen({ navigation }: Props) {
                                 autoCapitalize="none"
                                 value={email}
                                 onChangeText={setEmail}
+                            />
+                        </View>
+
+                        <View style={styles.inputGroup}>
+                            <Text style={[styles.label, { color: T.subText }]}>Mobile Number</Text>
+                            <TextInput
+                                style={[styles.input, { backgroundColor: T.inputBg, color: T.text, borderColor: T.inputBorder }]}
+                                placeholder="9876543210"
+                                placeholderTextColor={T.subText}
+                                keyboardType="phone-pad"
+                                value={phone}
+                                onChangeText={setPhone}
                             />
                         </View>
                     </View>

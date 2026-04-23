@@ -85,13 +85,13 @@ export default function HomeScreen({ navigation }: Props) {
         const controller = new AbortController();
         fetchDevices(selectedEngine ? undefined : controller.signal);
         fetchMakes();
-        
+
         // SYNC-PROTOCOL: Prioritize saved address over browser detection
         if (token && !isGuest) {
             useLocationStore.getState().syncWithSavedAddress();
             useWishlistStore.getState().loadWishlist();
         }
-        
+
         return () => controller.abort();
     }, [selectedEngine, activeCategory, activeCondition, token]);
 
@@ -270,9 +270,9 @@ export default function HomeScreen({ navigation }: Props) {
             return;
         }
         const added = await toggleWishlist(product);
-        Toast.show({ 
-            message: added ? `${product.partName || product.name} added to wishlist` : 'Removed from wishlist', 
-            type: added ? 'success' : 'info' 
+        Toast.show({
+            message: added ? `${product.partName || product.name} added to wishlist` : 'Removed from wishlist',
+            type: added ? 'success' : 'info'
         });
     };
     const handleProfilePress = () => {
@@ -679,20 +679,28 @@ export default function HomeScreen({ navigation }: Props) {
                 />
             )}
             <StatusBar barStyle={T.statusBar} backgroundColor={T.bg} translucent />
-                {/* Minimalist Clayful-Inspired Header */}
-                <View style={[styles.clayfulHeaderTop, { backgroundColor: T.bg }]}>
-                    <TouchableOpacity onPress={handleProfilePress} style={styles.clayfulHeaderBtn}>
-                        <Image 
-                            source={require('../../assets/app_logo.png')} 
-                            style={{ width: 28, height: 28, borderRadius: 14, overflow: 'hidden' }} 
-                            resizeMode="cover" 
-                        />
-                    </TouchableOpacity>
-                    
-                    <View style={{ flex: 1, alignItems: 'center' }}>
-                        <Text style={styles.clayfulHeaderTitle}>MAD GARAGE</Text>
-                        <Text style={[styles.clayfulHeaderSubtitle, { color: T.subText }]}>PERFORMANCE & HI-END PARTS</Text>
-                    </View>
+            {/* Minimalist Clayful-Inspired Header */}
+            <View style={[styles.clayfulHeaderTop, { backgroundColor: T.bg }]}>
+                <View style={[styles.clayfulHeaderBtn, { width: 84, alignItems: 'flex-start' }]}>
+                    <Image
+                        source={require('../../assets/app_logo.png')}
+                        style={{ width: 28, height: 28, borderRadius: 14, overflow: 'hidden' }}
+                        resizeMode="cover"
+                    />
+                </View>
+
+                <View style={{ flex: 1, alignItems: 'center', marginHorizontal: 16 }}>
+                    <Text style={styles.clayfulHeaderTitle}>MAD GARAGE</Text>
+                    <Text
+                        style={[styles.clayfulHeaderSubtitle, { color: T.subText }]}
+                        numberOfLines={1}
+                        adjustsFontSizeToFit
+                    >
+                        PERFORMANCE & HI-END PARTS
+                    </Text>
+                </View>
+
+                <View style={{ flexDirection: 'row', alignItems: 'center', gap: 4, width: 84, justifyContent: 'flex-end' }}>
                     <TouchableOpacity onPress={() => navigation.navigate('Cart')} style={styles.clayfulHeaderBtn}>
                         <Ionicons name="bag-outline" size={22} color={T.text} />
                         {(cartItemCount ?? 0) > 0 && (
@@ -701,91 +709,96 @@ export default function HomeScreen({ navigation }: Props) {
                             </View>
                         )}
                     </TouchableOpacity>
+
+                    <TouchableOpacity onPress={handleProfilePress} style={[styles.clayfulHeaderBtn, { opacity: 0.8 }]}>
+                        <Ionicons name="ellipsis-vertical-outline" size={20} color={T.text} />
+                    </TouchableOpacity>
                 </View>
+            </View>
 
-                {showProfileMenu && (
-                    <View style={[styles.profileMenu, { backgroundColor: T.statBg, borderColor: T.statBorder, top: 50, left: 16 }]}>
-                        <TouchableOpacity style={styles.menuItem} onPress={() => { setShowProfileMenu(false); navigation.navigate('CustomerProfile' as any); }}>
-                            <Ionicons name="person-circle-outline" size={18} color={T.text} />
-                            <Text style={[styles.menuText, { color: T.text }]}>My Profile</Text>
-                        </TouchableOpacity>
-                        <View style={styles.menuDivider} />
-                        
-                        <TouchableOpacity style={styles.menuItem} onPress={() => { setShowProfileMenu(false); navigation.navigate('Address' as any); }}>
-                            <Ionicons name="map-outline" size={18} color={T.text} />
-                            <Text style={[styles.menuText, { color: T.text }]}>Manage Addresses</Text>
-                        </TouchableOpacity>
-                        <View style={styles.menuDivider} />
-                        
-                        <TouchableOpacity 
-                            style={styles.menuItem} 
-                            onPress={() => { 
-                                toggleTheme();
-                            }}
-                        >
-                            <Ionicons name={isDark ? "sunny-outline" : "moon-outline"} size={18} color={T.text} />
-                            <Text style={[styles.menuText, { color: T.text }]}>{isDark ? 'Light' : 'Dark'} Mode</Text>
-                        </TouchableOpacity>
-                        <View style={styles.menuDivider} />
+            {showProfileMenu && (
+                <View style={[styles.profileMenu, { backgroundColor: T.statBg, borderColor: T.statBorder, top: 60, right: 16 }]}>
+                    <TouchableOpacity style={styles.menuItem} onPress={() => { setShowProfileMenu(false); navigation.navigate('CustomerProfile' as any); }}>
+                        <Ionicons name="person-circle-outline" size={18} color={T.text} />
+                        <Text style={[styles.menuText, { color: T.text }]}>My Profile</Text>
+                    </TouchableOpacity>
+                    <View style={styles.menuDivider} />
+
+                    <TouchableOpacity style={styles.menuItem} onPress={() => { setShowProfileMenu(false); navigation.navigate('Address' as any); }}>
+                        <Ionicons name="map-outline" size={18} color={T.text} />
+                        <Text style={[styles.menuText, { color: T.text }]}>Manage Addresses</Text>
+                    </TouchableOpacity>
+                    <View style={styles.menuDivider} />
+
+                    <TouchableOpacity
+                        style={styles.menuItem}
+                        onPress={() => {
+                            toggleTheme();
+                        }}
+                    >
+                        <Ionicons name={isDark ? "sunny-outline" : "moon-outline"} size={18} color={T.text} />
+                        <Text style={[styles.menuText, { color: T.text }]}>{isDark ? 'Light' : 'Dark'} Mode</Text>
+                    </TouchableOpacity>
+                    <View style={styles.menuDivider} />
 
 
 
-                        <TouchableOpacity style={styles.menuItem} onPress={() => { setShowProfileMenu(false); navigation.navigate('OrderHistory'); }}>
-                            <Ionicons name="receipt-outline" size={18} color={T.text} />
-                            <Text style={[styles.menuText, { color: T.text }]}>Order History</Text>
-                        </TouchableOpacity>
-                        <View style={styles.menuDivider} />
-                        <TouchableOpacity style={styles.menuItem} onPress={() => { setShowProfileMenu(false); navigation.navigate('Wishlist' as any); }}>
-                            <Ionicons name="heart-outline" size={18} color={T.text} />
-                            <Text style={[styles.menuText, { color: T.text }]}>
-                                My Wishlist{wishlistItems.length > 0 ? ` (${wishlistItems.length})` : ''}
-                            </Text>
-                        </TouchableOpacity>
-                        <View style={styles.menuDivider} />
-                        <TouchableOpacity style={styles.menuItem} onPress={() => { setShowProfileMenu(false); handleLogout(); }}>
-                            <Ionicons name="log-out-outline" size={18} color={T.primary} />
-                            <Text style={[styles.menuText, { color: T.primary }]}>Log Out</Text>
-                        </TouchableOpacity>
-                    </View>
-                )}
+                    <TouchableOpacity style={styles.menuItem} onPress={() => { setShowProfileMenu(false); navigation.navigate('OrderHistory'); }}>
+                        <Ionicons name="receipt-outline" size={18} color={T.text} />
+                        <Text style={[styles.menuText, { color: T.text }]}>Order History</Text>
+                    </TouchableOpacity>
+                    <View style={styles.menuDivider} />
+                    <TouchableOpacity style={styles.menuItem} onPress={() => { setShowProfileMenu(false); navigation.navigate('Wishlist' as any); }}>
+                        <Ionicons name="heart-outline" size={18} color={T.text} />
+                        <Text style={[styles.menuText, { color: T.text }]}>
+                            My Wishlist{wishlistItems.length > 0 ? ` (${wishlistItems.length})` : ''}
+                        </Text>
+                    </TouchableOpacity>
+                    <View style={styles.menuDivider} />
+                    <TouchableOpacity style={styles.menuItem} onPress={() => { setShowProfileMenu(false); handleLogout(); }}>
+                        <Ionicons name="log-out-outline" size={18} color={T.primary} />
+                        <Text style={[styles.menuText, { color: T.primary }]}>Log Out</Text>
+                    </TouchableOpacity>
+                </View>
+            )}
 
-                {loading && !refreshing ? (
-                    <View style={{ flex: 1, justifyContent: 'center', alignItems: 'center' }}>
-                        <ActivityIndicator size="large" color="#DF2324" />
-                    </View>
-                ) : (
-                    <FlatList
-                        data={pagedDevices}
-                        keyExtractor={item => item.id?.toString() || Math.random().toString()}
-                        numColumns={2}
-                        columnWrapperStyle={styles.colWrapper}
-                        contentContainerStyle={styles.listContent}
-                        showsVerticalScrollIndicator={false}
-                        renderItem={renderCard}
-                        ListHeaderComponent={renderHeader}
-                        ListFooterComponent={renderFooter}
-                        refreshControl={
-                            <RefreshControl
-                                refreshing={refreshing}
-                                onRefresh={handleRefresh}
-                                tintColor="#DF2324"
-                                colors={['#DF2324']}
-                            />
-                        }
-                        ListEmptyComponent={
-                            <View style={styles.emptyBox}>
-                                <Ionicons name="search" size={48} color={T.subText} />
-                                <Text style={[styles.emptyText, { color: T.subText }]}>No parts found</Text>
-                            </View>
-                        }
-                    />
-                )}
+            {loading && !refreshing ? (
+                <View style={{ flex: 1, justifyContent: 'center', alignItems: 'center' }}>
+                    <ActivityIndicator size="large" color="#DF2324" />
+                </View>
+            ) : (
+                <FlatList
+                    data={pagedDevices}
+                    keyExtractor={item => item.id?.toString() || Math.random().toString()}
+                    numColumns={2}
+                    columnWrapperStyle={styles.colWrapper}
+                    contentContainerStyle={styles.listContent}
+                    showsVerticalScrollIndicator={false}
+                    renderItem={renderCard}
+                    ListHeaderComponent={renderHeader}
+                    ListFooterComponent={renderFooter}
+                    refreshControl={
+                        <RefreshControl
+                            refreshing={refreshing}
+                            onRefresh={handleRefresh}
+                            tintColor="#DF2324"
+                            colors={['#DF2324']}
+                        />
+                    }
+                    ListEmptyComponent={
+                        <View style={styles.emptyBox}>
+                            <Ionicons name="search" size={48} color={T.subText} />
+                            <Text style={[styles.emptyText, { color: T.subText }]}>No parts found</Text>
+                        </View>
+                    }
+                />
+            )}
 
-                <TouchableOpacity style={styles.fab} onPress={() => navigation.navigate('Chat')} activeOpacity={0.8}>
-                    <LinearGradient colors={['#FF5555', '#CC1111']} style={styles.fabGrad}>
-                        <Ionicons name="chatbubble-ellipses" size={24} color="#FFF" />
-                    </LinearGradient>
-                </TouchableOpacity>
+            <TouchableOpacity style={styles.fab} onPress={() => navigation.navigate('Chat')} activeOpacity={0.8}>
+                <LinearGradient colors={['#FF5555', '#CC1111']} style={styles.fabGrad}>
+                    <Ionicons name="chatbubble-ellipses" size={24} color="#FFF" />
+                </LinearGradient>
+            </TouchableOpacity>
         </SafeAreaView>
     );
 }

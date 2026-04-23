@@ -1,10 +1,11 @@
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useState, useCallback } from 'react';
 import { View, Text, StyleSheet, TouchableOpacity, ScrollView, Dimensions, ActivityIndicator, TextInput, Alert, StatusBar, Image, FlatList, Platform } from 'react-native';
 import { useSafeAreaInsets, SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
 import { LinearGradient } from 'expo-linear-gradient';
 import { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import { RootStackParamList } from '../types';
+import { useFocusEffect } from '@react-navigation/native';
 import apiClient, { BASE_SERVER_URL } from '../services/apiClient';
 import { useCartStore, CartItem } from '../store/cartStore';
 import { useAuthStore } from '../store/authStore';
@@ -43,6 +44,7 @@ export interface GarageProduct {
     stockQuantity?: number;
     deviceName?: string; // For fallback
     flagged?: boolean;
+    wholesale?: boolean;
 }
 
 export default function GarageDashboardScreen({ navigation }: Props) {
@@ -92,8 +94,13 @@ export default function GarageDashboardScreen({ navigation }: Props) {
     useEffect(() => {
         fetchProducts(activeCategory);
         fetchMakes();
-        fetchFittingOrders();
     }, [selectedEngine]);
+
+    useFocusEffect(
+        useCallback(() => {
+            fetchFittingOrders();
+        }, [])
+    );
 
     const fetchMakes = async () => {
         try {
@@ -349,7 +356,12 @@ export default function GarageDashboardScreen({ navigation }: Props) {
                             <Text style={[styles.ratingText, { color: T.subText }]}>{item.rating || '4.8'}</Text>
                         </View>
                         <View style={styles.cardPriceRow}>
-                            <Text style={styles.cardPrice}>₹{item.garagePrice?.toLocaleString()}</Text>
+                            <View>
+                                {item.wholesale && item.originalPrice > item.garagePrice && (
+                                    <Text style={[styles.strikePrice, { color: T.placeholder, fontSize: 10, textDecorationLine: 'line-through' }]}>₹{item.originalPrice.toLocaleString()}</Text>
+                                )}
+                                <Text style={styles.cardPrice}>₹{(item.wholesale ? item.garagePrice : item.originalPrice).toLocaleString()}</Text>
+                            </View>
                             <View style={styles.cardActions}>
                                 {/* Wishlist heart */}
                                 <TouchableOpacity
@@ -373,7 +385,8 @@ export default function GarageDashboardScreen({ navigation }: Props) {
                                             imageUrl: item.imageUrl,
                                             manufacturer: 'Wholesale Part',
                                             quantity: 1,
-                                            stockQuantity: item.stockQuantity ?? 0
+                                            stockQuantity: item.stockQuantity ?? 0,
+                                            wholesale: item.wholesale
                                         });
                                         if (!success) {
                                             Alert.alert("Stock Limit", "No more stock available for this part.");
@@ -479,7 +492,7 @@ export default function GarageDashboardScreen({ navigation }: Props) {
             {/* Incoming Fitting Requests Section */}
             {fittingOrders.length > 0 && (
                 <View style={[styles.fittingSection, { backgroundColor: T.headerBg }]}>
-                    <View style={styles.sectionHeader}>
+                    <View style={[styles.sectionHeader, { paddingHorizontal: 20 }]}>
                         <View style={styles.sectionTitleRow}>
                             <View style={[styles.iconBox, { backgroundColor: '#DF232422' }]}>
                                 <Ionicons name="construct" size={18} color="#DF2324" />
@@ -494,15 +507,24 @@ export default function GarageDashboardScreen({ navigation }: Props) {
                         </TouchableOpacity>
                     </View>
 
-                    <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.fittingScroll}>
-                        {fittingOrders.map((order) => (
-                            <View key={order.id} style={[styles.fittingCard, { backgroundColor: T.statBg, borderColor: T.statBorder }]}>
+                    <ScrollView 
+                        horizontal 
+                        showsHorizontalScrollIndicator={false} 
+                        contentContainerStyle={styles.fittingScroll}
+                        snapToInterval={Dimensions.get('window').width * 0.85 + 16}
+                        decelerationRate="fast"
+                        snapToAlignment="start"
+                    >
+                        {fittingOrders.filter(o => 
+                            ['SHIPPED', 'ARRIVED_AT_GARAGE'].includes(o.status) || o.fittingStatus !== 'COMPLETED'
+                        ).map((order) => (
+                            <View key={order.id} style={[styles.fittingCard, { backgroundColor: T.statBg, borderColor: T.statBorder, width: Dimensions.get('window').width * 0.85 }]}>
                                 <View style={styles.fittingHeader}>
                                     <View style={styles.orderIdBadge}>
                                         <Text style={styles.orderIdText}>#{order.id}</Text>
                                     </View>
-                                    <Text style={[styles.fittingStatus, { color: order.fittingStatus === 'COMPLETED' ? '#00FF00' : '#FFA500' }]}>
-                                        {order.fittingStatus?.replace('_', ' ')}
+                                    <Text style={[styles.fittingStatus, { color: order.status === 'ARRIVED_AT_GARAGE' ? '#00FF00' : '#2196F3' }]}>
+                                        {order.status === 'SHIPPED' ? 'IN TRANSIT' : (order.fittingStatus?.replace('_', ' ') || 'PENDING')}
                                     </Text>
                                 </View>
                                 
@@ -510,7 +532,15 @@ export default function GarageDashboardScreen({ navigation }: Props) {
                                 <Text style={[styles.customerAddress, { color: T.subText }]} numberOfLines={1}>{order.shippingAddress}</Text>
 
                                 <View style={styles.fittingActions}>
-                                    {order.fittingStatus === 'PENDING' && (
+                                    {order.status === 'SHIPPED' && (
+                                        <TouchableOpacity 
+                                            style={[styles.statusBtn, { backgroundColor: '#2196F322' }]}
+                                            onPress={() => updateFittingStatus(order.id, 'ARRIVED_AT_GARAGE')}
+                                        >
+                                            <Text style={[styles.statusBtnText, { color: '#2196F3' }]}>VERIFY ARRIVAL</Text>
+                                        </TouchableOpacity>
+                                    )}
+                                    {order.status === 'ARRIVED_AT_GARAGE' && order.fittingStatus === 'PENDING_INSPECTION' && (
                                         <TouchableOpacity 
                                             style={[styles.statusBtn, { backgroundColor: '#FFA50022' }]}
                                             onPress={() => updateFittingStatus(order.id, 'INSPECTED')}
@@ -739,31 +769,43 @@ export default function GarageDashboardScreen({ navigation }: Props) {
             <StatusBar barStyle={T.statusBar} backgroundColor={T.headerBg} />
             {/* Minimalist Clayful-Inspired Header */}
             <View style={[styles.clayfulHeaderTop, { backgroundColor: T.bg }]}>
-                <TouchableOpacity onPress={() => setShowProfileMenu(!showProfileMenu)} style={styles.clayfulHeaderBtn}>
+                <View style={[styles.clayfulHeaderBtn, { width: 84, alignItems: 'flex-start' }]}>
                     <Image 
                         source={require('../../assets/app_logo.png')} 
                         style={{ width: 28, height: 28, borderRadius: 14, overflow: 'hidden' }} 
                         resizeMode="cover" 
                     />
-                </TouchableOpacity>
-                
-                <View style={{ flex: 1, alignItems: 'center' }}>
-                    <Text style={styles.clayfulHeaderTitle}>MAD GARAGE</Text>
-                    <Text style={[styles.clayfulHeaderSubtitle, { color: T.subText }]}>WHOLESALE PORTAL</Text>
                 </View>
                 
-                <TouchableOpacity onPress={() => navigation.navigate('Cart')} style={styles.clayfulHeaderBtn}>
-                    <Ionicons name="bag-outline" size={22} color={T.text} />
-                    {(cartItemsCount ?? 0) > 0 && (
-                        <View style={styles.clayfulBadge}>
-                            <Text style={styles.clayfulBadgeText}>{cartItemsCount}</Text>
-                        </View>
-                    )}
-                </TouchableOpacity>
+                <View style={{ flex: 1, alignItems: 'center', marginHorizontal: 15 }}>
+                    <Text style={styles.clayfulHeaderTitle}>MAD GARAGE</Text>
+                    <Text 
+                        style={[styles.clayfulHeaderSubtitle, { color: T.subText }]} 
+                        numberOfLines={1} 
+                        adjustsFontSizeToFit
+                    >
+                        WHOLESALE PORTAL
+                    </Text>
+                </View>
+                
+                <View style={{ flexDirection: 'row', alignItems: 'center', gap: 4, width: 84, justifyContent: 'flex-end' }}>
+                    <TouchableOpacity onPress={() => navigation.navigate('Cart')} style={styles.clayfulHeaderBtn}>
+                        <Ionicons name="bag-outline" size={22} color={T.text} />
+                        {(cartItemsCount ?? 0) > 0 && (
+                            <View style={styles.clayfulBadge}>
+                                <Text style={styles.clayfulBadgeText}>{cartItemsCount}</Text>
+                            </View>
+                        )}
+                    </TouchableOpacity>
+
+                    <TouchableOpacity onPress={() => setShowProfileMenu(!showProfileMenu)} style={[styles.clayfulHeaderBtn, { opacity: 0.8 }]}>
+                        <Ionicons name="ellipsis-vertical-outline" size={20} color={T.text} />
+                    </TouchableOpacity>
+                </View>
             </View>
 
             {showProfileMenu && (
-                <View style={[styles.profileMenu, { backgroundColor: T.statBg, borderColor: T.statBorder, top: 40, left: 16 }]}>
+                <View style={[styles.profileMenu, { backgroundColor: T.statBg, borderColor: T.statBorder, top: 60, right: 16 }]}>
                     <TouchableOpacity
                         style={styles.profileMenuItem}
                         onPress={() => { setShowProfileMenu(false); navigation.navigate('GarageProfile' as any); }}
@@ -883,14 +925,14 @@ const styles = StyleSheet.create({
         backgroundColor: 'rgba(0,0,0,0.05)',
         marginHorizontal: 10,
     },
-    fittingSection: { paddingVertical: 20, marginBottom: 10 },
-    sectionHeader: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', paddingHorizontal: 20, marginBottom: 15 },
+    fittingSection: { paddingVertical: 20 },
+    sectionHeader: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 15 },
     sectionTitleRow: { flexDirection: 'row', alignItems: 'center', gap: 12 },
     iconBox: { width: 36, height: 36, borderRadius: 10, justifyContent: 'center', alignItems: 'center' },
     sectionTitle: { fontSize: 13, fontWeight: '900', letterSpacing: 0.5 },
     sectionSubtitle: { fontSize: 9, fontWeight: '700', textTransform: 'uppercase' },
-    fittingScroll: { paddingHorizontal: 20, gap: 12 },
-    fittingCard: { width: 260, padding: 16, borderRadius: 20, borderWidth: 1 },
+    fittingScroll: { paddingHorizontal: 20, gap: 16 },
+    fittingCard: { padding: 24, borderRadius: 24, borderWidth: 1, shadowColor: '#000', shadowOffset: { width: 0, height: 4 }, shadowOpacity: 0.1, shadowRadius: 8, elevation: 4 },
     fittingHeader: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 10 },
     orderIdBadge: { backgroundColor: '#DF232411', paddingHorizontal: 8, paddingVertical: 4, borderRadius: 6 },
     orderIdText: { fontSize: 10, fontWeight: '900', color: '#DF2324' },
@@ -1331,5 +1373,9 @@ const styles = StyleSheet.create({
         color: '#FFF',
         fontSize: 8,
         fontWeight: 'bold',
+    },
+    strikePrice: {
+        fontSize: 10,
+        textDecorationLine: 'line-through',
     },
 });

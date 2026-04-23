@@ -79,7 +79,8 @@ export default function AdminSettingsScreen({ navigation }: any) {
                             <View style={styles.iconBox}>
                                 <Ionicons 
                                     name={setting.configKey.includes('SHIPPING') ? "bus-outline" : 
-                                          setting.configKey.includes('PLATFORM') ? "shield-checkmark-outline" : "cube-outline"} 
+                                          setting.configKey.includes('PLATFORM') ? "shield-checkmark-outline" :
+                                          setting.configKey.includes('DISCOUNT') ? "pricetag-outline" : "cube-outline"} 
                                     size={20} 
                                     color="#DF2324" 
                                 />
@@ -92,7 +93,7 @@ export default function AdminSettingsScreen({ navigation }: any) {
 
                         <View style={styles.inputRow}>
                             <View style={[styles.inputWrapper, { backgroundColor: T.inputBg, borderColor: T.inputBorder }]}>
-                                <Text style={styles.currency}>₹</Text>
+                                <Text style={styles.currency}>{setting.configKey.includes('PERCENT') ? '%' : '₹'}</Text>
                                 <TextInput
                                     style={[styles.input, { color: T.text }]}
                                     defaultValue={setting.configValue}
