@@ -22,7 +22,7 @@ export default function WishlistScreen({ navigation }: Props) {
     const { items, loading, loadWishlist, removeFromWishlist } = useWishlistStore();
     const addItem = useCartStore(s => s.addItem);
     const { isDark } = useThemeStore();
-    const { isGuest } = useAuthStore();
+    const { isGuest, role } = useAuthStore();
     const T = isDark ? DARK_THEME : LIGHT_THEME;
 
     useEffect(() => {
@@ -30,12 +30,16 @@ export default function WishlistScreen({ navigation }: Props) {
     }, []);
 
     const handleMoveToCart = (item: any) => {
+        if (role === 'ROLE_SELLER') {
+            Alert.alert('Access Restricted', 'Seller accounts cannot purchase parts.');
+            return;
+        }
         const success = addItem({
             id: item.id.toString(),
-            deviceName: item.name,
+            partName: item.name,
             price: item.price,
             imageUrl: item.imageUrl ?? '',
-            manufacturer: item.brand ?? 'MAD GARAGE',
+            brand: item.brand ?? 'MAD GARAGE',
             stockQuantity: 999, // wishlist items don't carry stock; cart will validate at checkout
         });
         if (success) {
@@ -95,16 +99,18 @@ export default function WishlistScreen({ navigation }: Props) {
 
                 {/* Actions */}
                 <View style={styles.actions}>
+                    {role !== 'ROLE_SELLER' && (
+                        <TouchableOpacity
+                            style={styles.cartBtn}
+                            onPress={() => handleMoveToCart(item)}
+                            activeOpacity={0.8}
+                        >
+                            <Ionicons name="cart-outline" size={16} color="#FFF" />
+                            <Text style={styles.cartBtnText}>Move to Cart</Text>
+                        </TouchableOpacity>
+                    )}
                     <TouchableOpacity
-                        style={styles.cartBtn}
-                        onPress={() => handleMoveToCart(item)}
-                        activeOpacity={0.8}
-                    >
-                        <Ionicons name="cart-outline" size={16} color="#FFF" />
-                        <Text style={styles.cartBtnText}>Move to Cart</Text>
-                    </TouchableOpacity>
-                    <TouchableOpacity
-                        style={[styles.deleteBtn, { backgroundColor: T.inputBg, borderColor: T.inputBorder }]}
+                        style={[styles.deleteBtn, { backgroundColor: T.inputBg, borderColor: T.inputBorder, flex: role === 'ROLE_SELLER' ? 1 : undefined }]}
                         onPress={() => handleRemove(item.id, item.name)}
                         activeOpacity={0.8}
                     >

@@ -15,9 +15,16 @@ import { useFonts, Inter_900Black_Italic } from '@expo-google-fonts/inter';
 import CompleteProfileScreen from './src/screens/CompleteProfileScreen';
 
 import { RootStackParamList } from './src/types';
+import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 
-
-// ─────────────────────────────────────────────────────────────────────────────
+const queryClient = new QueryClient({
+  defaultOptions: {
+    queries: {
+      staleTime: 1000 * 60 * 5, // 5 minutes
+      retry: 1,
+    },
+  },
+});
 
 const Stack = createNativeStackNavigator<RootStackParamList>();
 
@@ -51,18 +58,20 @@ export default function App() {
   }
 
   return (
-    <SafeAreaProvider>
-      <NavigationContainer>
-        {token || isGuest ? (
-          <RoleNavigator />
-        ) : (
-          <Stack.Navigator screenOptions={{ headerShown: false, contentStyle: { backgroundColor: '#0A0A0A' } }}>
-            <Stack.Screen name="Login" component={LoginScreen} />
-            <Stack.Screen name="CompleteProfile" component={CompleteProfileScreen} />
-          </Stack.Navigator>
-        )}
-      </NavigationContainer>
-      <ToastProvider />
-    </SafeAreaProvider>
+    <QueryClientProvider client={queryClient}>
+      <SafeAreaProvider>
+        <NavigationContainer>
+          {token || isGuest ? (
+            <RoleNavigator />
+          ) : (
+            <Stack.Navigator screenOptions={{ headerShown: false, contentStyle: { backgroundColor: '#0A0A0A' } }}>
+              <Stack.Screen name="Login" component={LoginScreen} />
+              <Stack.Screen name="CompleteProfile" component={CompleteProfileScreen} />
+            </Stack.Navigator>
+          )}
+        </NavigationContainer>
+        <ToastProvider />
+      </SafeAreaProvider>
+    </QueryClientProvider>
   );
 }

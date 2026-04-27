@@ -229,7 +229,7 @@ export default function LoginScreen({ navigation }: Props) {
             const res = await apiClient.post('/auth/send-otp', { phone });
             Alert.alert("Development SMS", typeof res.data === 'string' ? res.data : JSON.stringify(res.data));
             setShowOtpInput(true);
-            setResendTimer(30);
+            setResendTimer(60);
         } catch (error: any) {
             if (error.response?.status === 429) {
                 const waitTime = parseInt(error.response.headers['retry-after'] || error.response.data?.retryAfterSeconds || '900', 10);

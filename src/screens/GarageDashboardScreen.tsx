@@ -84,7 +84,7 @@ export default function GarageDashboardScreen({ navigation }: Props) {
 
     const { addItem, items } = useCartStore();
     const cartItemsCount = items.reduce((acc, item) => acc + item.quantity, 0);
-    const { logout, token, isGuest } = useAuthStore();
+    const { logout, token, isGuest, role } = useAuthStore();
     const { isDark, toggleTheme } = useThemeStore();
     const T = isDark ? DARK_THEME : LIGHT_THEME;
     const PRIMARY = '#DF2324';
@@ -375,26 +375,30 @@ export default function GarageDashboardScreen({ navigation }: Props) {
                                     />
                                 </TouchableOpacity>
                                 {/* Add to cart */}
-                                <TouchableOpacity
-                                    style={styles.miniCartBtn}
-                                    onPress={() => {
-                                        const success = addItem({
-                                            id: item.id.toString(),
-                                            deviceName: item.name,
-                                            price: item.originalPrice,
-                                            imageUrl: item.imageUrl,
-                                            manufacturer: 'Wholesale Part',
-                                            quantity: 1,
-                                            stockQuantity: item.stockQuantity ?? 0,
-                                            wholesale: item.wholesale
-                                        });
-                                        if (!success) {
-                                            Alert.alert("Stock Limit", "No more stock available for this part.");
-                                        }
-                                    }}
-                                >
-                                    <Ionicons name="add" size={18} color="#FFF" />
-                                </TouchableOpacity>
+                                {role !== 'ROLE_SELLER' && (
+                                    <TouchableOpacity
+                                        style={styles.miniCartBtn}
+                                        onPress={() => {
+                                            const success = addItem({
+                                                id: item.id.toString(),
+                                                partName: item.partName || item.name || 'Wholesale Part',
+                                                price: item.garagePrice || item.originalPrice,
+                                                imageUrl: item.imageUrl,
+                                                brand: item.manufacturer || item.brand || 'Wholesale',
+                                                quantity: 1,
+                                                stockQuantity: item.stockQuantity ?? 0,
+                                                wholesale: item.wholesale
+                                            });
+                                            if (success) {
+                                                Toast.show({ message: 'Added to cart', type: 'success' });
+                                            } else {
+                                                Alert.alert("Stock Limit", "No more stock available for this part.");
+                                            }
+                                        }}
+                                    >
+                                        <Ionicons name="add" size={18} color="#FFF" />
+                                    </TouchableOpacity>
+                                )}
                             </View>
                         </View>
                     </View>

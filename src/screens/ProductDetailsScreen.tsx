@@ -21,7 +21,7 @@ const { width } = Dimensions.get('window');
 export default function ProductDetailsScreen({ route, navigation }: Props) {
     const { product } = route.params;
     const addItem = useCartStore((state) => state.addItem);
-    const { logout, isGuest } = useAuthStore();
+    const { logout, isGuest, role } = useAuthStore();
     const { isDark } = useThemeStore();
     const T = isDark ? DARK_THEME : LIGHT_THEME;
     const [quantity, setQuantity] = useState(1);
@@ -39,7 +39,7 @@ export default function ProductDetailsScreen({ route, navigation }: Props) {
         if (isGuest) {
             Alert.alert(
                 'Login Required',
-                'Please login to your garage account to access wholesale purchasing.',
+                'Please login to your account to purchase parts.',
                 [
                     { text: 'Cancel', style: 'cancel' },
                     { text: 'Login Now', onPress: () => logout() }
@@ -47,12 +47,17 @@ export default function ProductDetailsScreen({ route, navigation }: Props) {
             );
             return;
         }
+
+        if (role === 'ROLE_SELLER') {
+            Alert.alert('Access Restricted', 'Seller accounts cannot purchase parts.');
+            return;
+        }
         const success = addItem({
             id: product.id.toString(),
-            deviceName: product.deviceName || product.name || product.partName || 'Unknown Part',
+            partName: product.partName || 'Unknown Part',
             price,
             imageUrl: product.imageUrl ?? '',
-            manufacturer: product.manufacturer || product.brand || 'MAD GARAGE. AI',
+            brand: product.brand || 'MAD GARAGE. AI',
             quantity,
             stockQuantity: product.stockQuantity ?? 0,
             wholesale: product.wholesale
@@ -153,8 +158,8 @@ export default function ProductDetailsScreen({ route, navigation }: Props) {
                     {/* Brand + Name */}
                     <View style={styles.nameRow}>
                         <View style={{ flex: 1 }}>
-                            <Text style={styles.brand}>{product.manufacturer || product.brand || 'MAD GARAGE'}</Text>
-                            <Text style={[styles.partName, { color: T.text }]}>{product.deviceName || product.name || product.partName}</Text>
+                            <Text style={styles.brand}>{product.brand || 'MAD GARAGE'}</Text>
+                            <Text style={[styles.partName, { color: T.text }]}>{product.partName}</Text>
                         </View>
                         <View style={styles.ratingPill}>
                             <Ionicons name="star" size={13} color="#000" />
@@ -212,40 +217,49 @@ export default function ProductDetailsScreen({ route, navigation }: Props) {
                     <Text style={[styles.desc, { color: T.subText }]}>
                         Engineered for performance enthusiasts, this component replaces your factory part with aerospace-grade materials. Designed to handle the demands of high-horsepower builds while maintaining everyday reliability.
                     </Text>
+
+                    {role === 'ROLE_SELLER' && (
+                        <View style={[styles.sellerNotice, { backgroundColor: isDark ? '#DF232415' : '#FFF5F5' }]}>
+                            <Ionicons name="information-circle-outline" size={20} color="#DF2324" />
+                            <Text style={styles.sellerNoticeText}>Buying is disabled for Seller accounts. Switch to a Customer account to purchase parts.</Text>
+                        </View>
+                    )}
                 </View>
             </ScrollView>
 
-            {/* Sticky Footer */}
-            <View style={[styles.footer, { backgroundColor: T.headerBg, borderTopColor: T.headerBorder }]}>
-                <View style={[styles.qtyWrap, { backgroundColor: T.inputBg, borderColor: T.inputBorder, opacity: (product.stockQuantity ?? 0) <= 0 ? 0.5 : 1 }]}>
+            {/* Sticky Footer - Hidden for Sellers */}
+            {role !== 'ROLE_SELLER' && (
+                <View style={[styles.footer, { backgroundColor: T.headerBg, borderTopColor: T.headerBorder }]}>
+                    <View style={[styles.qtyWrap, { backgroundColor: T.inputBg, borderColor: T.inputBorder, opacity: (product.stockQuantity ?? 0) <= 0 ? 0.5 : 1 }]}>
+                        <TouchableOpacity
+                            style={styles.qtyBtn}
+                            onPress={() => setQuantity(Math.max(1, quantity - 1))}
+                            disabled={(product.stockQuantity ?? 0) <= 0}
+                        >
+                            <Ionicons name="remove" size={20} color={T.text} />
+                        </TouchableOpacity>
+                        <Text style={[styles.qtyNum, { color: T.text }]}>{quantity}</Text>
+                        <TouchableOpacity
+                            style={styles.qtyBtn}
+                            onPress={() => setQuantity(Math.min(product.stockQuantity ?? 0, quantity + 1))}
+                            disabled={(product.stockQuantity ?? 0) <= 0 || quantity >= (product.stockQuantity ?? 0)}
+                        >
+                            <Ionicons name="add" size={20} color={quantity >= (product.stockQuantity ?? 0) ? T.placeholder : T.text} />
+                        </TouchableOpacity>
+                    </View>
                     <TouchableOpacity
-                        style={styles.qtyBtn}
-                        onPress={() => setQuantity(Math.max(1, quantity - 1))}
+                        style={[styles.addCta, { opacity: (product.stockQuantity ?? 0) <= 0 ? 0.6 : 1 }]}
+                        onPress={handleAddToCart}
+                        activeOpacity={0.85}
                         disabled={(product.stockQuantity ?? 0) <= 0}
                     >
-                        <Ionicons name="remove" size={20} color={T.text} />
-                    </TouchableOpacity>
-                    <Text style={[styles.qtyNum, { color: T.text }]}>{quantity}</Text>
-                    <TouchableOpacity
-                        style={styles.qtyBtn}
-                        onPress={() => setQuantity(Math.min(product.stockQuantity ?? 0, quantity + 1))}
-                        disabled={(product.stockQuantity ?? 0) <= 0 || quantity >= (product.stockQuantity ?? 0)}
-                    >
-                        <Ionicons name="add" size={20} color={quantity >= (product.stockQuantity ?? 0) ? T.placeholder : T.text} />
+                        <View style={styles.addCtaContent}>
+                            <Ionicons name={(product.stockQuantity ?? 0) <= 0 ? "close-circle-outline" : "bag-add-outline"} size={20} color="#FFF" />
+                            <Text style={styles.addCtaText}>{(product.stockQuantity ?? 0) <= 0 ? 'OUT OF STOCK' : 'ADD TO CART'}</Text>
+                        </View>
                     </TouchableOpacity>
                 </View>
-                <TouchableOpacity
-                    style={[styles.addCta, { opacity: (product.stockQuantity ?? 0) <= 0 ? 0.6 : 1 }]}
-                    onPress={handleAddToCart}
-                    activeOpacity={0.85}
-                    disabled={(product.stockQuantity ?? 0) <= 0}
-                >
-                    <View style={styles.addCtaContent}>
-                        <Ionicons name={(product.stockQuantity ?? 0) <= 0 ? "close-circle-outline" : "bag-add-outline"} size={20} color="#FFF" />
-                        <Text style={styles.addCtaText}>{(product.stockQuantity ?? 0) <= 0 ? 'OUT OF STOCK' : 'ADD TO CART'}</Text>
-                    </View>
-                </TouchableOpacity>
-            </View>
+            )}
         </SafeAreaView>
     );
 }
@@ -411,4 +425,21 @@ const styles = StyleSheet.create({
         gap: 8,
     },
     addCtaText: { color: '#FFF', fontWeight: '800', fontSize: 15, letterSpacing: 0.5 },
+    sellerNotice: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        padding: 16,
+        borderRadius: 12,
+        marginTop: 20,
+        gap: 12,
+        borderWidth: 1,
+        borderColor: '#DF232433',
+    },
+    sellerNoticeText: {
+        flex: 1,
+        color: '#DF2324',
+        fontSize: 13,
+        fontWeight: '600',
+        lineHeight: 18,
+    },
 });

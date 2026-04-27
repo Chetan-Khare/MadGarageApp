@@ -13,6 +13,7 @@ import { useNavigation } from '@react-navigation/native';
 import apiClient, { BASE_SERVER_URL } from '../services/apiClient';
 import { useCartStore } from '../store/cartStore';
 import { useThemeStore } from '../store/themeStore';
+import { useAuthStore } from '../store/authStore';
 import Animated, {
     useSharedValue,
     useAnimatedStyle,
@@ -73,6 +74,7 @@ export default function ChatScreen() {
     const insets = useSafeAreaInsets();
     const addItem = useCartStore((state) => state.addItem);
     const { isDark } = useThemeStore();
+    const { role } = useAuthStore();
     const theme = isDark ? DARK : LIGHT;
     const navigation = useNavigation();
 
@@ -268,23 +270,28 @@ export default function ChatScreen() {
 
                                                     <View style={styles.productFooter}>
                                                         <Text style={[styles.productPrice, { color: theme.text }]}>₹{(p.garagePrice || p.price || 0).toLocaleString()}</Text>
-                                                        <TouchableOpacity
-                                                            style={styles.addBtn}
-                                                            disabled={(p.stockQuantity ?? 0) <= 0}
-                                                            onPress={() => {
-                                                                addItem({
-                                                                    id: p.id?.toString(),
-                                                                    deviceName: p.partName || p.name,
-                                                                    price: p.price,
-                                                                    imageUrl: p.imageUrl,
-                                                                    manufacturer: p.manufacturer || p.brand || 'MAD GARAGE',
-                                                                    quantity: 1,
-                                                                    stockQuantity: p.stockQuantity ?? 0
-                                                                });
-                                                            }}
-                                                        >
-                                                            <Ionicons name="cart" size={16} color="#FFF" />
-                                                        </TouchableOpacity>
+                                                        {role !== 'ROLE_SELLER' && (
+                                                            <TouchableOpacity
+                                                                style={styles.addBtn}
+                                                                disabled={(p.stockQuantity ?? 0) <= 0}
+                                                                onPress={() => {
+                                                                    const success = addItem({
+                                                                        id: p.id?.toString(),
+                                                                        partName: p.partName || p.name,
+                                                                        price: p.price,
+                                                                        imageUrl: p.imageUrl,
+                                                                        brand: p.manufacturer || p.brand || 'MAD GARAGE',
+                                                                        quantity: 1,
+                                                                        stockQuantity: p.stockQuantity ?? 0
+                                                                    });
+                                                                    if (success) {
+                                                                        Alert.alert("Added", "Item added to your cart.");
+                                                                    }
+                                                                }}
+                                                            >
+                                                                <Ionicons name="cart" size={16} color="#FFF" />
+                                                            </TouchableOpacity>
+                                                        )}
                                                     </View>
                                                 </View>
                                             </BlurView>

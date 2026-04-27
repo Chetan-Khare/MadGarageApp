@@ -1,34 +1,39 @@
 import React, { useState } from 'react';
-import { Image, ImageProps, ActivityIndicator, View, StyleSheet } from 'react-native';
+import { ActivityIndicator, View, StyleSheet } from 'react-native';
+import { Image } from 'expo-image';
 import { resolveProductImage, PLACEHOLDER_IMAGE } from '../utils/imageUtils';
 import { Product } from '../types';
 
-interface ProductImageProps extends Omit<ImageProps, 'source'> {
+interface ProductImageProps extends any {
   product: Product | any;
   index?: number;
+  style?: any;
+  contentFit?: 'cover' | 'contain' | 'fill' | 'none' | 'scale-down';
+  resizeMode?: 'cover' | 'contain' | 'stretch' | 'repeat' | 'center';
 }
 
-export const ProductImage = ({ product, index = 0, style, ...props }: ProductImageProps) => {
-  const [error, setError] = useState(false);
+export const ProductImage = ({ product, index = 0, style, contentFit, resizeMode, ...props }: ProductImageProps) => {
   const [loading, setLoading] = useState(true);
-
   const resolvedUri = resolveProductImage(product, index);
-  const source = error ? { uri: PLACEHOLDER_IMAGE } : { uri: resolvedUri };
+
+  // Backward compatibility: map resizeMode to contentFit
+  const finalContentFit = contentFit || (resizeMode === 'stretch' ? 'fill' : (resizeMode === 'center' || resizeMode === 'repeat' ? 'none' : (resizeMode || 'cover')));
 
   return (
     <View style={[style, styles.container]}>
       <Image
         {...props}
-        source={source}
+        source={resolvedUri}
+        placeholder={PLACEHOLDER_IMAGE}
+        contentFit={finalContentFit as any}
+        transition={300}
+        cachePolicy="memory-disk"
         style={[style, styles.image]}
         onLoadStart={() => setLoading(true)}
-        onLoadEnd={() => setLoading(false)}
-        onError={() => {
-          setError(true);
-          setLoading(false);
-        }}
+        onLoad={() => setLoading(false)}
+        onError={() => setLoading(false)}
       />
-      {loading && !error && (
+      {loading && (
         <View style={[StyleSheet.absoluteFill, styles.loader]}>
           <ActivityIndicator size="small" color="#DF2324" />
         </View>

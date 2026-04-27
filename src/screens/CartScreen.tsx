@@ -12,6 +12,7 @@ import { useCartStore } from '../store/cartStore';
 import { BASE_SERVER_URL } from '../services/apiClient';
 import { useThemeStore, DARK_THEME, LIGHT_THEME } from '../store/themeStore';
 import { useConfigStore } from '../store/configStore';
+import { useAuthStore } from '../store/authStore';
 import { PRICING } from '../constants/pricing';
 
 type Props = { navigation: NativeStackNavigationProp<RootStackParamList, 'Cart'>; };
@@ -20,12 +21,17 @@ export default function CartScreen({ navigation }: Props) {
     const { items, removeItem, updateQuantity, clearCart, getTotalPrice, getBaseTotal, getDiscountAmount } = useCartStore();
     const { shippingFee, platformFee, freeShippingThreshold } = useConfigStore();
     const { isDark } = useThemeStore();
+    const { role } = useAuthStore();
     const T = isDark ? DARK_THEME : LIGHT_THEME;
 
     const [loading, setLoading] = useState(false);
 
     const handleCheckout = () => {
         if (items.length === 0) return;
+        if (role === 'ROLE_SELLER') {
+            Alert.alert('Access Restricted', 'Seller accounts are not permitted to place orders. Please use a Customer or Garage account.');
+            return;
+        }
         navigation.navigate('Checkout');
     };
 
@@ -38,12 +44,12 @@ export default function CartScreen({ navigation }: Props) {
                 />
                 <View style={styles.itemBody}>
                     <View style={styles.itemHeader}>
-                        <Text style={[styles.itemName, { color: T.text }]} numberOfLines={2}>{item.deviceName}</Text>
+                        <Text style={[styles.itemName, { color: T.text }]} numberOfLines={2}>{item.partName}</Text>
                         <TouchableOpacity onPress={() => removeItem(item.id)} hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}>
                             <Ionicons name="trash-outline" size={18} color="#FF4444" />
                         </TouchableOpacity>
                     </View>
-                    <Text style={[styles.itemBrand, { color: T.subText }]}>{item.manufacturer || 'MAD GARAGE. AI'}</Text>
+                    <Text style={[styles.itemBrand, { color: T.subText }]}>{item.brand || 'MAD GARAGE. AI'}</Text>
 
                     <View style={styles.priceAndQtyRow}>
                         <Text style={[styles.itemPrice, { color: '#DF2324' }]}>₹{item.price?.toLocaleString()}</Text>
@@ -162,7 +168,7 @@ export default function CartScreen({ navigation }: Props) {
                     </View>
 
                     <TouchableOpacity
-                        style={[styles.checkoutBtn, loading && { opacity: 0.7 }]}
+                        style={[styles.checkoutBtn, (loading || role === 'ROLE_SELLER') && { opacity: 0.7 }]}
                         onPress={handleCheckout}
                         disabled={loading}
                         activeOpacity={0.85}
@@ -170,11 +176,18 @@ export default function CartScreen({ navigation }: Props) {
                         {loading
                             ? <ActivityIndicator color="#FFF" />
                             : <>
-                                <Text style={styles.checkoutBtnText}>CHECKOUT NOW</Text>
-                                <Ionicons name="arrow-forward" size={18} color="#FFF" />
+                                <Text style={styles.checkoutBtnText}>
+                                    {role === 'ROLE_SELLER' ? 'CHECKOUT RESTRICTED' : 'CHECKOUT NOW'}
+                                </Text>
+                                <Ionicons name={role === 'ROLE_SELLER' ? "lock-closed" : "arrow-forward"} size={18} color="#FFF" />
                             </>
                         }
                     </TouchableOpacity>
+                    {role === 'ROLE_SELLER' && (
+                        <Text style={{ color: '#DF2324', fontSize: 11, fontWeight: '700', textAlign: 'center', marginTop: 12 }}>
+                            SELLER ACCOUNTS CANNOT PURCHASE PARTS
+                        </Text>
+                    )}
                 </View>
             )}
         </SafeAreaView>

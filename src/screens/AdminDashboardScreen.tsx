@@ -53,6 +53,12 @@ export default function AdminDashboardScreen({ navigation }: Props) {
     const cardGlow = isDark ? 'rgba(223, 35, 36, 0.15)' : 'rgba(223, 35, 36, 0.1)';
     const inputBg = isDark ? '#0D0D0D' : '#D1D3D6';
 
+    const formatRevenue = (val: number) => {
+        if (val >= 1000000) return `₹${(val / 1000000).toFixed(2)}M`;
+        if (val >= 1000) return `₹${(val / 1000).toFixed(1)}K`;
+        return `₹${val.toLocaleString()}`;
+    };
+
     useEffect(() => { fetchAnalytics(); }, []);
 
     const fetchAnalytics = async () => {
@@ -197,7 +203,7 @@ export default function AdminDashboardScreen({ navigation }: Props) {
                     {[
                         { icon: 'people-outline', value: stats?.totalUsers || 0, label: 'USERS', id: '01', route: 'AdminUserManagement', colors: isDark ? ['#0F0F2A', '#080815'] : ['#E8EAF6', '#C5CAE9'], iconColor: isDark ? '#DF2324' : '#1976D2' },
                         { icon: 'cube-outline', value: stats?.totalProducts || 0, label: 'PARTS', id: '02', route: 'AdminInventoryManagement', colors: isDark ? ['#1A1A1A', '#0F0F0F'] : ['#F5F5F5', '#E0E0E0'], iconColor: isDark ? '#DF2324' : '#424242' },
-                        { icon: 'cash-outline', value: '₹4.28M', label: 'INCOME', id: '03', route: 'AdminOrderManagement', colors: isDark ? ['#2A0F0F', '#150808'] : ['#FFEBEE', '#FFCDD2'], iconColor: isDark ? '#DF2324' : '#D32F2F' },
+                        { icon: 'cash-outline', value: stats ? formatRevenue(stats.totalRevenue) : '₹0', label: 'INCOME', id: '03', route: 'AdminOrderManagement', colors: isDark ? ['#2A0F0F', '#150808'] : ['#FFEBEE', '#FFCDD2'], iconColor: isDark ? '#DF2324' : '#D32F2F' },
                         { icon: 'documents-outline', value: requestCount.toLocaleString(), label: 'PART REQUEST', id: '04', route: 'AdminRequests', colors: isDark ? ['#0F2022', '#081112'] : ['#E0F2F1', '#B2DFDB'], iconColor: isDark ? '#DF2324' : '#00796B' },
                     ].map((s: any) => (
                         <TouchableOpacity

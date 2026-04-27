@@ -4,10 +4,10 @@ import { PRICING } from '../constants/pricing';
 
 export interface CartItem {
     id: string;
-    deviceName: string;
+    partName: string;
     price: number;
     imageUrl: string;
-    manufacturer: string;
+    brand: string;
     quantity: number;
     stockQuantity: number;
     wholesale?: boolean;
@@ -28,6 +28,9 @@ export const useCartStore = create<CartState>((set, get) => ({
     items: [],
 
     addItem: (newItem) => {
+        const role = useAuthStore.getState().role;
+        if (role === 'ROLE_SELLER') return false;
+
         let success = true;
         set((state) => {
             const existingItem = state.items.find((item) => item.id === newItem.id);
