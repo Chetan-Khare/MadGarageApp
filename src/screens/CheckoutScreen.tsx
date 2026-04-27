@@ -129,8 +129,7 @@ export default function CheckoutScreen({ navigation }: Props) {
                 order_id: razorpay_order_id,
                 prefill: {
                     email: useAuthStore.getState().user?.email || '',
-                    contact: useAuthStore.getState().user?.phone || '',
-                    name: `${useAuthStore.getState().user?.firstName} ${useAuthStore.getState().user?.lastName}`
+                    name: useAuthStore.getState().user ? `${useAuthStore.getState().user?.firstName || ''} ${useAuthStore.getState().user?.lastName || ''}`.trim() || 'Customer' : 'Customer'
                 },
                 theme: { color: '#DF2324' }
             };
