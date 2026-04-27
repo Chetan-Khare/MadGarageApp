@@ -12,6 +12,7 @@ import { RootStackParamList } from '../types';
 import { useCartStore } from '../store/cartStore';
 import { useThemeStore, DARK_THEME, LIGHT_THEME } from '../store/themeStore';
 import { useConfigStore } from '../store/configStore';
+import { useAuthStore } from '../store/authStore';
 import apiClient from '../services/apiClient';
 import { PRICING } from '../constants/pricing';
 
@@ -77,7 +78,6 @@ export default function CheckoutScreen({ navigation }: Props) {
 
         setLoading(true);
 
-        // CONCATENATION PROTOCOL: Combine detailed fields into a single address string for order placement
         const fullAddress = [
             flatNo && `Flat ${flatNo}`,
             floorNo && `Floor ${floorNo}`,
@@ -87,7 +87,8 @@ export default function CheckoutScreen({ navigation }: Props) {
         ].filter(Boolean).join(', ');
 
         try {
-            await apiClient.post('/orders/checkout', {
+            // 1. Create Order in Database (Status: PENDING_PAYMENT)
+            const checkoutResponse = await apiClient.post('/orders/checkout', {
                 items: items.map(i => ({ productId: parseInt(i.id, 10), quantity: i.quantity })),
                 shippingAddress: fullAddress,
                 city: city,
@@ -96,10 +97,68 @@ export default function CheckoutScreen({ navigation }: Props) {
                 deliveryType: deliveryType,
                 fittingGarageId: selectedGarageId
             });
+
+            const dbOrderId = checkoutResponse.data.id;
+
+            // 2. Create Razorpay Order on Backend (Now uses orderId for server-side validation)
+            const rzpOrderResponse = await apiClient.post('/payments/create-order', {
+                orderId: dbOrderId
+            });
+
+            const { razorpay_order_id } = rzpOrderResponse.data;
+
+            // 2.5 Link Razorpay Order ID to local Order
+            await apiClient.post(`/orders/${dbOrderId}/rzp-id?rzpOrderId=${razorpay_order_id}`);
+
+            let RazorpayCheckout;
+            try {
+                RazorpayCheckout = require('react-native-razorpay').default;
+            } catch (e) {
+                Alert.alert('Payment Error', 'Razorpay module not found.');
+                setLoading(false);
+                return;
+            }
+
+            const options = {
+                description: 'Mad Garage Parts Order',
+                image: 'https://i.imgur.com/3g7nmJC.png',
+                currency: 'INR',
+                key: process.env.EXPO_PUBLIC_RAZORPAY_KEY_ID,
+                amount: total * 100,
+                name: 'Mad Garage',
+                order_id: razorpay_order_id,
+                prefill: {
+                    email: useAuthStore.getState().user?.email || '',
+                    contact: useAuthStore.getState().user?.phone || '',
+                    name: `${useAuthStore.getState().user?.firstName} ${useAuthStore.getState().user?.lastName}`
+                },
+                theme: { color: '#DF2324' }
+            };
+
+            RazorpayCheckout.open(options).then(async (data: any) => {
+                // 4. Verify & Finalize
+                await finalizeOrder(dbOrderId, data.razorpay_payment_id, data.razorpay_signature);
+            }).catch((error: any) => {
+                Alert.alert('Payment Failed', `Code: ${error.code} | ${error.description}`);
+                setLoading(false);
+            });
+
+        } catch (error: any) {
+            console.error('Payment initiation failed:', error);
+            Alert.alert('Error', 'Could not initiate payment. Please try again.');
+            setLoading(false);
+        }
+    };
+
+    const finalizeOrder = async (dbOrderId: number, paymentId: string, signature: string) => {
+        try {
+            // Verify Payment & Update Status to PAID
+            await apiClient.post(`/orders/${dbOrderId}/verify-payment?paymentId=${paymentId}&signature=${signature}`);
             
             clearCart();
+            setLoading(false);
             
-            Alert.alert('Order Placed! 🏎️', 'Your part is on its way.', [
+            Alert.alert('Order Placed! 🏎️', 'Your payment was successful and your order is confirmed.', [
                 {
                     text: 'View My Orders',
                     onPress: () => {
@@ -109,10 +168,8 @@ export default function CheckoutScreen({ navigation }: Props) {
                 }
             ]);
         } catch (error: any) {
-            console.error('Checkout failed:', error);
-            const errorMsg = error.response?.data?.message || error.message || 'Something went wrong. Please try again.';
-            Alert.alert('Checkout Failed', errorMsg);
-        } finally {
+            console.error('Finalization failed:', error);
+            Alert.alert('Payment Successful', 'Payment was processed but we had trouble updating your order status. Please contact support with Payment ID: ' + paymentId);
             setLoading(false);
         }
     };
