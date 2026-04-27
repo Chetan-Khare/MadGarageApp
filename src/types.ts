@@ -7,6 +7,8 @@ export interface Product {
     description?: string;
     imageUrl?: string;
     stockQuantity: number;
+    name?: string;
+    stock?: number;
     condition: string;
     rating: number;
     sku?: string;
@@ -22,6 +24,7 @@ export interface Product {
     fitmentCategory?: string;
     color?: string;
     isManualRating?: boolean;
+    fittedVehicles?: Vehicle[];
 }
 
 export type RootStackParamList = {
@@ -56,6 +59,26 @@ export type RootStackParamList = {
   Address: undefined;
   CompleteProfile: { registrationToken: string };
 };
+
+export interface Vehicle {
+    id: number;
+    year: number;
+    engineType: string;
+    fuelType: string;
+    trim: string;
+    carModel: CarModel;
+}
+
+export interface CarModel {
+    id: number;
+    name: string;
+    make: Make;
+}
+
+export interface Make {
+    id: number;
+    name: string;
+}
 
 export interface AuthResponse {
   token?: string;

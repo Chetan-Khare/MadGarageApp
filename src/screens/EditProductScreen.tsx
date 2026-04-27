@@ -5,7 +5,7 @@ import ModernDropdown from '../components/ModernDropdown';
 import { Ionicons } from '@expo/vector-icons';
 import { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import { RouteProp, useRoute } from '@react-navigation/native';
-import { Product, RootStackParamList } from '../types';
+import { Product, Vehicle, RootStackParamList } from '../types';
 import * as ImagePicker from 'expo-image-picker';
 import apiClient from '../services/apiClient';
 
@@ -67,7 +67,7 @@ export default function EditProductScreen({ navigation }: Props) {
     const [sellerResponse, setSellerResponse] = useState(product.sellerResponse || '');
     const [wholesale, setWholesale] = useState(product.wholesale !== undefined ? product.wholesale : true);
 
-    const [selectedFitments, setSelectedFitments] = useState<any[]>([]);
+    const [selectedFitments, setSelectedFitments] = useState<Vehicle[]>([]);
 
     useEffect(() => {
         if (product.fittedVehicles) {
@@ -239,7 +239,11 @@ export default function EditProductScreen({ navigation }: Props) {
                 
                 vehicleIds = selectedFitments.map(f => f.id);
 
-                if (selectedEngine && !selectedFitments.some(sf => sf.id === selectedEngine)) {
+                if (selectedEngine && !selectedFitments.some(sf => 
+                    sf.carModel.name === selectedModel && 
+                    sf.year.toString() === selectedYear && 
+                    sf.engineType === selectedEngine
+                )) {
                     const res = await apiClient.get(`/vehicles/search?make=${selectedMake}&model=${selectedModel}&year=${selectedYear}&fuel=${selectedFuel}&trim=${selectedTrim}&engine=${selectedEngine}`);
                     const resIds = res.data.map((v: any) => v.id);
                     vehicleIds = [...new Set([...vehicleIds, ...resIds])];

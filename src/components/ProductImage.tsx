@@ -4,7 +4,7 @@ import { Image } from 'expo-image';
 import { resolveProductImage, PLACEHOLDER_IMAGE } from '../utils/imageUtils';
 import { Product } from '../types';
 
-interface ProductImageProps extends any {
+interface ProductImageProps {
   product: Product | any;
   index?: number;
   style?: any;

@@ -4,7 +4,7 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import ModernDropdown from '../components/ModernDropdown';
 import { Ionicons } from '@expo/vector-icons';
 import { NativeStackNavigationProp } from '@react-navigation/native-stack';
-import { RootStackParamList } from '../types';
+import { Vehicle, RootStackParamList } from '../types';
 import * as ImagePicker from 'expo-image-picker';
 import apiClient from '../services/apiClient';
 
@@ -67,7 +67,7 @@ export default function AddProductScreen({ navigation }: Props) {
     const [selectedTrim, setSelectedTrim] = useState('');
     const [selectedEngine, setSelectedEngine] = useState('');
 
-    const [selectedFitments, setSelectedFitments] = useState<any[]>([]);
+    const [selectedFitments, setSelectedFitments] = useState<Vehicle[]>([]);
 
     const { isDark } = useThemeStore();
     const T = isDark ? DARK_THEME : LIGHT_THEME;
@@ -204,7 +204,11 @@ export default function AddProductScreen({ navigation }: Props) {
                 vehicleIds = selectedFitments.map(f => f.id);
 
                 // Add current pending selection if valid
-                if (selectedEngine && !selectedFitments.some(sf => sf.id === selectedEngine)) {
+                if (selectedEngine && !selectedFitments.some(sf => 
+                    sf.carModel.name === selectedModel && 
+                    sf.year.toString() === selectedYear && 
+                    sf.engineType === selectedEngine
+                )) {
                     const res = await apiClient.get(`/vehicles/search?make=${selectedMake}&model=${selectedModel}&year=${selectedYear}&fuel=${selectedFuel}&trim=${selectedTrim}&engine=${selectedEngine}`);
                     const resIds = res.data.map((v: any) => v.id);
                     vehicleIds = [...new Set([...vehicleIds, ...resIds])];
