@@ -269,14 +269,14 @@ export default function EditProductScreen({ navigation }: Props) {
             const base64Images: string[] = [];
             // Only parse local URI images
             for (const uri of imageUris) {
-                const base64 = await FileSystem.readAsStringAsync(uri, { encoding: FileSystem.EncodingType.Base64 });
+                const base64 = await new FileSystem.File(uri).base64();
                 base64Images.push(base64);
             }
 
             let base64Guide: string | null = null;
             let guideExt: string | null = null;
             if (guideUri && (guideUri.startsWith('file://') || guideUri.startsWith('/'))) {
-                base64Guide = await FileSystem.readAsStringAsync(guideUri, { encoding: FileSystem.EncodingType.Base64 });
+                base64Guide = await new FileSystem.File(guideUri).base64();
                 guideExt = guideUri.split('.').pop() || 'pdf';
             }
 

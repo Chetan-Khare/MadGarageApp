@@ -579,13 +579,13 @@ export default function AdminUserManagementScreen({ navigation, route }: Props) 
                         <View style={[styles.modalContent, { backgroundColor: T.bg2 }]}>
                             <Text style={[styles.modalTitle, { color: T.text }]}>PROVISION OPERATOR</Text>
                             
-                            <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 10, marginBottom: 15 }}>
+                            <View style={{ flexDirection: 'row', flexWrap: 'wrap', justifyContent: 'space-between', gap: 10, marginBottom: 15 }}>
                                 {['ROLE_SELLER', 'ROLE_GARAGE', 'ROLE_WORKER', 'ROLE_ADMIN']
                                     .filter(r => currentRole === 'ROLE_ADMIN' || (r !== 'ROLE_ADMIN' && r !== 'ROLE_WORKER'))
                                     .map(r => (
                                     <TouchableOpacity 
                                         key={r}
-                                        style={[styles.roleTab, provisionForm.role === r && { backgroundColor: '#DF2324' }, { minWidth: '45%', flex: 1 }]}
+                                        style={[styles.roleTab, provisionForm.role === r && { backgroundColor: '#DF2324' }, { width: '47%', marginVertical: 2 }]}
                                         onPress={() => setProvisionForm({...provisionForm, role: r})}
                                     >
                                         <Text style={[styles.roleTabText, { color: provisionForm.role === r ? '#FFF' : T.subText, textAlign: 'center' }]}>
@@ -789,7 +789,7 @@ const styles = StyleSheet.create({
     emptyText: { marginTop: 16, fontSize: 16, fontWeight: '800' },
     modalOverlay: { 
         flex: 1,
-        backgroundColor: 'rgba(0,0,0,0.85)', justifyContent: 'center', alignItems: 'center', padding: 20 
+        backgroundColor: 'rgba(0,0,0,0.85)', alignItems: 'center', padding: 20 
     },
     modalContent: { 
         width: '100%', borderRadius: 24, padding: 30, borderWidth: 1, borderColor: 'rgba(255,255,255,0.1)' 

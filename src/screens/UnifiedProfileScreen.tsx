@@ -110,7 +110,7 @@ export default function UnifiedProfileScreen({ navigation }: Props) {
                     { compress: 0.7, format: ImageManipulator.SaveFormat.JPEG }
                 );
 
-                const base64 = await FileSystem.readAsStringAsync(manipResult.uri, { encoding: FileSystem.EncodingType.Base64 });
+                const base64 = await new FileSystem.File(manipResult.uri).base64();
                 const filename = manipResult.uri.split('/').pop() || 'profile.jpg';
                 const ext = 'jpg'; // Manipulator output is JPEG
 
