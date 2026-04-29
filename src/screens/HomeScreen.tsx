@@ -94,8 +94,8 @@ export default function HomeScreen({ navigation }: Props) {
             return;
         }
 
-        if (role === 'ROLE_SELLER') {
-            Alert.alert('Access Restricted', 'Seller accounts cannot purchase parts.');
+        if (role === 'ROLE_SELLER' || role === 'ROLE_WORKER') {
+            Alert.alert('Access Restricted', 'Staff and Seller accounts cannot purchase parts.');
             return;
         }
         const success = addItem({
@@ -265,6 +265,10 @@ export default function HomeScreen({ navigation }: Props) {
                                 ]);
                                 return;
                             }
+                            if (role === 'ROLE_WORKER' || role === 'ROLE_SELLER') {
+                                Alert.alert('Access Restricted', 'Your account is restricted from shopping features.');
+                                return;
+                            }
                             navigation.navigate('Cart');
                         }} 
                         style={styles.clayfulHeaderBtn}
@@ -288,6 +292,7 @@ export default function HomeScreen({ navigation }: Props) {
                 wishlistCount={wishlistItems.length}
                 onLogout={logout}
                 isGuest={isGuest}
+                role={role}
             />
 
             {loading && !refreshing ? (
@@ -306,7 +311,7 @@ export default function HomeScreen({ navigation }: Props) {
                             onWishlist={() => handleToggleWishlist(item)}
                             onAddToCart={() => handleAddToCart(item)}
                             isWishlisted={wishlistItems.some(w => w.id === item.id)}
-                            isSeller={role === 'ROLE_SELLER'}
+                            isSeller={role === 'ROLE_SELLER' || role === 'ROLE_WORKER'}
                             theme={T}
                         />
                     )}

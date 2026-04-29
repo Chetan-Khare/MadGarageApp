@@ -318,7 +318,7 @@ export default function AdminDashboardScreen({ navigation }: Props) {
                     <View style={styles.formSection}>
                         <Text style={[styles.inputLabel, { color: textMuted }]}>ACCESS_ROLE</Text>
                         <View style={[styles.tabSwitcher, { backgroundColor: bgPrimary }]}>
-                            {['SELLER', 'GARAGE', 'ADMIN'].map((r) => (
+                            {['SELLER', 'GARAGE', 'WORKER', 'ADMIN'].map((r) => (
                                 <TouchableOpacity
                                     key={r}
                                     style={[styles.tabBtn, newUserRole.includes(r) && styles.tabBtnActive]}
@@ -478,8 +478,8 @@ const styles = StyleSheet.create({
     provisionForm: { gap: 20 },
     formSection: { gap: 8 },
     inputLabel: { fontSize: 10, fontWeight: '900', letterSpacing: 1 },
-    tabSwitcher: { flexDirection: 'row', borderRadius: 8, padding: 4, gap: 4 },
-    tabBtn: { flex: 1, paddingVertical: 12, alignItems: 'center', borderRadius: 6 },
+    tabSwitcher: { flexDirection: 'row', flexWrap: 'wrap', borderRadius: 8, padding: 4, gap: 4 },
+    tabBtn: { width: '48%', paddingVertical: 12, alignItems: 'center', borderRadius: 6 },
     tabBtnActive: { backgroundColor: '#DF2324' },
     tabBtnText: { fontSize: 11, fontWeight: '900', fontStyle: 'italic' },
     tabBtnTextActive: { color: '#FFF' },

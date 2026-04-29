@@ -48,8 +48,8 @@ export default function ProductDetailsScreen({ route, navigation }: Props) {
             return;
         }
 
-        if (role === 'ROLE_SELLER') {
-            Alert.alert('Access Restricted', 'Seller accounts cannot purchase parts.');
+        if (role === 'ROLE_SELLER' || role === 'ROLE_WORKER') {
+            Alert.alert('Access Restricted', 'Staff and Seller accounts cannot purchase parts.');
             return;
         }
         const success = addItem({
@@ -146,7 +146,7 @@ export default function ProductDetailsScreen({ route, navigation }: Props) {
                         >
                             <Ionicons name={isInWishlist ? "heart" : "heart-outline"} size={22} color={isInWishlist ? "#FFF" : "#DF2324"} />
                         </TouchableOpacity>
-                        {!isGuest && (
+                        {!isGuest && role !== 'ROLE_SELLER' && role !== 'ROLE_WORKER' && (
                             <TouchableOpacity style={styles.heroCartBtn} onPress={() => navigation.navigate('Cart')}>
                                 <Ionicons name="bag-outline" size={22} color="#DF2324" />
                             </TouchableOpacity>
@@ -218,17 +218,17 @@ export default function ProductDetailsScreen({ route, navigation }: Props) {
                         Engineered for performance enthusiasts, this component replaces your factory part with aerospace-grade materials. Designed to handle the demands of high-horsepower builds while maintaining everyday reliability.
                     </Text>
 
-                    {role === 'ROLE_SELLER' && (
+                    {(role === 'ROLE_SELLER' || role === 'ROLE_WORKER') && (
                         <View style={[styles.sellerNotice, { backgroundColor: isDark ? '#DF232415' : '#FFF5F5' }]}>
                             <Ionicons name="information-circle-outline" size={20} color="#DF2324" />
-                            <Text style={styles.sellerNoticeText}>Buying is disabled for Seller accounts. Switch to a Customer account to purchase parts.</Text>
+                            <Text style={styles.sellerNoticeText}>Buying is disabled for Staff and Seller accounts.</Text>
                         </View>
                     )}
                 </View>
             </ScrollView>
 
-            {/* Sticky Footer - Hidden for Sellers */}
-            {role !== 'ROLE_SELLER' && (
+            {/* Sticky Footer - Hidden for Sellers/Staff */}
+            {role !== 'ROLE_SELLER' && role !== 'ROLE_WORKER' && (
                 <View style={[styles.footer, { backgroundColor: T.headerBg, borderTopColor: T.headerBorder }]}>
                     <View style={[styles.qtyWrap, { backgroundColor: T.inputBg, borderColor: T.inputBorder, opacity: (product.stockQuantity ?? 0) <= 0 ? 0.5 : 1 }]}>
                         <TouchableOpacity

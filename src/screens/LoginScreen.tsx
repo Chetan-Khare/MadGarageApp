@@ -313,7 +313,7 @@ export default function LoginScreen({ navigation }: Props) {
             if (!userRole.startsWith('ROLE_')) {
                 userRole = 'ROLE_' + userRole;
             }
-            const validRoles = ['ROLE_ADMIN', 'ROLE_SELLER', 'ROLE_CUSTOMER', 'ROLE_GARAGE'];
+            const validRoles = ['ROLE_ADMIN', 'ROLE_SELLER', 'ROLE_CUSTOMER', 'ROLE_GARAGE', 'ROLE_WORKER'];
             const roleType = validRoles.includes(userRole) ? userRole : 'ROLE_CUSTOMER';
 
             await useAuthStore.getState().setAuth(data.token, roleType as any, data.userId);

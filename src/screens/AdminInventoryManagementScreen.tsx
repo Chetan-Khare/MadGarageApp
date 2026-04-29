@@ -16,6 +16,7 @@ export default function AdminInventoryManagementScreen({ navigation }: Props) {
     const [products, setProducts] = useState<any[]>([]);
     const [loading, setLoading] = useState(true);
     const [syncError, setSyncError] = useState('');
+    const [searchTerm, setSearchTerm] = useState('');
     
     // Edit Modal State
     const [editItem, setEditItem] = useState<any>(null);
@@ -78,10 +79,10 @@ export default function AdminInventoryManagementScreen({ navigation }: Props) {
     };
 
     const handleDelete = (id: number) => {
-        Alert.alert("Delete Part", "Are you sure you want to permanently delete this part?", [
+        Alert.alert("Archive Part", "Move this part to historical archives? It will be hidden from all customers.", [
             { text: "Cancel", style: "cancel" },
             { 
-                text: "Delete", 
+                text: "Archive", 
                 style: "destructive", 
                 onPress: async () => {
                     try {
@@ -138,17 +139,22 @@ export default function AdminInventoryManagementScreen({ navigation }: Props) {
             style={[styles.productCard, { backgroundColor: bgSecondary, borderColor: borderSubtle }]}
         >
             <View style={[styles.imageContainer, { borderColor: item.flagged ? '#FF9B3E' : borderSubtle }]}>
-                <ProductImage product={item} style={styles.productImage} />
+                <ProductImage product={item} style={[styles.productImage, item.active === false && { opacity: 0.5 }]} />
                 {item.flagged && (
                     <View style={styles.flaggedBadge}>
                         <Text style={styles.flaggedBadgeText}>FLAGGED</Text>
                     </View>
                 )}
+                {item.active === false && (
+                    <View style={[styles.flaggedBadge, { backgroundColor: 'rgba(0,0,0,0.6)' }]}>
+                        <Text style={[styles.flaggedBadgeText, { backgroundColor: '#7A7A85' }]}>ARCHIVED</Text>
+                    </View>
+                )}
             </View>
             <View style={styles.productInfo}>
-                <Text style={[styles.productName, { color: textPrimary }]} numberOfLines={1}>{item?.partName || 'Unknown Part'}</Text>
+                <Text style={[styles.productName, { color: item.active === false ? textMuted : textPrimary }]} numberOfLines={1}>{item?.partName || 'Unknown Part'}</Text>
                 <Text style={[styles.productCategory, { color: textMuted }]}>{item?.category || item?.fitmentCategory || 'GENERAL'}</Text>
-                <Text style={styles.productPrice}>₹{item?.price ? item.price.toFixed(2) : '0.00'}</Text>
+                <Text style={[styles.productPrice, item.active === false && { color: textMuted }]}>₹{item?.price ? item.price.toFixed(2) : '0.00'}</Text>
                 <View style={{ flexDirection: 'row', alignItems: 'center', gap: 4, marginTop: 4 }}>
                     <Ionicons name="star" size={12} color="#FFD700" />
                     <Text style={{ fontSize: 12, fontWeight: '900', color: textMuted }}>{item.rating || '4.5'}</Text>
@@ -215,11 +221,40 @@ export default function AdminInventoryManagementScreen({ navigation }: Props) {
                 </TouchableOpacity>
             </View>
 
+            {/* Search Bar */}
+            <View style={[styles.searchContainer, { backgroundColor: bgSecondary, borderColor: borderSubtle }]}>
+                <Ionicons name="search-outline" size={18} color={textMuted} />
+                <TextInput
+                    style={[styles.searchInput, { color: textPrimary }]}
+                    placeholder="Search parts, brands, SKU..."
+                    placeholderTextColor={textMuted}
+                    value={searchTerm}
+                    onChangeText={setSearchTerm}
+                    autoCorrect={false}
+                    autoCapitalize="none"
+                />
+                {searchTerm.length > 0 && (
+                    <TouchableOpacity onPress={() => setSearchTerm('')}>
+                        <Ionicons name="close-circle" size={18} color={textMuted} />
+                    </TouchableOpacity>
+                )}
+            </View>
+
             {loading ? (
                 <ActivityIndicator size="large" color="#DF2324" style={{ marginTop: 50 }} />
             ) : (
                 <FlatList
-                    data={products}
+                    data={products.filter(p => {
+                        if (!searchTerm.trim()) return true;
+                        const q = searchTerm.toLowerCase();
+                        return (
+                            (p.partName || '').toLowerCase().includes(q) ||
+                            (p.category || '').toLowerCase().includes(q) ||
+                            (p.brand || '').toLowerCase().includes(q) ||
+                            (p.sku || '').toLowerCase().includes(q) ||
+                            (p.fitmentCategory || '').toLowerCase().includes(q)
+                        );
+                    })}
                     keyExtractor={(item: any) => item.id.toString()}
                     ListHeaderComponent={
                         syncError ? (
@@ -377,6 +412,23 @@ const styles = StyleSheet.create({
         marginLeft: 'auto',
     },
     title: { fontSize: 20, fontWeight: '900', fontStyle: 'italic', letterSpacing: 1 },
+    searchContainer: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        marginHorizontal: 20,
+        marginBottom: 8,
+        paddingHorizontal: 16,
+        paddingVertical: 12,
+        borderRadius: 16,
+        borderWidth: 1,
+        gap: 10,
+    },
+    searchInput: {
+        flex: 1,
+        fontSize: 14,
+        fontWeight: '700',
+        padding: 0,
+    },
     list: { padding: 16 },
     productCard: {
         flexDirection: 'row',

@@ -12,6 +12,7 @@ interface Props {
     wishlistCount: number;
     onLogout: () => void;
     isGuest: boolean;
+    role: string | null;
 }
 
 export const ProfileMenu: React.FC<Props> = ({
@@ -23,13 +24,14 @@ export const ProfileMenu: React.FC<Props> = ({
     toggleTheme,
     wishlistCount,
     onLogout,
-    isGuest
+    isGuest,
+    role
 }) => {
     if (!isVisible) return null;
 
     const allItems = [
         { label: 'My Profile', icon: 'person-circle-outline', action: () => navigation.navigate('CustomerProfile'), authRequired: true },
-        { label: 'Manage Addresses', icon: 'map-outline', action: () => navigation.navigate('Address'), authRequired: true },
+        { label: 'Manage Addresses', icon: 'map-outline', action: () => navigation.navigate('Address'), authRequired: true, hidden: role === 'ROLE_SELLER' || role === 'ROLE_WORKER' },
         { label: isDark ? 'Light Mode' : 'Dark Mode', icon: isDark ? 'sunny-outline' : 'moon-outline', action: toggleTheme },
         { label: 'Order History', icon: 'receipt-outline', action: () => navigation.navigate('OrderHistory'), authRequired: true },
         { label: `My Wishlist ${wishlistCount > 0 ? `(${wishlistCount})` : ''}`, icon: 'heart-outline', action: () => {
@@ -41,13 +43,13 @@ export const ProfileMenu: React.FC<Props> = ({
                 return;
             }
             navigation.navigate('Wishlist');
-        } },
+        }, hidden: role === 'ROLE_SELLER' || role === 'ROLE_WORKER' },
         isGuest 
             ? { label: 'Sign In / Register', icon: 'log-in-outline', action: onLogout, color: '#4ADE80' } 
             : { label: 'Log Out', icon: 'log-out-outline', action: onLogout, color: T.primary }
     ];
 
-    const items = allItems.filter(item => !isGuest || !item.authRequired);
+    const items = allItems.filter(item => (!isGuest || !item.authRequired) && !item.hidden);
 
     return (
         <View style={[styles.menu, { backgroundColor: T.statBg, borderColor: T.statBorder }]}>

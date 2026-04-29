@@ -6,22 +6,36 @@ import {
 } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import * as ImagePicker from 'expo-image-picker';
-import { File } from 'expo-file-system';
+import * as FileSystem from 'expo-file-system';
 import { Ionicons } from '@expo/vector-icons';
+import * as ImageManipulator from 'expo-image-manipulator';
+import * as Location from 'expo-location';
 import { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import { RootStackParamList } from '../types';
 import { useThemeStore, DARK_THEME, LIGHT_THEME } from '../store/themeStore';
 import { useAuthStore } from '../store/authStore';
 import apiClient, { BASE_SERVER_URL } from '../services/apiClient';
 
-type Props = { navigation: NativeStackNavigationProp<RootStackParamList, 'AdminProfile'>; };
+type Props = { navigation: NativeStackNavigationProp<RootStackParamList, any>; };
 
-export default function AdminProfileScreen({ navigation }: Props) {
+export default function UnifiedProfileScreen({ navigation }: Props) {
     const { isDark } = useThemeStore();
+    const { role, setAuth } = useAuthStore();
     const T = isDark ? DARK_THEME : LIGHT_THEME;
+    const insets = useSafeAreaInsets();
+
+    // Role-based Flags
+    const isStaff = role === 'ROLE_ADMIN' || role === 'ROLE_WORKER';
+    const isBusiness = role === 'ROLE_SELLER' || role === 'ROLE_GARAGE';
+    const profileTitle = role === 'ROLE_ADMIN' ? 'Admin Profile' : 
+                         role === 'ROLE_WORKER' ? 'Staff Profile' : 
+                         role === 'ROLE_SELLER' ? 'Merchant Profile' : 
+                         role === 'ROLE_GARAGE' ? 'Garage Profile' : 'My Profile';
 
     const [loading, setLoading] = useState(true);
     const [saving, setSaving] = useState(false);
+    const [uploadingImage, setUploadingImage] = useState(false);
+    const [detectingLocation, setDetectingLocation] = useState(false);
 
     // Form State
     const [firstName, setFirstName] = useState('');
@@ -29,10 +43,15 @@ export default function AdminProfileScreen({ navigation }: Props) {
     const [email, setEmail] = useState('');
     const [phone, setPhone] = useState('');
     const [password, setPassword] = useState('');
+    const [confirmPassword, setConfirmPassword] = useState('');
     const [showPassword, setShowPassword] = useState(false);
     const [profileImageUrl, setProfileImageUrl] = useState<string | null>(null);
-    const [uploadingImage, setUploadingImage] = useState(false);
-    const insets = useSafeAreaInsets();
+
+    // Location State (Conditional)
+    const [city, setCity] = useState('');
+    const [address, setAddress] = useState('');
+    const [latitude, setLatitude] = useState('');
+    const [longitude, setLongitude] = useState('');
 
     useEffect(() => {
         fetchProfile();
@@ -46,13 +65,20 @@ export default function AdminProfileScreen({ navigation }: Props) {
                 setLastName(response.data.lastName || '');
                 setEmail(response.data.email || '');
                 setPhone(response.data.phone || '');
+                
+                if (isBusiness) {
+                    setCity(response.data.city || '');
+                    setAddress(response.data.address || '');
+                    setLatitude(response.data.latitude?.toString() || '');
+                    setLongitude(response.data.longitude?.toString() || '');
+                }
+
                 if (response.data.profileImageUrl) {
                     setProfileImageUrl(`${BASE_SERVER_URL}${response.data.profileImageUrl}`);
                 }
             }
         } catch (error) {
-            console.error('Error fetching profile:', error);
-            Alert.alert('Error', 'Could not load your administrator profile.');
+            Alert.alert('Error', 'Could not load your profile details.');
         } finally {
             setLoading(false);
         }
@@ -76,11 +102,17 @@ export default function AdminProfileScreen({ navigation }: Props) {
             setUploadingImage(true);
             try {
                 let imageUri = result.assets[0].uri;
-                const base64 = await (new File(imageUri)).base64();
+                
+                // COMPRESSION LOGIC: Resize to 800px and compress to 0.7 quality
+                const manipResult = await ImageManipulator.manipulateAsync(
+                    imageUri,
+                    [{ resize: { width: 800, height: 800 } }],
+                    { compress: 0.7, format: ImageManipulator.SaveFormat.JPEG }
+                );
 
-                const filename = imageUri.split('/').pop() || 'profile.jpg';
-                const match = /\.(\w+)$/.exec(filename);
-                const ext = match ? match[1] : 'jpg';
+                const base64 = await FileSystem.readAsStringAsync(manipResult.uri, { encoding: FileSystem.EncodingType.Base64 });
+                const filename = manipResult.uri.split('/').pop() || 'profile.jpg';
+                const ext = 'jpg'; // Manipulator output is JPEG
 
                 const response = await apiClient.post('/users/profile-image/base64', {
                     base64Image: base64,
@@ -92,12 +124,37 @@ export default function AdminProfileScreen({ navigation }: Props) {
                     Alert.alert('Success', 'Profile photo updated!');
                 }
             } catch (error: any) {
-                console.error('Image upload failed:', error);
-                const errorMsg = error.response?.data?.message || error.message || 'Check your connection.';
-                Alert.alert('Upload Failed', `Could not upload photo: ${errorMsg}`);
+                Alert.alert('Upload Failed', 'Could not upload photo.');
             } finally {
                 setUploadingImage(false);
             }
+        }
+    };
+
+    const handleDetectLocation = async () => {
+        setDetectingLocation(true);
+        try {
+            const { status } = await Location.requestForegroundPermissionsAsync();
+            if (status !== 'granted') {
+                Alert.alert('Permission Denied', 'Location access is required.');
+                return;
+            }
+
+            const location = await Location.getCurrentPositionAsync({ accuracy: Location.Accuracy.Balanced });
+            const { latitude: lat, longitude: lng } = location.coords;
+            setLatitude(lat.toString());
+            setLongitude(lng.toString());
+
+            const reverseGeocode = await Location.reverseGeocodeAsync({ latitude: lat, longitude: lng });
+            if (reverseGeocode.length > 0) {
+                const addr = reverseGeocode[0];
+                setCity(addr.city || addr.subregion || '');
+                setAddress(`${addr.name || ''}, ${addr.street || ''}, ${addr.district || ''}`.replace(/^, |, $/g, ''));
+            }
+        } catch (error) {
+            Alert.alert('Error', 'Could not detect location.');
+        } finally {
+            setDetectingLocation(false);
         }
     };
 
@@ -107,22 +164,32 @@ export default function AdminProfileScreen({ navigation }: Props) {
             return;
         }
 
+        if (password.trim() && password !== confirmPassword) {
+            Alert.alert('Password Mismatch', 'Passwords do not match.');
+            return;
+        }
+
         setSaving(true);
         try {
-            const response = await apiClient.put('/users/profile', {
-                firstName,
-                lastName,
-                email,
-                phone,
+            const updatePayload: any = {
+                firstName, lastName, email, phone,
                 password: password.trim() ? password : null
-            });
+            };
 
-            if (response.data?.token) {
-                const { setAuth, role, user } = useAuthStore.getState();
-                await setAuth(response.data.token, role as any, user || undefined);
+            if (isBusiness) {
+                updatePayload.city = city;
+                updatePayload.address = address;
+                updatePayload.latitude = latitude;
+                updatePayload.longitude = longitude;
             }
 
-            Alert.alert('Success', 'Administrator profile updated!');
+            const response = await apiClient.put('/users/profile', updatePayload);
+
+            if (response.data?.token) {
+                await setAuth(response.data.token, role as any, response.data.user);
+            }
+
+            Alert.alert('Success', 'Profile updated successfully!');
             navigation.goBack();
         } catch (error: any) {
             Alert.alert('Update Failed', error.response?.data?.message || 'Something went wrong.');
@@ -147,7 +214,7 @@ export default function AdminProfileScreen({ navigation }: Props) {
                 <TouchableOpacity style={[styles.backBtn, { backgroundColor: T.inputBg }]} onPress={() => navigation.goBack()}>
                     <Ionicons name="chevron-back" size={24} color={T.text} />
                 </TouchableOpacity>
-                <Text style={[styles.headerTitle, { color: T.text }]}>Admin Profile</Text>
+                <Text style={[styles.headerTitle, { color: T.text }]}>{profileTitle}</Text>
                 <View style={{ width: 38 }} />
             </View>
 
@@ -158,6 +225,7 @@ export default function AdminProfileScreen({ navigation }: Props) {
             >
                 <ScrollView contentContainerStyle={styles.scrollContent}>
 
+                    {/* Avatar Section */}
                     <View style={styles.avatarContainer}>
                         <TouchableOpacity
                             style={[styles.avatarCircle, { backgroundColor: T.inputBg, borderColor: T.inputBorder }]}
@@ -169,12 +237,13 @@ export default function AdminProfileScreen({ navigation }: Props) {
                             ) : profileImageUrl ? (
                                 <Image source={{ uri: profileImageUrl }} style={styles.avatarImage} />
                             ) : (
-                                <Ionicons name="shield-checkmark" size={40} color={T.subText} />
+                                <Ionicons name={isStaff ? "shield-checkmark" : isBusiness ? "business" : "person"} size={40} color={T.subText} />
                             )}
                         </TouchableOpacity>
-                        <Text style={[styles.avatarSubtitle, { color: T.subText }]}>Update Admin Photo</Text>
+                        <Text style={[styles.avatarSubtitle, { color: T.subText }]}>Update Profile Photo</Text>
                     </View>
 
+                    {/* Identity Details */}
                     <View style={[styles.card, { backgroundColor: T.card, borderColor: T.cardBorder }]}>
                         <View style={styles.cardHeader}>
                             <Ionicons name="person-outline" size={20} color={T.text} />
@@ -202,7 +271,7 @@ export default function AdminProfileScreen({ navigation }: Props) {
                         </View>
 
                         <View style={styles.inputGroup}>
-                            <Text style={[styles.label, { color: T.subText }]}>Official Email</Text>
+                            <Text style={[styles.label, { color: T.subText }]}>Email Address</Text>
                             <TextInput
                                 style={[styles.input, { backgroundColor: T.inputBg, color: T.text, borderColor: T.inputBorder }]}
                                 keyboardType="email-address"
@@ -213,11 +282,9 @@ export default function AdminProfileScreen({ navigation }: Props) {
                         </View>
 
                         <View style={styles.inputGroup}>
-                            <Text style={[styles.label, { color: T.subText }]}>Mobile Number</Text>
+                            <Text style={[styles.label, { color: T.subText }]}>Phone Number</Text>
                             <TextInput
                                 style={[styles.input, { backgroundColor: T.inputBg, color: T.text, borderColor: T.inputBorder }]}
-                                placeholder="9876543210"
-                                placeholderTextColor={T.subText}
                                 keyboardType="phone-pad"
                                 value={phone}
                                 onChangeText={setPhone}
@@ -225,18 +292,82 @@ export default function AdminProfileScreen({ navigation }: Props) {
                         </View>
                     </View>
 
+                    {/* Business Location (Conditional) */}
+                    {isBusiness && (
+                        <View style={[styles.card, { backgroundColor: T.card, borderColor: T.cardBorder }]}>
+                            <View style={styles.cardHeader}>
+                                <View style={{ flexDirection: 'row', alignItems: 'center', flex: 1, gap: 8 }}>
+                                    <Ionicons name="location-outline" size={20} color={T.text} />
+                                    <Text style={[styles.cardTitle, { color: T.text }]}>Business Logistics</Text>
+                                </View>
+                                <TouchableOpacity 
+                                    style={[styles.detectBtn, { backgroundColor: T.inputBg, borderColor: T.inputBorder }]}
+                                    onPress={handleDetectLocation}
+                                    disabled={detectingLocation}
+                                >
+                                    {detectingLocation ? (
+                                        <ActivityIndicator size="small" color="#DF2324" />
+                                    ) : (
+                                        <Ionicons name="locate" size={16} color="#DF2324" />
+                                    )}
+                                </TouchableOpacity>
+                            </View>
+
+                            <View style={styles.inputGroup}>
+                                <Text style={[styles.label, { color: T.subText }]}>City / Area</Text>
+                                <TextInput
+                                    style={[styles.input, { backgroundColor: T.inputBg, color: T.text, borderColor: T.inputBorder }]}
+                                    value={city}
+                                    onChangeText={setCity}
+                                />
+                            </View>
+
+                            <View style={styles.inputGroup}>
+                                <Text style={[styles.label, { color: T.subText }]}>Full Address</Text>
+                                <TextInput
+                                    style={[styles.input, { backgroundColor: T.inputBg, color: T.text, borderColor: T.inputBorder, minHeight: 60 }]}
+                                    value={address}
+                                    onChangeText={setAddress}
+                                    multiline
+                                />
+                            </View>
+
+                            <View style={styles.row}>
+                                <View style={[styles.inputGroup, { flex: 1, marginRight: 10 }]}>
+                                    <Text style={[styles.label, { color: T.subText }]}>Lat</Text>
+                                    <TextInput
+                                        style={[styles.input, { backgroundColor: T.inputBg, color: T.text, borderColor: T.inputBorder }]}
+                                        value={latitude}
+                                        onChangeText={setLatitude}
+                                        keyboardType="numeric"
+                                    />
+                                </View>
+                                <View style={[styles.inputGroup, { flex: 1 }]}>
+                                    <Text style={[styles.label, { color: T.subText }]}>Lng</Text>
+                                    <TextInput
+                                        style={[styles.input, { backgroundColor: T.inputBg, color: T.text, borderColor: T.inputBorder }]}
+                                        value={longitude}
+                                        onChangeText={setLongitude}
+                                        keyboardType="numeric"
+                                    />
+                                </View>
+                            </View>
+                        </View>
+                    )}
+
+                    {/* Security Section */}
                     <View style={[styles.card, { backgroundColor: T.card, borderColor: T.cardBorder }]}>
                         <View style={styles.cardHeader}>
                             <Ionicons name="lock-closed-outline" size={20} color={T.text} />
-                            <Text style={[styles.cardTitle, { color: T.text }]}>Security Access</Text>
+                            <Text style={[styles.cardTitle, { color: T.text }]}>Security</Text>
                         </View>
 
                         <View style={styles.inputGroup}>
-                            <Text style={[styles.label, { color: T.subText }]}>Change Password</Text>
+                            <Text style={[styles.label, { color: T.subText }]}>New Password</Text>
                             <View style={[styles.passwordContainer, { backgroundColor: T.inputBg, borderColor: T.inputBorder }]}>
                                 <TextInput
                                     style={[styles.passwordInput, { color: T.text }]}
-                                    placeholder="Leave blank to keep current"
+                                    placeholder="Leave blank to keep"
                                     placeholderTextColor={T.subText}
                                     secureTextEntry={!showPassword}
                                     value={password}
@@ -247,11 +378,26 @@ export default function AdminProfileScreen({ navigation }: Props) {
                                 </TouchableOpacity>
                             </View>
                         </View>
+
+                        <View style={styles.inputGroup}>
+                            <Text style={[styles.label, { color: T.subText }]}>Confirm Password</Text>
+                            <View style={[styles.passwordContainer, { backgroundColor: T.inputBg, borderColor: T.inputBorder }]}>
+                                <TextInput
+                                    style={[styles.passwordInput, { color: T.text }]}
+                                    placeholder="Repeat password"
+                                    placeholderTextColor={T.subText}
+                                    secureTextEntry={!showPassword}
+                                    value={confirmPassword}
+                                    onChangeText={setConfirmPassword}
+                                />
+                            </View>
+                        </View>
                     </View>
 
                 </ScrollView>
             </KeyboardAvoidingView>
 
+            {/* Save Button */}
             <View style={[styles.footer, { backgroundColor: T.bg }]}>
                 <TouchableOpacity
                     style={[styles.saveBtn, saving && { opacity: 0.7 }]}
@@ -276,37 +422,24 @@ export default function AdminProfileScreen({ navigation }: Props) {
 
 const styles = StyleSheet.create({
     safe: { flex: 1 },
-    header: {
-        flexDirection: 'row',
-        alignItems: 'center',
-        justifyContent: 'space-between',
-        paddingHorizontal: 20,
-        paddingVertical: 14,
-    },
+    header: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', paddingHorizontal: 20, paddingVertical: 14 },
     backBtn: { width: 38, height: 38, borderRadius: 19, justifyContent: 'center', alignItems: 'center' },
     headerTitle: { fontSize: 18, fontWeight: '800' },
     scrollContent: { padding: 16, gap: 16, paddingBottom: 40 },
     avatarContainer: { alignItems: 'center', marginVertical: 10 },
-    avatarCircle: {
-        width: 100, height: 100, borderRadius: 50, borderWidth: 2,
-        justifyContent: 'center', alignItems: 'center', marginBottom: 12,
-        overflow: 'hidden',
-    },
+    avatarCircle: { width: 100, height: 100, borderRadius: 50, borderWidth: 2, justifyContent: 'center', alignItems: 'center', marginBottom: 12, overflow: 'hidden' },
     avatarImage: { width: '100%', height: '100%', resizeMode: 'cover' },
     avatarSubtitle: { fontSize: 13, fontWeight: '700' },
-    card: {
-        borderRadius: 12, padding: 16,
-        shadowColor: '#000', shadowOffset: { width: 0, height: 2 },
-        shadowOpacity: 0.1, shadowRadius: 4, elevation: 3,
-    },
+    card: { borderRadius: 12, padding: 16, shadowColor: '#000', shadowOffset: { width: 0, height: 2 }, shadowOpacity: 0.1, shadowRadius: 4, elevation: 3 },
     cardHeader: { flexDirection: 'row', alignItems: 'center', marginBottom: 16, gap: 8 },
     cardTitle: { fontSize: 16, fontWeight: '800' },
+    detectBtn: { padding: 8, borderRadius: 12 },
     inputGroup: { marginBottom: 16 },
     row: { flexDirection: 'row', justifyContent: 'space-between' },
-    label: { fontSize: 12, fontWeight: '800', marginBottom: 8, textTransform: 'uppercase' },
-    input: { borderRadius: 12, paddingHorizontal: 16, paddingVertical: 14, fontSize: 15, fontWeight: '600' },
+    label: { fontSize: 11, fontWeight: '800', marginBottom: 6, textTransform: 'uppercase', opacity: 0.6 },
+    input: { borderRadius: 12, paddingHorizontal: 16, paddingVertical: 12, fontSize: 15, fontWeight: '600' },
     passwordContainer: { flexDirection: 'row', alignItems: 'center', borderRadius: 12, overflow: 'hidden' },
-    passwordInput: { flex: 1, paddingHorizontal: 16, paddingVertical: 14, fontSize: 15, fontWeight: '600' },
+    passwordInput: { flex: 1, paddingHorizontal: 16, paddingVertical: 12, fontSize: 15, fontWeight: '600' },
     eyeIcon: { paddingHorizontal: 16 },
     footer: { padding: 16, paddingBottom: Platform.OS === 'ios' ? 30 : 20 },
     saveBtn: { height: 56, borderRadius: 12, backgroundColor: '#DF2324' },

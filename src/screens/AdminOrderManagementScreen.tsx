@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { View, Text, StyleSheet, FlatList, TouchableOpacity, StatusBar, ActivityIndicator, Alert, Modal } from 'react-native';
+import { View, Text, StyleSheet, FlatList, TouchableOpacity, StatusBar, ActivityIndicator, Alert, Modal, TextInput } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
 import { NativeStackNavigationProp } from '@react-navigation/native-stack';
@@ -14,6 +14,7 @@ type Props = {
 export default function AdminOrderManagementScreen({ navigation }: Props) {
     const [orders, setOrders] = useState([]);
     const [loading, setLoading] = useState(true);
+    const [searchTerm, setSearchTerm] = useState('');
     
     const [editOrder, setEditOrder] = useState<any>(null);
     const [editStatus, setEditStatus] = useState('PAID');
@@ -38,10 +39,10 @@ export default function AdminOrderManagementScreen({ navigation }: Props) {
     };
 
     const handleDelete = (id: number) => {
-        Alert.alert("Delete Order", "Permanently remove this entire order and restore stock?", [
+        Alert.alert("Archive Order", "Purge this order from the active fulfillment pipeline? It will remain in historical archives.", [
             { text: "Cancel", style: "cancel" },
             {
-                text: "Delete",
+                text: "Archive",
                 style: "destructive",
                 onPress: async () => {
                     try {
@@ -78,8 +79,10 @@ export default function AdminOrderManagementScreen({ navigation }: Props) {
             <View style={styles.orderHeader}>
                 <View style={{ flexDirection: 'row', alignItems: 'center', gap: 10 }}>
                     <Text style={[styles.orderId, { color: '#DF2324' }]}>#{item.id}</Text>
-                    <View style={[styles.statusBadge, { backgroundColor: '#DF232422' }]}>
-                        <Text style={styles.statusText}>{item.status || 'PAID'}</Text>
+                    <View style={[styles.statusBadge, { backgroundColor: item.active === false ? '#7A7A8533' : '#DF232422' }]}>
+                        <Text style={[styles.statusText, { color: item.active === false ? '#7A7A85' : '#DF2324' }]}>
+                            {item.active === false ? 'ARCHIVED' : (item.status || 'PAID')}
+                        </Text>
                     </View>
                 </View>
                 <Text style={[styles.orderDate, { color: T.subText }]}>
@@ -124,11 +127,40 @@ export default function AdminOrderManagementScreen({ navigation }: Props) {
                 <Text style={[styles.title, { color: T.text }]}>Order Control</Text>
             </View>
 
+            {/* Search Bar */}
+            <View style={[styles.searchContainer, { backgroundColor: T.statBg, borderColor: T.statBorder }]}>
+                <Ionicons name="search-outline" size={18} color={T.subText} />
+                <TextInput
+                    style={[styles.searchInput, { color: T.text }]}
+                    placeholder="Search by order #, customer, status..."
+                    placeholderTextColor={T.subText}
+                    value={searchTerm}
+                    onChangeText={setSearchTerm}
+                    autoCorrect={false}
+                    autoCapitalize="none"
+                />
+                {searchTerm.length > 0 && (
+                    <TouchableOpacity onPress={() => setSearchTerm('')}>
+                        <Ionicons name="close-circle" size={18} color={T.subText} />
+                    </TouchableOpacity>
+                )}
+            </View>
+
             {loading ? (
                 <ActivityIndicator size="large" color="#DF2324" style={{ marginTop: 50 }} />
             ) : (
                 <FlatList
-                    data={orders}
+                    data={orders.filter((o: any) => {
+                        if (!searchTerm.trim()) return true;
+                        const q = searchTerm.toLowerCase();
+                        const name = o.user ? `${o.user.firstName} ${o.user.lastName}` : '';
+                        return (
+                            String(o.id).includes(q) ||
+                            name.toLowerCase().includes(q) ||
+                            (o.status || '').toLowerCase().includes(q) ||
+                            (o.grandTotal ? o.grandTotal.toFixed(2) : '').includes(q)
+                        );
+                    })}
                     keyExtractor={(item: any) => item.id.toString()}
                     renderItem={renderOrderItem}
                     contentContainerStyle={styles.list}
@@ -195,6 +227,23 @@ const styles = StyleSheet.create({
         alignItems: 'center',
     },
     title: { fontSize: 22, fontWeight: '900', letterSpacing: 0.5 },
+    searchContainer: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        marginHorizontal: 20,
+        marginBottom: 8,
+        paddingHorizontal: 16,
+        paddingVertical: 12,
+        borderRadius: 16,
+        borderWidth: 1,
+        gap: 10,
+    },
+    searchInput: {
+        flex: 1,
+        fontSize: 14,
+        fontWeight: '700',
+        padding: 0,
+    },
     list: { padding: 16 },
     orderCard: {
         padding: 16,

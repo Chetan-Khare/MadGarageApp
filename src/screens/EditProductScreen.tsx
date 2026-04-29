@@ -8,8 +8,9 @@ import { RouteProp, useRoute } from '@react-navigation/native';
 import { Product, Vehicle, RootStackParamList } from '../types';
 import * as ImagePicker from 'expo-image-picker';
 import apiClient from '../services/apiClient';
+import * as ImageManipulator from 'expo-image-manipulator';
 
-import { File } from 'expo-file-system';
+import * as FileSystem from 'expo-file-system';
 import { useAuthStore } from '../store/authStore';
 import { useThemeStore, DARK_THEME, LIGHT_THEME } from '../store/themeStore';
 import { BASE_SERVER_URL, resolveSingleImageUrl, resolveProductImage } from '../utils/imageUtils';
@@ -198,12 +199,27 @@ export default function EditProductScreen({ navigation }: Props) {
             mediaTypes: ['images'],
             allowsMultipleSelection: true,
             selectionLimit: 5,
-            quality: 0.4,
+            quality: 1, // Full quality for manual compression
         });
 
         if (!result.canceled) {
-            const newUris = result.assets.map(asset => asset.uri);
-            setImageUris(prev => [...prev, ...newUris].slice(0, 5));
+            setUploading(true);
+            try {
+                const compressedUris: string[] = [];
+                for (const asset of result.assets) {
+                    const manipResult = await ImageManipulator.manipulateAsync(
+                        asset.uri,
+                        [{ resize: { width: 1024 } }],
+                        { compress: 0.7, format: ImageManipulator.SaveFormat.JPEG }
+                    );
+                    compressedUris.push(manipResult.uri);
+                }
+                setImageUris(prev => [...prev, ...compressedUris].slice(0, 5));
+            } catch (error) {
+                Alert.alert("Error", "Failed to process images.");
+            } finally {
+                setUploading(false);
+            }
         }
     };
 
@@ -253,14 +269,14 @@ export default function EditProductScreen({ navigation }: Props) {
             const base64Images: string[] = [];
             // Only parse local URI images
             for (const uri of imageUris) {
-                const base64 = await (new File(uri)).base64();
+                const base64 = await FileSystem.readAsStringAsync(uri, { encoding: FileSystem.EncodingType.Base64 });
                 base64Images.push(base64);
             }
 
             let base64Guide: string | null = null;
             let guideExt: string | null = null;
             if (guideUri && (guideUri.startsWith('file://') || guideUri.startsWith('/'))) {
-                base64Guide = await (new File(guideUri)).base64();
+                base64Guide = await FileSystem.readAsStringAsync(guideUri, { encoding: FileSystem.EncodingType.Base64 });
                 guideExt = guideUri.split('.').pop() || 'pdf';
             }
 

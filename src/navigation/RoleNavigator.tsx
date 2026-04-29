@@ -10,16 +10,16 @@ import AdminInventoryManagementScreen from '../screens/AdminInventoryManagementS
 import AdminUserManagementScreen from '../screens/AdminUserManagementScreen';
 import AdminVehicleManagementScreen from '../screens/AdminVehicleManagementScreen';
 import AdminRequestsView from '../screens/AdminRequestsView';
-import AdminProfileScreen from '../screens/AdminProfileScreen';
+import UnifiedProfileScreen from '../screens/UnifiedProfileScreen';
 import AdminSettingsScreen from '../screens/AdminSettingsScreen';
 
 // Role-specific dashboards
 import GarageDashboardScreen from '../screens/GarageDashboardScreen';
 import SellerDashboardScreen from '../screens/SellerDashboardScreen';
-import SellerProfileScreen from '../screens/SellerProfileScreen';
 import SellerInventoryScreen from '../screens/SellerInventoryScreen';
 import SellerOrderHistoryScreen from '../screens/SellerOrderHistoryScreen';
 import SellerFlaggedProductsScreen from '../screens/SellerFlaggedProductsScreen';
+import WorkerDashboardScreen from '../screens/WorkerDashboardScreen';
 
 // Shared authenticated screens
 import HomeScreen from '../screens/HomeScreen';
@@ -30,8 +30,6 @@ import ProductDetailsScreen from '../screens/ProductDetailsScreen';
 import AddProductScreen from '../screens/AddProductScreen';
 import OrderHistoryScreen from '../screens/OrderHistoryScreen';
 import OrderDetailsScreen from '../screens/OrderDetailsScreen';
-import CustomerProfileScreen from '../screens/CustomerProfileScreen';
-import GarageProfileScreen from '../screens/GarageProfileScreen';
 
 import EditProductScreen from '../screens/EditProductScreen';
 import PartRequestScreen from '../screens/PartRequestScreen';
@@ -61,21 +59,28 @@ const RoleNavigator: React.FC = () => {
     if (role === 'ROLE_ADMIN') return 'AdminDashboard';
     if (role === 'ROLE_SELLER') return 'SellerDashboard';
     if (role === 'ROLE_GARAGE') return 'GarageDashboard';
+    if (role === 'ROLE_WORKER') return 'WorkerDashboard';
     return 'Home';
   };
 
   return (
     <Stack.Navigator initialRouteName={getInitialRoute()} screenOptions={screenOptions}>
-      {/* Admin-only screens */}
-      {role === 'ROLE_ADMIN' && (
+      {/* Admin & Worker operational screens */}
+      {(role === 'ROLE_ADMIN' || role === 'ROLE_WORKER') && (
         <>
-          <Stack.Screen name="AdminDashboard" component={AdminDashboardScreen} />
           <Stack.Screen name="AdminOrderManagement" component={AdminOrderManagementScreen} />
           <Stack.Screen name="AdminInventoryManagement" component={AdminInventoryManagementScreen} />
           <Stack.Screen name="AdminUserManagement" component={AdminUserManagementScreen} />
           <Stack.Screen name="AdminVehicleManagement" component={AdminVehicleManagementScreen} />
           <Stack.Screen name="AdminRequests" component={AdminRequestsView} />
-          <Stack.Screen name="AdminProfile" component={AdminProfileScreen} />
+          <Stack.Screen name="AdminProfile" component={UnifiedProfileScreen} />
+        </>
+      )}
+
+      {/* Admin-only secure screens */}
+      {role === 'ROLE_ADMIN' && (
+        <>
+          <Stack.Screen name="AdminDashboard" component={AdminDashboardScreen} />
           <Stack.Screen name="AdminSettings" component={AdminSettingsScreen} />
         </>
       )}
@@ -95,6 +100,11 @@ const RoleNavigator: React.FC = () => {
         <Stack.Screen name="GarageDashboard" component={GarageDashboardScreen} />
       )}
 
+      {/* Worker-only screens */}
+      {role === 'ROLE_WORKER' && (
+        <Stack.Screen name="WorkerDashboard" component={WorkerDashboardScreen} />
+      )}
+
       {/* Shared authenticated screens (all roles) */}
       <Stack.Screen name="Home" component={HomeScreen} />
       <Stack.Screen name="Cart" component={CartScreen} />
@@ -105,9 +115,9 @@ const RoleNavigator: React.FC = () => {
       <Stack.Screen name="EditProduct" component={EditProductScreen} />
       <Stack.Screen name="OrderHistory" component={OrderHistoryScreen} />
       <Stack.Screen name="OrderDetails" component={OrderDetailsScreen} />
-      <Stack.Screen name="CustomerProfile" component={CustomerProfileScreen} />
-      <Stack.Screen name="GarageProfile" component={GarageProfileScreen} />
-      <Stack.Screen name="SellerProfile" component={SellerProfileScreen} />
+      <Stack.Screen name="CustomerProfile" component={UnifiedProfileScreen} />
+      <Stack.Screen name="GarageProfile" component={UnifiedProfileScreen} />
+      <Stack.Screen name="SellerProfile" component={UnifiedProfileScreen} />
       <Stack.Screen name="PartRequest" component={PartRequestScreen} />
       <Stack.Screen name="Wishlist" component={WishlistScreen} />
       <Stack.Screen name="Address" component={AddressScreen} />

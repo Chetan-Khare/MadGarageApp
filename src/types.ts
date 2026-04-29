@@ -33,6 +33,7 @@ export type RootStackParamList = {
   AdminDashboard: undefined;
   SellerDashboard: undefined;
   GarageDashboard: undefined;
+  WorkerDashboard: undefined;
   Cart: undefined;
   Checkout: undefined;
   Chat: undefined;
