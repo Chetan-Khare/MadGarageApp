@@ -79,6 +79,7 @@ export interface CarModel {
 export interface Make {
     id: number;
     name: string;
+    logoUrl?: string;
 }
 
 export interface AuthResponse {

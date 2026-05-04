@@ -5,7 +5,7 @@ import ModernDropdown from '../components/ModernDropdown';
 import { Ionicons } from '@expo/vector-icons';
 import { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import { RouteProp, useRoute } from '@react-navigation/native';
-import { Product, Vehicle, RootStackParamList } from '../types';
+import { Product, Vehicle, RootStackParamList, Make } from '../types';
 import * as ImagePicker from 'expo-image-picker';
 import apiClient from '../services/apiClient';
 import * as ImageManipulator from 'expo-image-manipulator';
@@ -87,7 +87,7 @@ export default function EditProductScreen({ navigation }: Props) {
     }, [product]);
 
     // Vehicle Selection State
-    const [makes, setMakes] = useState<string[]>([]);
+    const [makes, setMakes] = useState<Make[]>([]);
     const [models, setModels] = useState<string[]>([]);
     const [years, setYears] = useState<number[]>([]);
     const [fuels, setFuels] = useState<string[]>([]);
@@ -378,15 +378,17 @@ export default function EditProductScreen({ navigation }: Props) {
                             />
                         </View>
 
-                        <View style={styles.inputGroup}>
-                            <Text style={[styles.label, { color: T.subText }]}>Brand</Text>
-                            <TextInput
-                                style={[styles.input, { backgroundColor: T.inputBg, borderColor: T.inputBorder, color: T.text }]}
-                                placeholderTextColor={T.placeholder}
-                                value={brand}
-                                onChangeText={setBrand}
-                            />
-                        </View>
+                        <ModernDropdown
+                            label="Brand / Manufacturer"
+                            value={brand}
+                            options={makes.map(m => ({
+                                label: m.name,
+                                value: m.name,
+                                icon: m.logoUrl
+                            }))}
+                            onSelect={setBrand}
+                            placeholder="Select Brand"
+                        />
 
                         <View style={styles.row}>
                             <ModernDropdown
@@ -557,7 +559,11 @@ export default function EditProductScreen({ navigation }: Props) {
                                     <ModernDropdown
                                         label="MAKE"
                                         value={selectedMake}
-                                        options={makes}
+                                        options={makes.map(m => ({
+                                            label: m.name,
+                                            value: m.name,
+                                            icon: m.logoUrl
+                                        }))}
                                         onSelect={setSelectedMake}
                                         placeholder="Select Make"
                                         containerStyle={{ flex: 1, marginRight: 12 }}

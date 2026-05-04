@@ -58,7 +58,7 @@ export const VehicleFilterBar: React.FC<Props> = ({
                 <View style={{ flex: 1, marginLeft: 10 }}>
                     {selection.engine ? (
                         <Text style={[styles.summaryText, { color: T.text }]}>
-                            {selection.year} {selection.make} {selection.model} • {selection.trim}
+                            {selection.year} {selection.make} {selection.model} • {selection.trim}{selection.engine ? ` • ${selection.engine}` : ''}
                         </Text>
                     ) : (
                         <Text style={[styles.placeholderText, { color: T.subText }]}>
@@ -85,7 +85,7 @@ export const VehicleFilterBar: React.FC<Props> = ({
                         <ModernDropdown
                             label="MAKE"
                             value={selection.make}
-                            options={makes}
+                            options={makes.map(m => ({ label: m.name, value: m.name, icon: m.logoUrl }))}
                             onSelect={(val) => onSelectionChange('make', val)}
                             placeholder="Select Make"
                             containerStyle={{ flex: 1 }}
@@ -139,7 +139,7 @@ export const VehicleFilterBar: React.FC<Props> = ({
                                 toggle();
                             }}
                             placeholder="Select Engine"
-                            enabled={!!selection.trim}
+                            enabled={!!selection.fuel && (!!selection.trim || trims.length === 0)}
                             containerStyle={{ flex: 1 }}
                         />
                     </View>

@@ -13,7 +13,7 @@ export interface VehicleSelection {
 export const useVehicles = () => {
     const fetchMakes = async () => {
         const res = await apiClient.get('/vehicles/makes');
-        return res.data as string[];
+        return res.data as { id: number; name: string; logoUrl: string }[];
     };
 
     const fetchModels = async (make: string) => {
@@ -81,7 +81,7 @@ export const useVehicles = () => {
         useEngines: (make: string, model: string, year: string, fuel: string, trim: string) => useQuery({ 
             queryKey: ['engines', make, model, year, fuel, trim], 
             queryFn: () => fetchEngines(make, model, year, fuel, trim), 
-            enabled: !!make && !!model && !!year && !!fuel && !!trim,
+            enabled: !!make && !!model && !!year && !!fuel,
             staleTime: STALE_TIME
         }),
     };

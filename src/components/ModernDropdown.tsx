@@ -7,15 +7,23 @@ import {
     Modal, 
     FlatList, 
     TouchableWithoutFeedback,
-    Dimensions
+    Dimensions,
+    Image
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { useThemeStore, DARK_THEME, LIGHT_THEME } from '../store/themeStore';
+import { BASE_SERVER_URL } from '../services/apiClient';
+
+interface Option {
+    label: string;
+    value: string;
+    icon?: string;
+}
 
 interface ModernDropdownProps {
     label?: string;
     value: string;
-    options: string[] | number[];
+    options: string[] | number[] | Option[];
     onSelect: (value: string) => void;
     placeholder?: string;
     enabled?: boolean;
@@ -39,22 +47,50 @@ const ModernDropdown: React.FC<ModernDropdownProps> = ({
     const { isDark } = useThemeStore();
     const T = isDark ? DARK_THEME : LIGHT_THEME;
 
-    const renderItem = ({ item }: { item: string | number }) => (
-        <TouchableOpacity
-            style={[styles.optionItem, { borderBottomColor: T.cardBorder + '22' }]}
-            onPress={() => {
-                onSelect(item.toString());
-                setModalVisible(false);
-            }}
-        >
-            <Text style={[styles.optionText, { color: T.text }, value === item.toString() && { color: '#DF2324', fontWeight: '800' }]}>
-                {item}
-            </Text>
-            {value === item.toString() && (
-                <Ionicons name="checkmark-circle" size={18} color="#DF2324" />
-            )}
-        </TouchableOpacity>
-    );
+    const getFullIconUrl = (iconPath: string | null | undefined) => {
+        if (!iconPath) return null;
+        if (iconPath.startsWith('http')) return iconPath;
+        return `${BASE_SERVER_URL}${iconPath}`;
+    };
+
+    const renderItem = ({ item }: { item: string | number | Option }) => {
+        const optionLabel = typeof item === 'object' ? item.label : item.toString();
+        const optionValue = typeof item === 'object' ? item.value : item.toString();
+        const optionIcon = typeof item === 'object' ? item.icon : null;
+        const isSelected = value === optionValue;
+
+        const iconUri = getFullIconUrl(optionIcon);
+
+        return (
+            <TouchableOpacity
+                style={[styles.optionItem, { borderBottomColor: T.cardBorder + '22' }]}
+                onPress={() => {
+                    onSelect(optionValue);
+                    setModalVisible(false);
+                }}
+            >
+                <View style={{ flexDirection: 'row', alignItems: 'center', flex: 1 }}>
+                    {iconUri && (
+                        <Image 
+                            source={{ uri: iconUri }} 
+                            style={styles.optionIcon}
+                            resizeMode="contain"
+                        />
+                    )}
+                    <Text style={[
+                        styles.optionText, 
+                        { color: T.text }, 
+                        isSelected && { color: '#DF2324', fontWeight: '800' }
+                    ]}>
+                        {optionLabel}
+                    </Text>
+                </View>
+                {isSelected && (
+                    <Ionicons name="checkmark-circle" size={18} color="#DF2324" />
+                )}
+            </TouchableOpacity>
+        );
+    };
 
     return (
         <View style={[styles.wrapper, containerStyle]}>
@@ -74,12 +110,25 @@ const ModernDropdown: React.FC<ModernDropdownProps> = ({
                     }
                 ]}
             >
-                <Text style={[
-                    styles.valueText, 
-                    { color: value ? T.text : T.placeholder }
-                ]} numberOfLines={1}>
-                    {value || placeholder}
-                </Text>
+                <View style={{ flexDirection: 'row', alignItems: 'center', flex: 1 }}>
+                    {(() => {
+                        const selectedOption = (options as any[]).find(o => typeof o === 'object' && o.value === value);
+                        const iconUri = getFullIconUrl(selectedOption?.icon);
+                        return iconUri ? (
+                            <Image 
+                                source={{ uri: iconUri }} 
+                                style={[styles.optionIcon, { width: 18, height: 18, marginRight: 8 }]}
+                                resizeMode="contain"
+                            />
+                        ) : null;
+                    })()}
+                    <Text style={[
+                        styles.valueText, 
+                        { color: value ? T.text : T.placeholder }
+                    ]} numberOfLines={1}>
+                        {value || placeholder}
+                    </Text>
+                </View>
                 <Ionicons name="chevron-down" size={18} color="#DF2324" />
             </TouchableOpacity>
 
@@ -104,7 +153,12 @@ const ModernDropdown: React.FC<ModernDropdownProps> = ({
                                 
                                 <FlatList
                                     data={options}
-                                    keyExtractor={(item) => item.toString()}
+                                    keyExtractor={(item, index) => {
+                                        if (typeof item === 'object' && item !== null) {
+                                            return (item as Option).value;
+                                        }
+                                        return item.toString();
+                                    }}
                                     renderItem={renderItem}
                                     contentContainerStyle={styles.listPadding}
                                     showsVerticalScrollIndicator={false}
@@ -200,6 +254,14 @@ const styles = StyleSheet.create({
         fontWeight: '900',
         textTransform: 'uppercase',
         letterSpacing: 2,
+    },
+    optionIcon: {
+        width: 24,
+        height: 24,
+        marginRight: 12,
+        backgroundColor: '#fff',
+        borderRadius: 4,
+        padding: 2,
     },
     listPadding: {
         paddingBottom: 20,

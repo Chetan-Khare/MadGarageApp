@@ -4,7 +4,7 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import ModernDropdown from '../components/ModernDropdown';
 import { Ionicons } from '@expo/vector-icons';
 import { NativeStackNavigationProp } from '@react-navigation/native-stack';
-import { Vehicle, RootStackParamList } from '../types';
+import { Vehicle, RootStackParamList, Make } from '../types';
 import * as ImagePicker from 'expo-image-picker';
 import apiClient from '../services/apiClient';
 import * as ImageManipulator from 'expo-image-manipulator';
@@ -54,7 +54,7 @@ export default function AddProductScreen({ navigation }: Props) {
     const [wholesale, setWholesale] = useState(true);
 
     // Vehicle Selection State
-    const [makes, setMakes] = useState<string[]>([]);
+    const [makes, setMakes] = useState<Make[]>([]);
     const [models, setModels] = useState<string[]>([]);
     const [years, setYears] = useState<number[]>([]);
     const [fuels, setFuels] = useState<string[]>([]);
@@ -75,7 +75,7 @@ export default function AddProductScreen({ navigation }: Props) {
 
     // Fetch Makes on mount
     React.useEffect(() => {
-        apiClient.get('/vehicles/makes').then(res => setMakes(res.data)).catch(err => { /* fetch fail */ });
+        apiClient.get('/vehicles/makes').then(res => setMakes(res.data)).catch(err => { console.error("Fetch makes failed", err) });
     }, []);
 
     // Fetch Models when Make changes
@@ -340,16 +340,17 @@ export default function AddProductScreen({ navigation }: Props) {
                                 />
                             </View>
 
-                            <View style={styles.inputGroup}>
-                                <Text style={[styles.label, { color: T.subText }]}>Brand</Text>
-                                <TextInput
-                                    style={[styles.input, { backgroundColor: T.inputBg, borderColor: T.inputBorder, color: T.text }]}
-                                    placeholderTextColor={T.placeholder}
-                                    placeholder="e.g. CP Carrillo"
-                                    value={brand}
-                                    onChangeText={setBrand}
-                                />
-                            </View>
+                            <ModernDropdown
+                                label="Brand / Manufacturer"
+                                value={brand}
+                                options={makes.map(m => ({
+                                    label: m.name,
+                                    value: m.name,
+                                    icon: m.logoUrl
+                                }))}
+                                onSelect={setBrand}
+                                placeholder="Select Brand"
+                            />
 
                             <View style={styles.row}>
                                 <ModernDropdown
@@ -481,7 +482,11 @@ export default function AddProductScreen({ navigation }: Props) {
                                         <ModernDropdown
                                             label="MAKE"
                                             value={selectedMake}
-                                            options={makes}
+                                            options={makes.map(m => ({
+                                                label: m.name,
+                                                value: m.name,
+                                                icon: m.logoUrl
+                                            }))}
                                             onSelect={setSelectedMake}
                                             placeholder="Select Make"
                                             containerStyle={{ flex: 1, marginRight: 12 }}

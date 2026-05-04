@@ -1,7 +1,8 @@
 import React, { useEffect, useState } from 'react';
 import { 
     View, Text, StyleSheet, FlatList, TouchableOpacity, 
-    Alert, ActivityIndicator, StatusBar, ImageBackground, Image 
+    Alert, ActivityIndicator, StatusBar, ImageBackground, Image,
+    ScrollView 
 } from 'react-native';
 import { useNavigation } from '@react-navigation/native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
@@ -52,6 +53,17 @@ export default function AdminRequestsView() {
     
     const [requests, setRequests] = useState<RequestItem[]>([]);
     const [loading, setLoading] = useState(true);
+    
+    // Filter State
+    const [statusFilter, setStatusFilter] = useState('ALL');
+    const [dateFilter, setDateFilter] = useState('ALL');
+
+    const STATUSES = ['ALL', 'PENDING', 'QUOTED', 'FULFILLED', 'UNAVAILABLE'];
+    const DATES = [
+        { label: 'ALL TIME', value: 'ALL' },
+        { label: 'TODAY', value: 'TODAY' },
+        { label: 'THIS WEEK', value: 'WEEK' }
+    ];
 
     const BACKGROUND_IMAGE = 'https://images.unsplash.com/photo-1517524008697-84bbe3c3fd98?auto=format&fit=crop&q=80';
 
@@ -94,6 +106,70 @@ export default function AdminRequestsView() {
             ]
         );
     };
+
+    const filteredRequests = requests.filter(req => {
+        const matchesStatus = statusFilter === 'ALL' || req.status === statusFilter;
+        
+        let matchesDate = true;
+        const reqDate = new Date(req.createdAt);
+        const now = new Date();
+        
+        if (dateFilter === 'TODAY') {
+            matchesDate = reqDate.toDateString() === now.toDateString();
+        } else if (dateFilter === 'WEEK') {
+            const weekAgo = new Date();
+            weekAgo.setDate(now.getDate() - 7);
+            matchesDate = reqDate >= weekAgo;
+        }
+        
+        return matchesStatus && matchesDate;
+    });
+
+    const renderFilterBar = () => (
+        <View style={styles.filterContainer}>
+            {/* Row 1: Status Filters */}
+            <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.filterScroll}>
+                <View style={styles.filterGroup}>
+                    {STATUSES.map(status => (
+                        <TouchableOpacity 
+                            key={status}
+                            onPress={() => setStatusFilter(status)}
+                            style={[
+                                styles.filterChip, 
+                                { backgroundColor: statusFilter === status ? '#DF2324' : theme.card, borderColor: theme.cardBorder }
+                            ]}
+                        >
+                            <Text style={[
+                                styles.filterChipText, 
+                                { color: statusFilter === status ? '#FFF' : theme.text }
+                            ]}>{status}</Text>
+                        </TouchableOpacity>
+                    ))}
+                </View>
+            </ScrollView>
+
+            {/* Row 2: Date Filters */}
+            <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={[styles.filterScroll, { marginTop: 10 }]}>
+                <View style={styles.filterGroup}>
+                    {DATES.map(date => (
+                        <TouchableOpacity 
+                            key={date.value}
+                            onPress={() => setDateFilter(date.value)}
+                            style={[
+                                styles.filterChip, 
+                                { backgroundColor: dateFilter === date.value ? '#DF2324' : theme.card, borderColor: theme.cardBorder }
+                            ]}
+                        >
+                            <Text style={[
+                                styles.filterChipText, 
+                                { color: dateFilter === date.value ? '#FFF' : theme.text }
+                            ]}>{date.label}</Text>
+                        </TouchableOpacity>
+                    ))}
+                </View>
+            </ScrollView>
+        </View>
+    );
 
     const renderItem = ({ item }: { item: RequestItem }) => {
         let badgeColor = '#FFC107'; 
@@ -210,12 +286,14 @@ export default function AdminRequestsView() {
                         <ActivityIndicator size="large" color="#DF2324" />
                     </View>
                 ) : (
-                    <FlatList
-                        data={requests}
-                        keyExtractor={(item) => item.id.toString()}
-                        renderItem={renderItem}
-                        contentContainerStyle={styles.listContainer}
-                        showsVerticalScrollIndicator={false}
+                    <>
+                        {renderFilterBar()}
+                        <FlatList
+                            data={filteredRequests}
+                            keyExtractor={(item) => item.id.toString()}
+                            renderItem={renderItem}
+                            contentContainerStyle={styles.listContainer}
+                            showsVerticalScrollIndicator={false}
                         ListEmptyComponent={
                             <View style={styles.center}>
                                 <Ionicons name="document-text-outline" size={64} color={theme.subText} />
@@ -223,6 +301,7 @@ export default function AdminRequestsView() {
                             </View>
                         }
                     />
+                    </>
                 )}
             </LinearGradient>
         </ImageBackground>
@@ -289,5 +368,34 @@ const styles = StyleSheet.create({
         paddingHorizontal: 16,
         borderRadius: 10,
     },
-    actionBtnText: { fontSize: 12, fontWeight: '800', textTransform: 'uppercase' }
+    actionBtnText: { fontSize: 12, fontWeight: '800', textTransform: 'uppercase' },
+
+    // Filter Styles
+    filterContainer: {
+        paddingVertical: 12,
+        borderBottomWidth: 1,
+        borderBottomColor: 'rgba(255,255,255,0.05)',
+    },
+    filterScroll: {
+        paddingHorizontal: 16,
+        alignItems: 'center',
+    },
+    filterGroup: {
+        flexDirection: 'row',
+    },
+    filterChip: {
+        paddingHorizontal: 14,
+        paddingVertical: 8,
+        borderRadius: 20,
+        marginRight: 8,
+        borderWidth: 1,
+    },
+    filterChipText: {
+        fontSize: 10,
+        fontWeight: '900',
+        letterSpacing: 0.5,
+    },
+    filterDivider: {
+        display: 'none',
+    }
 });

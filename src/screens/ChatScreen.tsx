@@ -32,6 +32,7 @@ interface ChatMessage {
     text: string;
     imageUri?: string;
     products?: any[];
+    showRequestButton?: boolean;
 }
 
 // ─── Theme Definitions ────────────────────────────────────────────────────────
@@ -97,10 +98,10 @@ export default function ChatScreen() {
         opacity: withTiming(avatarPulse.value === 1 ? 0.2 : 0.6),
     }));
 
-    // Consistent Background
-    const BACKGROUND_IMAGE = 'https://images.unsplash.com/photo-1517524008697-84bbe3c3fd98?auto=format&fit=crop&q=80';
+    // Premium Technical Background
+    const BACKGROUND_IMAGE = require('../../assets/chat_bg.png');
     const overlayGradient = isDark
-        ? ['rgba(5, 5, 5, 0.8)', 'rgba(5, 5, 5, 0.95)', '#050505'] as const
+        ? ['rgba(5, 5, 5, 0.3)', 'rgba(5, 5, 5, 0.5)', 'rgba(5, 5, 5, 0.7)'] as const
         : ['rgba(244, 244, 245, 0.8)', 'rgba(244, 244, 245, 0.95)', '#F4F4F5'] as const;
 
     // ── File Handling ──────────────────────────────────────────────────────────
@@ -192,9 +193,7 @@ export default function ChatScreen() {
                 formData.append('image', { uri: imageToSend, name: filename, type } as any);
             }
 
-            const response = await apiClient.post('/assistant/chat', formData, {
-                headers: { 'Content-Type': 'multipart/form-data' },
-            });
+            const response = await apiClient.post('/assistant/chat', formData);
 
             const result = response.data;
             const aiMsg: ChatMessage = {
@@ -202,6 +201,7 @@ export default function ChatScreen() {
                 role: 'ai',
                 text: result.message || "Here are the best matches for your vehicle.",
                 products: result.products || [],
+                showRequestButton: result.showRequestButton || false,
             };
             setMessages(prev => [...prev, aiMsg]);
         } catch (error: any) {
@@ -299,6 +299,16 @@ export default function ChatScreen() {
                                     ))}
                                 </View>
                             )}
+
+                            {item.showRequestButton && (
+                                <TouchableOpacity 
+                                    style={styles.requestBtn}
+                                    onPress={() => navigation.navigate('PartRequest' as never)}
+                                >
+                                    <Ionicons name="document-text-outline" size={16} color="#FFF" />
+                                    <Text style={styles.requestBtnText}>Request Part Manually</Text>
+                                </TouchableOpacity>
+                            )}
                         </View>
                     )}
                 </View>
@@ -307,7 +317,7 @@ export default function ChatScreen() {
     };
 
     return (
-        <ImageBackground source={{ uri: BACKGROUND_IMAGE }} style={styles.safeArea} resizeMode="cover">
+        <ImageBackground source={BACKGROUND_IMAGE} style={styles.safeArea} resizeMode="cover">
             <LinearGradient colors={overlayGradient} style={{ flex: 1 }}>
                 <StatusBar barStyle={isDark ? 'light-content' : 'dark-content'} translucent />
 
@@ -330,7 +340,8 @@ export default function ChatScreen() {
                 {/* Main Chat Area */}
                 <KeyboardAvoidingView
                     style={styles.container}
-                    behavior={Platform.OS === 'ios' ? 'padding' : undefined}
+                    behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
+                    keyboardVerticalOffset={Platform.OS === 'ios' ? 90 : 0}
                 >
                     <FlatList
                         ref={flatListRef}
@@ -461,4 +472,23 @@ const styles = StyleSheet.create({
     attachBtn: { width: 40, height: 40, justifyContent: 'center', alignItems: 'center' },
     textInput: { flex: 1, maxHeight: 100, minHeight: 40, paddingHorizontal: 8, paddingTop: 10, paddingBottom: 10, fontSize: 15 },
     sendBtn: { width: 36, height: 36, borderRadius: 18, backgroundColor: '#DF2324', justifyContent: 'center', alignItems: 'center', marginBottom: 2, marginRight: 2 },
+
+    requestBtn: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        backgroundColor: 'rgba(223, 35, 36, 0.15)',
+        borderWidth: 1,
+        borderColor: 'rgba(223, 35, 36, 0.4)',
+        paddingVertical: 10,
+        paddingHorizontal: 16,
+        borderRadius: 12,
+        marginTop: 12,
+        alignSelf: 'flex-start'
+    },
+    requestBtnText: {
+        color: '#FFF',
+        fontSize: 13,
+        fontWeight: '700',
+        marginLeft: 8
+    }
 });
