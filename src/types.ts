@@ -59,6 +59,8 @@ export type RootStackParamList = {
   Wishlist: undefined;
   Address: undefined;
   CompleteProfile: { registrationToken: string };
+  AdminPartnerRequests: undefined;
+  PartnerRequest: undefined;
 };
 
 export interface Vehicle {

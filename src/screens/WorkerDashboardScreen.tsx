@@ -159,6 +159,7 @@ export default function WorkerDashboardScreen({ navigation }: Props) {
                         { title: 'GARAGE', subtitle: 'NETWORK', icon: 'car', btn: 'MANAGE TIE-UPS', route: 'AdminUserManagement', params: { roleFilter: 'ROLE_GARAGE' }, colors: isDark ? ['#0A1A0A', '#050F05'] : ['#E8F5E9', '#C8E6C9'], iconColor: '#28A745' },
                         { title: 'INVENTORY', subtitle: 'MASTER', icon: 'cube', btn: 'MANAGE PARTS', route: 'AdminInventoryManagement', colors: isDark ? ['#1A1A0A', '#0F0F05'] : ['#F5F5F5', '#E0E0E0'], iconColor: '#7A00E6' },
                         { title: 'PART', subtitle: 'REQUESTS', icon: 'clipboard', btn: 'VIEW REQUESTS', route: 'AdminRequests', colors: isDark ? ['#2A1A0A', '#1A0A05'] : ['#FFF3E0', '#FFE0B2'], iconColor: '#FF8C00' },
+                        { title: 'PARTNERS', subtitle: 'ONBOARDING', icon: 'people', btn: 'AUDIT APPS', route: 'AdminPartnerRequests', colors: isDark ? ['#1A1A0A', '#0F0F05'] : ['#FFF8E1', '#FFECB3'], iconColor: '#FFA000' },
                     ].map((hub: any) => (
                         <TouchableOpacity
                             key={hub.title}

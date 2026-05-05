@@ -13,6 +13,7 @@ import SplashScreen from './src/screens/SplashScreen';
 import { useFonts, Inter_900Black_Italic } from '@expo-google-fonts/inter';
 
 import CompleteProfileScreen from './src/screens/CompleteProfileScreen';
+import PartnerRequestScreen from './src/screens/PartnerRequestScreen';
 
 import { RootStackParamList } from './src/types';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
@@ -67,6 +68,7 @@ export default function App() {
             <Stack.Navigator screenOptions={{ headerShown: false, contentStyle: { backgroundColor: '#0A0A0A' } }}>
               <Stack.Screen name="Login" component={LoginScreen} />
               <Stack.Screen name="CompleteProfile" component={CompleteProfileScreen} />
+              <Stack.Screen name="PartnerRequest" component={PartnerRequestScreen} />
             </Stack.Navigator>
           )}
         </NavigationContainer>

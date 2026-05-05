@@ -640,6 +640,31 @@ export default function LoginScreen({ navigation }: Props) {
                                 ))}
                             </View>
 
+                            {/* Partner CTA */}
+                            <TouchableOpacity 
+                                onPress={() => navigation.navigate('PartnerRequest')}
+                                style={{
+                                    marginTop: 40,
+                                    padding: 20,
+                                    borderRadius: 24,
+                                    backgroundColor: theme.card,
+                                    borderWidth: 1,
+                                    borderColor: theme.cardBorder,
+                                    flexDirection: 'row',
+                                    alignItems: 'center',
+                                    justifyContent: 'space-between',
+                                }}
+                                activeOpacity={0.8}
+                            >
+                                <View style={{ flex: 1, marginRight: 10 }}>
+                                    <Text style={{ fontSize: 9, fontWeight: '900', color: theme.subText, letterSpacing: 1, textTransform: 'uppercase', marginBottom: 2 }}>Business Partnership</Text>
+                                    <Text style={{ fontSize: 13, fontWeight: '900', color: theme.text, fontStyle: 'italic', textTransform: 'uppercase' }}>ARE YOU A SELLER OR GARAGE?</Text>
+                                </View>
+                                <View style={{ height: 40, width: 40, borderRadius: 20, backgroundColor: '#DF2324', justifyContent: 'center', alignItems: 'center' }}>
+                                    <Ionicons name="arrow-forward" size={20} color="#FFF" />
+                                </View>
+                            </TouchableOpacity>
+
                             <View style={styles.indiaFooter}>
                                 <Text style={styles.indiaText}>
                                     MADE IN <Text style={{ color: '#FF9933' }}>IN</Text>DIA FOR IN<Text style={{ color: '#138808' }}>D</Text>IA

@@ -29,6 +29,7 @@ export default function AdminDashboardScreen({ navigation }: Props) {
     const logout = useAuthStore((state) => state.logout);
     const [stats, setStats] = useState<AdminStats | null>(null);
     const [requestCount, setRequestCount] = useState<number>(0);
+    const [partnerCount, setPartnerCount] = useState<number>(0);
     const [loading, setLoading] = useState(true);
     const [syncError, setSyncError] = useState('');
     const [showProfileMenu, setShowProfileMenu] = useState(false);
@@ -64,12 +65,14 @@ export default function AdminDashboardScreen({ navigation }: Props) {
     const fetchAnalytics = async () => {
         try {
             setSyncError('');
-            const [analyticsRes, requestsRes] = await Promise.all([
+            const [analyticsRes, requestsRes, partnerRes] = await Promise.all([
                 apiClient.get('/admin/analytics'),
-                apiClient.get('/admin/requests')
+                apiClient.get('/admin/requests'),
+                apiClient.get('/admin/partner-requests')
             ]);
             setStats(analyticsRes.data);
             setRequestCount(Array.isArray(requestsRes.data) ? requestsRes.data.length : 0);
+            setPartnerCount(partnerRes.data.requests ? partnerRes.data.requests.length : 0);
         } catch (error: any) {
             const msg = error.response?.data || error.message || 'Unknown Link Failure';
             setSyncError(typeof msg === 'object' ? (msg.message || JSON.stringify(msg)) : msg);
@@ -205,6 +208,7 @@ export default function AdminDashboardScreen({ navigation }: Props) {
                         { icon: 'cube-outline', value: stats?.totalProducts || 0, label: 'PARTS', id: '02', route: 'AdminInventoryManagement', colors: isDark ? ['#1A1A1A', '#0F0F0F'] : ['#F5F5F5', '#E0E0E0'], iconColor: isDark ? '#DF2324' : '#424242' },
                         { icon: 'cash-outline', value: stats ? formatRevenue(stats.totalRevenue) : '₹0', label: 'INCOME', id: '03', route: 'AdminOrderManagement', colors: isDark ? ['#2A0F0F', '#150808'] : ['#FFEBEE', '#FFCDD2'], iconColor: isDark ? '#DF2324' : '#D32F2F' },
                         { icon: 'documents-outline', value: requestCount.toLocaleString(), label: 'PART REQUEST', id: '04', route: 'AdminRequests', colors: isDark ? ['#0F2022', '#081112'] : ['#E0F2F1', '#B2DFDB'], iconColor: isDark ? '#DF2324' : '#00796B' },
+                        { icon: 'business-outline', value: partnerCount.toLocaleString(), label: 'ONBOARDING', id: '05', route: 'AdminPartnerRequests', colors: isDark ? ['#2A1F0F', '#150F08'] : ['#FFF3E0', '#FFE0B2'], iconColor: isDark ? '#DF2324' : '#F57C00' },
                     ].map((s: any) => (
                         <TouchableOpacity
                             key={s.label}
@@ -238,6 +242,7 @@ export default function AdminDashboardScreen({ navigation }: Props) {
                         { title: 'ORDER', subtitle: 'PIPELINE', icon: 'swap-horizontal', btn: 'OPEN MODULE', route: 'AdminOrderManagement', colors: isDark ? ['#2A0A0A', '#1A0505'] : ['#FFEBEE', '#FFCDD2'], iconColor: '#DF2324' },
                         { title: 'GARAGE', subtitle: 'INVENTORY', icon: 'business', btn: 'AUDIT DATA', route: 'AdminInventoryManagement', colors: isDark ? ['#0A0A2A', '#05051A'] : ['#E8EAF6', '#C5CAE9'], iconColor: '#5B5BFF' },
                         { title: 'VEHICLE', subtitle: 'DB', icon: 'car', btn: 'QUERY MASTER', route: 'AdminVehicleManagement', colors: isDark ? ['#0A1A0A', '#050F05'] : ['#E8F5E9', '#C8E6C9'], iconColor: '#28A745' },
+                        { title: 'PARTNERS', subtitle: 'ONBOARDING', icon: 'people', btn: 'AUDIT APPS', route: 'AdminPartnerRequests', colors: isDark ? ['#1A1A0A', '#0F0F05'] : ['#FFF8E1', '#FFECB3'], iconColor: '#FFA000' },
                         { title: 'SYSTEM', subtitle: 'CONFIG', icon: 'options', btn: 'OPEN PANEL', route: 'AdminSettings' as any, colors: isDark ? ['#1A0A1A', '#0F050F'] : ['#F3E5F5', '#E1BEE7'], iconColor: '#7A00E6' },
                     ].map((hub: any) => (
                         <TouchableOpacity

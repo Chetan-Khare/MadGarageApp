@@ -394,6 +394,20 @@ export default function UnifiedProfileScreen({ navigation }: Props) {
                         </View>
                     </View>
 
+                {/* Partner CTA (For Customers Only) */}
+                    {!isBusiness && !isStaff && (
+                        <TouchableOpacity 
+                            onPress={() => navigation.navigate('PartnerRequest')}
+                            style={[styles.card, { backgroundColor: isDark ? '#DF232415' : '#DF232408', borderColor: '#DF232433', borderStyle: 'dashed', flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', marginBottom: 20 }]}
+                        >
+                            <View style={{ flex: 1, marginRight: 10 }}>
+                                <Text style={[styles.label, { color: '#DF2324', opacity: 1 }]}>Grow with us</Text>
+                                <Text style={[styles.cardTitle, { color: T.text, fontSize: 13, textTransform: 'uppercase' }]}>Become a Seller or Garage</Text>
+                            </View>
+                            <Ionicons name="arrow-forward" size={20} color="#DF2324" />
+                        </TouchableOpacity>
+                    )}
+
                 </ScrollView>
             </KeyboardAvoidingView>
 
