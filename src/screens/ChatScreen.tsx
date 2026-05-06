@@ -233,7 +233,7 @@ export default function ChatScreen() {
             setIsThinking(false);
         }
 
-    }, [inputText, isThinking, pickedImage]);
+    }, [inputText, isThinking, pickedImages]);
 
     // ── Render Message Bubble ─────────────────────────────────────────────────
     const renderMessage = ({ item }: { item: ChatMessage }) => {
