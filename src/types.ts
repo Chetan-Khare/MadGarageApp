@@ -61,6 +61,8 @@ export type RootStackParamList = {
   CompleteProfile: { registrationToken: string };
   AdminPartnerRequests: undefined;
   PartnerRequest: undefined;
+  AdminChatAudit: undefined;
+  PrivacyPolicy: undefined;
 };
 
 export interface Vehicle {

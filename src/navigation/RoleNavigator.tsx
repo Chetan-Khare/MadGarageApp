@@ -13,6 +13,7 @@ import AdminRequestsView from '../screens/AdminRequestsView';
 import UnifiedProfileScreen from '../screens/UnifiedProfileScreen';
 import AdminSettingsScreen from '../screens/AdminSettingsScreen';
 import AdminPartnerRequestsScreen from '../screens/AdminPartnerRequestsScreen';
+import AdminChatAuditScreen from '../screens/AdminChatAuditScreen';
 
 // Role-specific dashboards
 import GarageDashboardScreen from '../screens/GarageDashboardScreen';
@@ -37,6 +38,7 @@ import PartRequestScreen from '../screens/PartRequestScreen';
 import WishlistScreen from '../screens/WishlistScreen';
 import AddressScreen from '../screens/AddressScreen';
 import PartnerRequestScreen from '../screens/PartnerRequestScreen';
+import PrivacyPolicyScreen from '../screens/PrivacyPolicyScreen';
 
 const Stack = createNativeStackNavigator<RootStackParamList>();
 
@@ -85,6 +87,7 @@ const RoleNavigator: React.FC = () => {
         <>
           <Stack.Screen name="AdminDashboard" component={AdminDashboardScreen} />
           <Stack.Screen name="AdminSettings" component={AdminSettingsScreen} />
+          <Stack.Screen name="AdminChatAudit" component={AdminChatAuditScreen} />
         </>
       )}
 
@@ -125,6 +128,7 @@ const RoleNavigator: React.FC = () => {
       <Stack.Screen name="Wishlist" component={WishlistScreen} />
       <Stack.Screen name="Address" component={AddressScreen} />
       <Stack.Screen name="PartnerRequest" component={PartnerRequestScreen} />
+      <Stack.Screen name="PrivacyPolicy" component={PrivacyPolicyScreen} />
     </Stack.Navigator>
   );
 };

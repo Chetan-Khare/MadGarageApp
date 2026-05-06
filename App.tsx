@@ -11,9 +11,11 @@ import RoleNavigator from './src/navigation/RoleNavigator';
 import { ToastProvider } from './src/components/Toast';
 import SplashScreen from './src/screens/SplashScreen';
 import { useFonts, Inter_900Black_Italic } from '@expo-google-fonts/inter';
+import './src/i18n';
 
 import CompleteProfileScreen from './src/screens/CompleteProfileScreen';
 import PartnerRequestScreen from './src/screens/PartnerRequestScreen';
+import PrivacyPolicyScreen from './src/screens/PrivacyPolicyScreen';
 
 import { RootStackParamList } from './src/types';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
@@ -69,6 +71,7 @@ export default function App() {
               <Stack.Screen name="Login" component={LoginScreen} />
               <Stack.Screen name="CompleteProfile" component={CompleteProfileScreen} />
               <Stack.Screen name="PartnerRequest" component={PartnerRequestScreen} />
+              <Stack.Screen name="PrivacyPolicy" component={PrivacyPolicyScreen} />
             </Stack.Navigator>
           )}
         </NavigationContainer>

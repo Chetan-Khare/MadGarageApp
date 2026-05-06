@@ -61,16 +61,10 @@ const LIGHT = {
 };
 
 export default function ChatScreen() {
-    const [messages, setMessages] = useState<ChatMessage[]>([
-        {
-            id: '0',
-            role: 'ai',
-            text: "Hey there! 👋 I'm your Virtual Mechanic at MAD GARAGE.\n\nTell me what you drive and what you're looking for, or upload a photo of a part, and I'll find it in our inventory.",
-        }
-    ]);
+    const [messages, setMessages] = useState<ChatMessage[]>([]);
     const [inputText, setInputText] = useState('');
     const [isThinking, setIsThinking] = useState(false);
-    const [pickedImage, setPickedImage] = useState<string | null>(null);
+    const [pickedImages, setPickedImages] = useState<string[]>([]);
     const flatListRef = useRef<FlatList>(null);
     const insets = useSafeAreaInsets();
     const addItem = useCartStore((state) => state.addItem);
@@ -91,7 +85,43 @@ export default function ChatScreen() {
             -1,
             true
         );
+
+        fetchHistory();
     }, []);
+
+    const fetchHistory = async () => {
+        try {
+            const response = await apiClient.get('/assistant/history');
+            const history = response.data.map((msg: any) => ({
+                id: msg.id.toString(),
+                role: msg.sender.toLowerCase() as 'user' | 'ai',
+                text: msg.message,
+                imageUri: msg.imageUrl
+            }));
+            
+            if (history.length === 0) {
+                setMessages([
+                    {
+                        id: '0',
+                        role: 'ai',
+                        text: "Hey there! 👋 I'm your Virtual Mechanic at MAD GARAGE.\n\nTell me what you drive and what you're looking for, or upload a photo of a part, and I'll find it in our inventory.",
+                    }
+                ]);
+            } else {
+                setMessages(history);
+            }
+        } catch (error) {
+            console.error("Failed to fetch chat history:", error);
+            // Default to welcome if offline/error
+            setMessages([
+                {
+                    id: '0',
+                    role: 'ai',
+                    text: "Hey there! 👋 I'm your Virtual Mechanic at MAD GARAGE.\n\nTell me what you drive and what you're looking for, or upload a photo of a part, and I'll find it in our inventory.",
+                }
+            ]);
+        }
+    };
 
     const animatedAvatarStyle = useAnimatedStyle(() => ({
         transform: [{ scale: avatarPulse.value }],
@@ -114,10 +144,11 @@ export default function ChatScreen() {
         const result = await ImagePicker.launchImageLibraryAsync({
             mediaTypes: ImagePicker.MediaTypeOptions.Images,
             quality: 0.7,
-            allowsEditing: true,
+            allowsMultipleSelection: true,
+            selectionLimit: 5,
         });
         if (!result.canceled && result.assets.length > 0) {
-            setPickedImage(result.assets[0].uri);
+            setPickedImages(prev => [...prev, ...result.assets.map(a => a.uri)]);
         }
     };
 
@@ -130,10 +161,9 @@ export default function ChatScreen() {
         const result = await ImagePicker.launchCameraAsync({
             mediaTypes: ImagePicker.MediaTypeOptions.Images,
             quality: 0.7,
-            allowsEditing: true,
         });
         if (!result.canceled && result.assets.length > 0) {
-            setPickedImage(result.assets[0].uri);
+            setPickedImages(prev => [...prev, result.assets[0].uri]);
         }
     };
 
@@ -147,50 +177,34 @@ export default function ChatScreen() {
     };
 
     // ── Logic ─────────────────────────────────────────────────────────────────
-    const isGreeting = (msg: string) => {
-        const lower = msg.toLowerCase().replace(/[^a-z ]/g, '').trim();
-        const greetings = ['hi', 'hello', 'hey', 'yo', 'sup'];
-        return greetings.includes(lower);
-    };
-
     const sendMessage = useCallback(async () => {
         const text = inputText.trim();
-        if ((!text && !pickedImage) || isThinking) return;
-
-        if (text && !pickedImage && isGreeting(text)) {
-            const userMsg: ChatMessage = { id: Date.now().toString(), role: 'user', text };
-            const aiMsg: ChatMessage = {
-                id: (Date.now() + 1).toString(),
-                role: 'ai',
-                text: "Hey! Let me know your vehicle's Year, Make, and Model, and I'll find exactly what you need.",
-            };
-            setMessages(prev => [...prev, userMsg, aiMsg]);
-            setInputText('');
-            return;
-        }
+        if ((!text && pickedImages.length === 0) || isThinking) return;
 
         const userMsg: ChatMessage = {
             id: Date.now().toString(),
             role: 'user',
-            text: text || 'Can you identify this part?',
-            imageUri: pickedImage ?? undefined,
+            text: text || 'Can you identify these parts?',
+            imageUri: pickedImages[0] ?? undefined, // Only show first in list for history
         };
 
         setMessages(prev => [...prev, userMsg]);
         setInputText('');
-        const imageToSend = pickedImage;
-        setPickedImage(null);
+        const imagesToSend = [...pickedImages];
+        setPickedImages([]);
         setIsThinking(true);
 
         try {
             const formData = new FormData();
             if (text) formData.append('message', text);
 
-            if (imageToSend) {
-                const filename = imageToSend.split('/').pop() || 'photo.jpg';
-                const match = /\.(\w+)$/.exec(filename);
-                const type = match ? `image/${match[1]}` : 'image/jpeg';
-                formData.append('image', { uri: imageToSend, name: filename, type } as any);
+            if (imagesToSend.length > 0) {
+                imagesToSend.forEach((uri, index) => {
+                    const filename = uri.split('/').pop() || `photo_${index}.jpg`;
+                    const match = /\.(\w+)$/.exec(filename);
+                    const type = match ? `image/${match[1]}` : 'image/jpeg';
+                    formData.append('images', { uri, name: filename, type } as any);
+                });
             }
 
             const response = await apiClient.post('/assistant/chat', formData);
@@ -206,10 +220,13 @@ export default function ChatScreen() {
             setMessages(prev => [...prev, aiMsg]);
         } catch (error: any) {
             console.error('Chat API error:', error);
+            const is413 = error?.response?.status === 413;
             const fallbackMsg: ChatMessage = {
                 id: (Date.now() + 1).toString(),
                 role: 'ai',
-                text: `Connection Failure: ${error.message}`,
+                text: is413
+                    ? "That image is too large (max 5MB). Please compress it or take a lower-resolution photo and try again! 📸"
+                    : `Connection Failure: ${error.message}`,
             };
             setMessages(prev => [...prev, fallbackMsg]);
         } finally {
@@ -371,22 +388,40 @@ export default function ChatScreen() {
 
                     {/* Input Area */}
                     <View style={[styles.inputContainer, { paddingBottom: Math.max(insets.bottom, 12) }]}>
-                        {pickedImage && (
+                        {pickedImages.length > 0 && (
                             <BlurView intensity={isDark ? 50 : 80} tint={theme.blurTint} style={[styles.imagePreviewBar, { borderColor: theme.cardBorder }]}>
-                                <Image source={{ uri: pickedImage }} style={styles.imagePreviewThumb} />
-                                <View style={{ flex: 1, marginLeft: 12 }}>
-                                    <Text style={[styles.imagePreviewLabel, { color: theme.text }]}>Image Attached</Text>
-                                    <Text style={{ fontSize: 11, color: theme.subText }}>Ready for analysis</Text>
+                                <View style={styles.previewScrollWrapper}>
+                                    <FlatList 
+                                        horizontal
+                                        data={pickedImages}
+                                        keyExtractor={(item) => item}
+                                        showsHorizontalScrollIndicator={false}
+                                        renderItem={({ item, index }) => (
+                                            <View style={styles.previewThumbContainer}>
+                                                <Image source={{ uri: item }} style={styles.imagePreviewThumb} />
+                                                <TouchableOpacity 
+                                                    onPress={() => setPickedImages(prev => prev.filter((_, i) => i !== index))} 
+                                                    style={styles.miniRemoveBtn}
+                                                >
+                                                    <Ionicons name="close-circle" size={18} color="#FFF" />
+                                                </TouchableOpacity>
+                                            </View>
+                                        )}
+                                    />
                                 </View>
-                                <TouchableOpacity onPress={() => setPickedImage(null)} style={styles.removeImageBtn}>
-                                    <Ionicons name="close-circle" size={24} color={theme.subText} />
+                                <View style={{ marginLeft: 12 }}>
+                                    <Text style={[styles.imagePreviewLabel, { color: theme.text }]}>{pickedImages.length} Attached</Text>
+                                    <Text style={{ fontSize: 11, color: theme.subText }}>Limit 5 files</Text>
+                                </View>
+                                <TouchableOpacity onPress={() => setPickedImages([])} style={styles.removeImageBtn}>
+                                    <Ionicons name="trash" size={20} color={theme.subText} />
                                 </TouchableOpacity>
                             </BlurView>
                         )}
 
                         <BlurView intensity={isDark ? 50 : 80} tint={theme.blurTint} style={[styles.floatingInput, { borderColor: theme.cardBorder }]}>
-                            <TouchableOpacity style={styles.attachBtn} onPress={showImageOptions} disabled={isThinking}>
-                                <Ionicons name="add-circle" size={28} color={pickedImage ? '#DF2324' : theme.icon} />
+                            <TouchableOpacity style={styles.attachBtn} onPress={showImageOptions} disabled={isThinking || pickedImages.length >= 5}>
+                                <Ionicons name="add-circle" size={28} color={pickedImages.length > 0 ? '#DF2324' : theme.icon} />
                             </TouchableOpacity>
 
                             <TextInput
@@ -400,11 +435,11 @@ export default function ChatScreen() {
                             />
 
                             <TouchableOpacity
-                                style={[styles.sendBtn, (!inputText.trim() && !pickedImage) && { backgroundColor: theme.inputBg }]}
+                                style={[styles.sendBtn, (!inputText.trim() && pickedImages.length === 0) && { backgroundColor: theme.inputBg }]}
                                 onPress={sendMessage}
-                                disabled={isThinking || (!inputText.trim() && !pickedImage)}
+                                disabled={isThinking || (!inputText.trim() && pickedImages.length === 0)}
                             >
-                                <Ionicons name="arrow-up" size={18} color={(!inputText.trim() && !pickedImage) ? theme.icon : '#FFF'} />
+                                <Ionicons name="arrow-up" size={18} color={(!inputText.trim() && pickedImages.length === 0) ? theme.icon : '#FFF'} />
                             </TouchableOpacity>
                         </BlurView>
                     </View>
@@ -464,10 +499,13 @@ const styles = StyleSheet.create({
 
     // Input Area
     inputContainer: { paddingHorizontal: 16, paddingTop: 8 },
-    imagePreviewBar: { flexDirection: 'row', alignItems: 'center', padding: 12, borderRadius: 20, borderWidth: 1, marginBottom: 12, overflow: 'hidden' },
-    imagePreviewThumb: { width: 44, height: 44, borderRadius: 10 },
-    imagePreviewLabel: { fontSize: 14, fontWeight: '700' },
-    removeImageBtn: { padding: 4 },
+    imagePreviewBar: { flexDirection: 'row', alignItems: 'center', padding: 8, borderRadius: 20, borderWidth: 1, marginBottom: 12, overflow: 'hidden' },
+    previewScrollWrapper: { flex: 1, maxHeight: 60 },
+    previewThumbContainer: { position: 'relative', marginRight: 8 },
+    imagePreviewThumb: { width: 50, height: 50, borderRadius: 10 },
+    miniRemoveBtn: { position: 'absolute', top: -5, right: -5, backgroundColor: 'rgba(0,0,0,0.5)', borderRadius: 10 },
+    imagePreviewLabel: { fontSize: 13, fontWeight: '900', textTransform: 'uppercase' },
+    removeImageBtn: { padding: 8 },
     floatingInput: { flexDirection: 'row', alignItems: 'flex-end', borderRadius: 28, paddingHorizontal: 8, paddingVertical: 8, borderWidth: 1, overflow: 'hidden' },
     attachBtn: { width: 40, height: 40, justifyContent: 'center', alignItems: 'center' },
     textInput: { flex: 1, maxHeight: 100, minHeight: 40, paddingHorizontal: 8, paddingTop: 10, paddingBottom: 10, fontSize: 15 },

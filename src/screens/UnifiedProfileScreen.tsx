@@ -394,7 +394,7 @@ export default function UnifiedProfileScreen({ navigation }: Props) {
                         </View>
                     </View>
 
-                {/* Partner CTA (For Customers Only) */}
+                    {/* Partner CTA (For Customers Only) */}
                     {!isBusiness && !isStaff && (
                         <TouchableOpacity 
                             onPress={() => navigation.navigate('PartnerRequest')}

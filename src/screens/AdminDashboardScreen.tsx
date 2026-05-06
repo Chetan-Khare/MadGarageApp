@@ -243,6 +243,7 @@ export default function AdminDashboardScreen({ navigation }: Props) {
                         { title: 'GARAGE', subtitle: 'INVENTORY', icon: 'business', btn: 'AUDIT DATA', route: 'AdminInventoryManagement', colors: isDark ? ['#0A0A2A', '#05051A'] : ['#E8EAF6', '#C5CAE9'], iconColor: '#5B5BFF' },
                         { title: 'VEHICLE', subtitle: 'DB', icon: 'car', btn: 'QUERY MASTER', route: 'AdminVehicleManagement', colors: isDark ? ['#0A1A0A', '#050F05'] : ['#E8F5E9', '#C8E6C9'], iconColor: '#28A745' },
                         { title: 'PARTNERS', subtitle: 'ONBOARDING', icon: 'people', btn: 'AUDIT APPS', route: 'AdminPartnerRequests', colors: isDark ? ['#1A1A0A', '#0F0F05'] : ['#FFF8E1', '#FFECB3'], iconColor: '#FFA000' },
+                        { title: 'AI AUDIT', subtitle: 'NEURAL LOGS', icon: 'chatbubbles', btn: 'REVIEW DATA', route: 'AdminChatAudit', colors: isDark ? ['#2A0A1A', '#1A050F'] : ['#FCE4EC', '#F8BBD0'], iconColor: '#E91E63' },
                         { title: 'SYSTEM', subtitle: 'CONFIG', icon: 'options', btn: 'OPEN PANEL', route: 'AdminSettings' as any, colors: isDark ? ['#1A0A1A', '#0F050F'] : ['#F3E5F5', '#E1BEE7'], iconColor: '#7A00E6' },
                     ].map((hub: any) => (
                         <TouchableOpacity

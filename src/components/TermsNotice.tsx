@@ -1,6 +1,9 @@
 import React from 'react';
 import { View, Text, TouchableOpacity, StyleSheet, Linking, Alert } from 'react-native';
 import { useThemeStore } from '../store/themeStore';
+import { useNavigation } from '@react-navigation/native';
+import { RootStackParamList } from '../types';
+import { NativeStackNavigationProp } from '@react-navigation/native-stack';
 
 interface TermsNoticeProps {
     color?: string;
@@ -14,10 +17,12 @@ const BRAND_RED = '#DF2324';
 /**
  * TermsNotice Component
  * A reusable legal notice for the bottom of forms.
- * Currently uses placeholder alerts until the final links are ready.
+ * Privacy Policy: navigates to the in-app PrivacyPolicyScreen.
+ * Terms & Conditions: placeholder alert until a T&C screen is ready.
  */
 export const TermsNotice: React.FC<TermsNoticeProps> = ({ color, style }) => {
     const { isDark } = useThemeStore();
+    const navigation = useNavigation<NativeStackNavigationProp<RootStackParamList>>();
     const subTextColor = color || (isDark ? DARK_SUBTEXT : LIGHT_SUBTEXT);
 
     const handleTermsPress = () => {
@@ -27,9 +32,7 @@ export const TermsNotice: React.FC<TermsNoticeProps> = ({ color, style }) => {
     };
 
     const handlePrivacyPress = () => {
-        // Placeholder for when the link is ready
-        Alert.alert('Privacy Policy', 'The link to our Privacy Policy will be integrated here soon.');
-        // Example for future: Linking.openURL('https://madgarage.com/privacy');
+        navigation.navigate('PrivacyPolicy');
     };
 
     return (

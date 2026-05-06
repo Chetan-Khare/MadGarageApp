@@ -22,6 +22,7 @@ import { useAuthStore } from '../store/authStore';
 import { useThemeStore } from '../store/themeStore';
 import { registerForPushNotifications } from '../services/notificationService';
 import { TermsNotice } from '../components/TermsNotice';
+import { useTranslation } from 'react-i18next';
 
 type LoginScreenNavigationProp = NativeStackNavigationProp<RootStackParamList, 'Login'>;
 interface Props { navigation: LoginScreenNavigationProp; }
@@ -179,6 +180,7 @@ export default function LoginScreen({ navigation }: Props) {
     const [loading, setLoading] = useState(false);
     const [errorText, setErrorText] = useState('');
     const { isDark, toggleTheme } = useThemeStore();
+    const { t, i18n } = useTranslation();
 
     const theme = isDark ? DARK : LIGHT;
     const pulse = useSharedValue(1);
@@ -215,6 +217,11 @@ export default function LoginScreen({ navigation }: Props) {
         setPassword('');
         setShowOtpInput(false);
         setResendTimer(0);
+    };
+
+    const toggleLanguage = () => {
+        const nextLang = i18n.language === 'en' ? 'hi' : 'en';
+        i18n.changeLanguage(nextLang);
     };
 
     const handleSendOtp = async () => {
@@ -333,7 +340,9 @@ export default function LoginScreen({ navigation }: Props) {
         },
         // ── Theme Toggle Button ──
         themeToggleRow: {
-            alignItems: 'flex-end',
+            flexDirection: 'row',
+            alignItems: 'center',
+            justifyContent: 'flex-end',
             marginBottom: 20,
         },
         themeToggle: {
@@ -517,6 +526,10 @@ export default function LoginScreen({ navigation }: Props) {
                         <ScrollView contentContainerStyle={styles.scrollContent} showsVerticalScrollIndicator={false}>
 
                             <View style={styles.themeToggleRow}>
+                                <TouchableOpacity style={[styles.themeToggle, { marginRight: 10 }]} onPress={toggleLanguage} activeOpacity={0.8}>
+                                    <Ionicons name="globe-outline" size={14} color="#DF2324" />
+                                    <Text style={styles.themeToggleText}>{i18n.language === 'en' ? 'ENGLISH' : 'हिंदी'}</Text>
+                                </TouchableOpacity>
                                 <TouchableOpacity style={styles.themeToggle} onPress={toggleTheme} activeOpacity={0.8}>
                                     <Ionicons name={theme.toggleIcon as any} size={14} color={isDark ? '#FFD700' : '#A1A1AA'} />
                                     <Text style={styles.themeToggleText}>{isDark ? 'LIGHT' : 'DARK'}</Text>
@@ -565,21 +578,24 @@ export default function LoginScreen({ navigation }: Props) {
                             </View>
 
                             <View style={styles.card}>
-                                {errorText !== '' && (
+                                {!!errorText && (
                                     <View style={styles.errorBanner}>
                                         <Ionicons name="alert-circle" size={18} color={theme.errorText} />
                                         <Text style={styles.errorText}>{errorText}</Text>
                                     </View>
                                 )}
 
+                                <Text style={{ color: theme.subText, fontSize: 10, fontWeight: '900', letterSpacing: 2, marginBottom: 8, textTransform: 'uppercase' }}>{t('login.title')}</Text>
+                                <Text style={{ color: theme.text, fontSize: 14, fontWeight: '700', marginBottom: 24 }}>{t('login.subtitle')}</Text>
+
                                 {authTab === 'CUSTOMER' ? (
                                     !showOtpInput ? (
                                         <>
-                                            <InputField icon="call-outline" placeholder="Phone Number" value={phone} onChangeText={(val: string) => setPhone(val.replace(/\D/g, ''))} keyboardType="phone-pad" theme={theme} maxLength={10} />
+                                            <InputField icon="call-outline" placeholder={t('login.phone_placeholder')} value={phone} onChangeText={(val: string) => setPhone(val.replace(/\D/g, ''))} keyboardType="phone-pad" theme={theme} maxLength={10} />
                                             <TouchableOpacity style={[styles.cta, loading && { opacity: 0.7 }]} onPress={handleSendOtp} disabled={loading} activeOpacity={0.85}>
                                                 <View style={styles.ctaGradient}>
                                                     {loading ? <ActivityIndicator color="#FFF" /> : <>
-                                                        <Text style={styles.ctaText}>SEND OTP</Text>
+                                                        <Text style={styles.ctaText}>{t('login.send_otp')}</Text>
                                                         <Ionicons name="chevron-forward-outline" size={18} color="#FFF" />
                                                     </>}
                                                 </View>
@@ -587,31 +603,31 @@ export default function LoginScreen({ navigation }: Props) {
                                         </>
                                     ) : (
                                         <>
-                                            <InputField icon="keypad-outline" placeholder="6-Digit OTP" value={otp} onChangeText={setOtp} keyboardType="number-pad" theme={theme} maxLength={6} />
+                                            <InputField icon="keypad-outline" placeholder={t('login.otp_placeholder')} value={otp} onChangeText={setOtp} keyboardType="number-pad" theme={theme} maxLength={6} />
                                             <TouchableOpacity style={[styles.cta, loading && { opacity: 0.7 }]} onPress={handleVerifyOtp} disabled={loading} activeOpacity={0.85}>
                                                 <View style={styles.ctaGradient}>
                                                     {loading ? <ActivityIndicator color="#FFF" /> : <>
-                                                        <Text style={styles.ctaText}>VERIFY & LOGIN</Text>
+                                                        <Text style={styles.ctaText}>{t('login.verify_button')}</Text>
                                                         <Ionicons name="lock-open-outline" size={18} color="#FFF" />
                                                     </>}
                                                 </View>
                                             </TouchableOpacity>
                                             <TouchableOpacity onPress={handleSendOtp} disabled={resendTimer > 0} style={styles.guestBtn}>
-                                                <Text style={[styles.guestText, resendTimer > 0 && { color: theme.subText }]}>{resendTimer > 0 ? `RESEND OTP IN ${resendTimer}s` : 'RESEND OTP'}</Text>
+                                                <Text style={[styles.guestText, resendTimer > 0 && { color: theme.subText }]}>{resendTimer > 0 ? t('login.resend_in', { seconds: resendTimer }) : t('login.resend_otp')}</Text>
                                             </TouchableOpacity>
                                             <TouchableOpacity onPress={() => setShowOtpInput(false)} style={[styles.guestBtn, { marginTop: 16 }]}>
-                                                <Text style={[styles.guestText, { color: theme.subText }]}>← CHANGE NUMBER</Text>
+                                                <Text style={[styles.guestText, { color: theme.subText }]}>{t('login.change_number')}</Text>
                                             </TouchableOpacity>
                                         </>
                                     )
                                 ) : (
                                     <>
-                                        <InputField icon="mail-outline" placeholder="Enterprise Email" value={email} onChangeText={setEmail} keyboardType="email-address" theme={theme} />
-                                        <InputField icon="lock-closed-outline" placeholder="Secret Key" value={password} onChangeText={setPassword} secureTextEntry theme={theme} />
+                                        <InputField icon="mail-outline" placeholder={t('login.email_placeholder')} value={email} onChangeText={setEmail} keyboardType="email-address" theme={theme} />
+                                        <InputField icon="lock-closed-outline" placeholder={t('login.password_placeholder')} value={password} onChangeText={setPassword} secureTextEntry theme={theme} />
                                         <TouchableOpacity style={[styles.cta, loading && { opacity: 0.7 }]} onPress={handleStaffLogin} disabled={loading} activeOpacity={0.85}>
                                             <View style={styles.ctaGradient}>
                                                 {loading ? <ActivityIndicator color="#FFF" /> : <>
-                                                    <Text style={styles.ctaText}>AUTHORIZE</Text>
+                                                    <Text style={styles.ctaText}>{t('login.login_button')}</Text>
                                                     <Ionicons name="shield-checkmark-outline" size={18} color="#FFF" />
                                                 </>}
                                             </View>
@@ -620,7 +636,7 @@ export default function LoginScreen({ navigation }: Props) {
                                 )}
 
                                 <TouchableOpacity onPress={() => useAuthStore.getState().setGuest(true)} style={styles.guestPortalBtn} activeOpacity={0.8}>
-                                    <Text style={styles.guestPortalText}>CONTINUE AS GUEST</Text>
+                                    <Text style={styles.guestPortalText}>{t('login.guest_mode')}</Text>
                                     <Ionicons name="arrow-forward" size={14} color="#DF2324" style={{ marginLeft: 6 }} />
                                 </TouchableOpacity>
 
@@ -657,8 +673,8 @@ export default function LoginScreen({ navigation }: Props) {
                                 activeOpacity={0.8}
                             >
                                 <View style={{ flex: 1, marginRight: 10 }}>
-                                    <Text style={{ fontSize: 9, fontWeight: '900', color: theme.subText, letterSpacing: 1, textTransform: 'uppercase', marginBottom: 2 }}>Business Partnership</Text>
-                                    <Text style={{ fontSize: 13, fontWeight: '900', color: theme.text, fontStyle: 'italic', textTransform: 'uppercase' }}>ARE YOU A SELLER OR GARAGE?</Text>
+                                    <Text style={{ fontSize: 9, fontWeight: '900', color: theme.subText, letterSpacing: 1, textTransform: 'uppercase', marginBottom: 2 }}>{t('login.business_partnership')}</Text>
+                                    <Text style={{ fontSize: 13, fontWeight: '900', color: theme.text, fontStyle: 'italic', textTransform: 'uppercase' }}>{t('login.partnership_question')}</Text>
                                 </View>
                                 <View style={{ height: 40, width: 40, borderRadius: 20, backgroundColor: '#DF2324', justifyContent: 'center', alignItems: 'center' }}>
                                     <Ionicons name="arrow-forward" size={20} color="#FFF" />
@@ -666,8 +682,14 @@ export default function LoginScreen({ navigation }: Props) {
                             </TouchableOpacity>
 
                             <View style={styles.indiaFooter}>
+                                <TouchableOpacity onPress={() => navigation.navigate('PrivacyPolicy')} style={{ marginBottom: 16, flexDirection: 'row', alignItems: 'center', gap: 6 }}>
+                                    <Ionicons name="shield-checkmark" size={14} color="#DF2324" />
+                                    <Text style={[styles.indiaText, { color: '#DF2324', letterSpacing: 2 }]}>
+                                        DATA PRIVACY & COMPLIANCE
+                                    </Text>
+                                </TouchableOpacity>
                                 <Text style={styles.indiaText}>
-                                    MADE IN <Text style={{ color: '#FF9933' }}>IN</Text>DIA FOR IN<Text style={{ color: '#138808' }}>D</Text>IA
+                                    {t('login.made_in_india')}
                                 </Text>
                             </View>
 
