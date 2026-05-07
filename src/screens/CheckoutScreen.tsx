@@ -14,6 +14,7 @@ import { useThemeStore, DARK_THEME, LIGHT_THEME } from '../store/themeStore';
 import { useConfigStore } from '../store/configStore';
 import { useAuthStore } from '../store/authStore';
 import apiClient from '../services/apiClient';
+import CouponBottomSheet from '../components/CouponBottomSheet';
 import { PRICING } from '../constants/pricing';
 
 import { useLocationStore } from '../store/locationStore';
@@ -55,10 +56,15 @@ export default function CheckoutScreen({ navigation }: Props) {
     const [deliveryType, setDeliveryType] = useState<'HOME_DELIVERY' | 'GARAGE_FITTING'>('HOME_DELIVERY');
     const [selectedGarageId, setSelectedGarageId] = useState<number | null>(null);
 
+    // Coupon State
+    const [isCouponSheetVisible, setIsCouponSheetVisible] = useState(false);
+    const [appliedCoupon, setAppliedCoupon] = useState<any>(null);
+
     const subtotal = getTotalPrice();
     const taxAmount = 0;
     const delivery = (subtotal > 0 && subtotal < freeShippingThreshold) ? shippingFee : 0;
-    const total = subtotal + delivery + (subtotal > 0 ? platformFee : 0);
+    const discountAmount = appliedCoupon ? appliedCoupon.discountAmount : 0;
+    const total = subtotal + delivery + (subtotal > 0 ? platformFee : 0) - discountAmount;
 
     const handlePayment = async () => {
         if (!streetAddress.trim() || !city.trim() || !state.trim() || !pincode.trim()) {
@@ -94,6 +100,7 @@ export default function CheckoutScreen({ navigation }: Props) {
                 city: city,
                 state: state,
                 pincode: pincode,
+                couponCode: appliedCoupon?.code,
                 deliveryType: deliveryType,
                 fittingGarageId: selectedGarageId
             });
@@ -232,6 +239,44 @@ export default function CheckoutScreen({ navigation }: Props) {
                                 <Text style={[styles.summaryValue, { color: T.text }]}>₹{platformFee.toLocaleString()}</Text>
                             </View>
                         )}
+
+                        {discountAmount > 0 && (
+                            <View style={styles.summaryRow}>
+                                <Text style={[styles.summaryLabel, { color: '#4CAF50' }]}>Coupon Discount</Text>
+                                <Text style={[styles.summaryValue, { color: '#4CAF50' }]}>-₹{discountAmount.toLocaleString()}</Text>
+                            </View>
+                        )}
+                        
+                        <View style={{ marginVertical: 10 }}>
+                            {!appliedCoupon ? (
+                                <TouchableOpacity 
+                                    style={[styles.couponActionRow, { backgroundColor: T.inputBg }]}
+                                    onPress={() => setIsCouponSheetVisible(true)}
+                                >
+                                    <View style={styles.couponLeft}>
+                                        <Ionicons name="pricetag-outline" size={16} color="#DF2324" />
+                                        <Text style={[styles.couponActionText, { color: T.text }]}>Have a coupon code?</Text>
+                                    </View>
+                                    <View style={styles.couponRight}>
+                                        <Text style={styles.viewOffersText}>View Offers</Text>
+                                        <Ionicons name="chevron-forward" size={14} color="#DF2324" />
+                                    </View>
+                                </TouchableOpacity>
+                            ) : (
+                                <View style={[styles.appliedCouponRow, { backgroundColor: 'rgba(76, 175, 80, 0.1)', borderColor: 'rgba(76, 175, 80, 0.2)' }]}>
+                                    <View style={styles.couponLeft}>
+                                        <Ionicons name="checkmark-circle" size={18} color="#4CAF50" />
+                                        <View>
+                                            <Text style={styles.appliedCodeText}>{appliedCoupon.code}</Text>
+                                            <Text style={styles.appliedSavedText}>₹{appliedCoupon.discountAmount} SAVED!</Text>
+                                        </View>
+                                    </View>
+                                    <TouchableOpacity onPress={() => setAppliedCoupon(null)}>
+                                        <Text style={styles.removeText}>Remove</Text>
+                                    </TouchableOpacity>
+                                </View>
+                            )}
+                        </View>
                         
                         {deliveryType === 'GARAGE_FITTING' && (
                             <View style={[styles.infoBox, { backgroundColor: isDark ? '#1A0808' : '#FFF0F0' }]}>
@@ -427,6 +472,13 @@ export default function CheckoutScreen({ navigation }: Props) {
 
                 </ScrollView>
             </KeyboardAvoidingView>
+
+            <CouponBottomSheet 
+                visible={isCouponSheetVisible}
+                onClose={() => setIsCouponSheetVisible(false)}
+                onApply={(coupon) => setAppliedCoupon(coupon)}
+                orderAmount={subtotal}
+            />
 
             {/* Sticky Pay Button */}
             <View style={[styles.footer, { backgroundColor: T.bg, borderTopColor: T.headerBorder }]}>
@@ -644,5 +696,64 @@ const styles = StyleSheet.create({
     },
     inlineAction: {
         paddingHorizontal: 14,
+    },
+    // Coupon Styles
+    couponActionRow: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        justifyContent: 'space-between',
+        padding: 15,
+        borderRadius: 15,
+        marginTop: 5,
+    },
+    couponLeft: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        gap: 10,
+    },
+    couponActionText: {
+        fontSize: 12,
+        fontWeight: '700',
+        textTransform: 'uppercase',
+    },
+    couponRight: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        gap: 4,
+    },
+    viewOffersText: {
+        color: '#DF2324',
+        fontSize: 11,
+        fontWeight: '900',
+        textTransform: 'uppercase',
+        fontStyle: 'italic',
+    },
+    appliedCouponRow: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        justifyContent: 'space-between',
+        padding: 15,
+        borderRadius: 15,
+        borderWidth: 1,
+        marginTop: 5,
+    },
+    appliedCodeText: {
+        color: '#4CAF50',
+        fontSize: 12,
+        fontWeight: '900',
+        textTransform: 'uppercase',
+    },
+    appliedSavedText: {
+        color: '#666',
+        fontSize: 9,
+        fontWeight: '700',
+        textTransform: 'uppercase',
+        marginTop: 2,
+    },
+    removeText: {
+        color: '#666',
+        fontSize: 10,
+        fontWeight: '800',
+        textTransform: 'uppercase',
     }
 });

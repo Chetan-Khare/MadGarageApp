@@ -1,7 +1,7 @@
 import React, { useEffect, useState } from 'react';
 import {
     View, Text, StyleSheet, ScrollView, TouchableOpacity,
-    ActivityIndicator, StatusBar, Alert, Platform, TextInput
+    ActivityIndicator, StatusBar, Alert, Platform, TextInput, Modal
 } from 'react-native';
 import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
@@ -26,6 +26,7 @@ interface OrderItem {
     color: string;
     quantity: number;
     priceAtPurchase: number;
+    isReturnable?: boolean;
 }
 
 interface Order {
@@ -69,6 +70,14 @@ export default function OrderDetailsScreen({ route, navigation }: Props) {
     const [ratingComment, setRatingComment] = useState('');
     const [submittingRating, setSubmittingRating] = useState(false);
 
+    // Return System State
+    const [isReturnModalOpen, setIsReturnModalOpen] = useState(false);
+    const [returnReason, setReturnReason] = useState('WRONG_FITMENT');
+    const [returnType, setReturnType] = useState('REPLACEMENT');
+    const [returnDescription, setReturnDescription] = useState('');
+    const [submittingReturn, setSubmittingReturn] = useState(false);
+    const [activeReturn, setActiveReturn] = useState<any>(null);
+
     const { isDark } = useThemeStore();
     const { role, user: currentUser } = useAuthStore();
     const T = isDark ? DARK_THEME : LIGHT_THEME;
@@ -96,6 +105,47 @@ export default function OrderDetailsScreen({ route, navigation }: Props) {
             navigation.goBack();
         } finally {
             setLoading(false);
+        }
+    };
+
+    const fetchReturnStatus = async () => {
+        try {
+            const response = await apiClient.get('/returns/my');
+            const request = response.data.find((r: any) => r.orderId === orderId);
+            if (request) setActiveReturn(request);
+        } catch (err) {
+            console.error('Failed to fetch return status');
+        }
+    };
+
+    useEffect(() => {
+        if (order?.status === 'DELIVERED' || order?.status === 'RETURN_REQUESTED' || order?.status.includes('REFUND') || order?.status.includes('REPLACEMENT')) {
+            fetchReturnStatus();
+        }
+    }, [order]);
+
+    const handleSubmitReturn = async () => {
+        if (!returnDescription.trim()) {
+            Alert.alert('Required', 'Please provide a description for the return.');
+            return;
+        }
+        setSubmittingReturn(true);
+        try {
+            await apiClient.post('/returns', {
+                orderId: orderId,
+                reason: returnReason,
+                requestType: returnType,
+                description: returnDescription,
+                imageUrls: []
+            });
+            setIsReturnModalOpen(false);
+            Alert.alert('Success', 'Return request has been transmitted successfully.');
+            fetchOrderDetails();
+        } catch (error) {
+            console.error('Return submission failed:', error);
+            Alert.alert('Error', 'Failed to submit return request.');
+        } finally {
+            setSubmittingReturn(false);
         }
     };
 
@@ -224,8 +274,13 @@ export default function OrderDetailsScreen({ route, navigation }: Props) {
                             <Text style={[styles.brandText, { color: '#DF2324' }]}>MAD GARAGE</Text>
                             <Text style={[styles.receiptSub, { color: T.subText }]}>Performance Parts Shop</Text>
                         </View>
-                        <View style={[styles.statusBadge, { backgroundColor: getStatusColor(order.status) + '22' }]}>
-                            <Text style={[styles.statusText, { color: getStatusColor(order.status) }]}>{order.status}</Text>
+                        <View style={{ alignItems: 'flex-end' }}>
+                            <View style={[styles.statusBadge, { backgroundColor: getStatusColor(order.status) + '22' }]}>
+                                <Text style={[styles.statusText, { color: getStatusColor(order.status) }]}>{order.status}</Text>
+                            </View>
+                            <Text style={{ fontSize: 8, color: '#999', marginTop: 4 }}>
+                                isOwner={order.isOwner ? 'YES' : 'NO'} | activeRet={activeReturn ? 'YES' : 'NO'}
+                            </Text>
                         </View>
                     </View>
                     
@@ -301,6 +356,11 @@ export default function OrderDetailsScreen({ route, navigation }: Props) {
                         <View style={{ alignItems: 'flex-end' }}>
                             <Text style={[styles.itemQty, { color: T.subText }]}>x{item.quantity}</Text>
                             <Text style={[styles.itemPrice, { color: T.text }]}>₹{(item.priceAtPurchase ?? 0).toLocaleString()}</Text>
+                            {item.isReturnable === false && (
+                                <View style={[styles.specBadge, { backgroundColor: '#FF444422', marginTop: 4 }]}>
+                                    <Text style={[styles.specText, { color: '#FF4444', fontSize: 8 }]}>NON-RETURNABLE</Text>
+                                </View>
+                            )}
                         </View>
                     </View>
                 ))}
@@ -407,6 +467,69 @@ export default function OrderDetailsScreen({ route, navigation }: Props) {
                     </View>
                 ) : null}
 
+                {/* Active Return Display */}
+                {activeReturn && (
+                    <View style={[styles.summaryBox, { marginTop: 20, backgroundColor: T.card, borderColor: '#DF232444', borderWidth: 1 }]}>
+                        <View style={{ flexDirection: 'row', alignItems: 'center', marginBottom: 12 }}>
+                            <Ionicons name="refresh-circle" size={24} color="#DF2324" />
+                            <Text style={[styles.sectionTitle, { color: T.text, marginBottom: 0, marginLeft: 8 }]}>RETURN PROTOCOL ACTIVE</Text>
+                        </View>
+                        
+                        <View style={styles.returnInfoRow}>
+                            <View style={{ flex: 1 }}>
+                                <Text style={[styles.infoLabel, { color: T.subText }]}>RESOLUTION</Text>
+                                <Text style={[styles.infoValue, { color: T.text }]}>{activeReturn.requestType}</Text>
+                            </View>
+                            <View style={{ flex: 1, alignItems: 'flex-end' }}>
+                                <Text style={[styles.infoLabel, { color: T.subText }]}>STATUS</Text>
+                                <Text style={[styles.statusText, { color: '#DF2324' }]}>{activeReturn.status}</Text>
+                            </View>
+                        </View>
+
+                        <View style={{ marginTop: 12, padding: 12, backgroundColor: T.bg, borderRadius: 8 }}>
+                            <Text style={[styles.infoLabel, { color: T.subText }]}>REASON: {activeReturn.reason?.replace('_', ' ')}</Text>
+                            <Text style={[styles.feedbackComment, { color: T.text, fontSize: 12, marginTop: 4 }]}>"{activeReturn.description}"</Text>
+                        </View>
+
+                        {activeReturn.adminNote && (
+                            <View style={{ marginTop: 12, borderTopWidth: 1, borderTopColor: T.cardBorder, paddingTop: 12 }}>
+                                <Text style={[styles.infoLabel, { color: '#DF2324' }]}>ADMIN MESSAGE</Text>
+                                <Text style={[styles.feedbackComment, { color: T.text, fontSize: 12, marginTop: 4 }]}>"{activeReturn.adminNote}"</Text>
+                            </View>
+                        )}
+                    </View>
+                )}
+
+                {/* Customer Delivery Confirmation */}
+                {(order.status === 'SHIPPED' || order.status === 'ARRIVED_AT_GARAGE') && order.isOwner && (
+                    <TouchableOpacity 
+                        style={[styles.downloadBtn, { backgroundColor: '#4CAF50', marginTop: 20 }]}
+                        onPress={() => handleUpdateStatus('DELIVERED')}
+                        disabled={updating}
+                    >
+                        {updating ? <ActivityIndicator color="#FFF" /> : (
+                            <>
+                                <Ionicons name="checkmark-done-circle-outline" size={20} color="#FFF" style={{ marginRight: 8 }} />
+                                <Text style={styles.downloadBtnText}>CONFIRM DELIVERY RECEIVED</Text>
+                            </>
+                        )}
+                    </TouchableOpacity>
+                )}
+
+                {/* Return Request Button */}
+                {order.status === 'DELIVERED' && order.isOwner && !activeReturn && (
+                    <TouchableOpacity 
+                        style={[styles.returnBtn, { borderColor: order.items?.some(i => i.isReturnable !== false) ? '#DF2324' : T.cardBorder, opacity: order.items?.some(i => i.isReturnable !== false) ? 1 : 0.5 }]}
+                        onPress={() => setIsReturnModalOpen(true)}
+                        disabled={!order.items?.some(i => i.isReturnable !== false)}
+                    >
+                        <Ionicons name="reload-outline" size={18} color={order.items?.some(i => i.isReturnable !== false) ? '#DF2324' : T.subText} />
+                        <Text style={[styles.returnBtnText, { color: order.items?.some(i => i.isReturnable !== false) ? '#DF2324' : T.subText }]}>
+                            {order.items?.some(i => i.isReturnable !== false) ? 'INITIATE RETURN / REPLACEMENT' : 'RETURNS UNAVAILABLE (FINAL SALE)'}
+                        </Text>
+                    </TouchableOpacity>
+                )}
+
                 <TouchableOpacity 
                     style={[styles.downloadBtn, { opacity: downloading ? 0.7 : 1 }]}
                     onPress={handleDownloadInvoice}
@@ -483,6 +606,91 @@ export default function OrderDetailsScreen({ route, navigation }: Props) {
                     A copy of this invoice has been sent to your email.
                 </Text>
             </ScrollView>
+
+            {/* Return Request Modal */}
+            <Modal
+                visible={isReturnModalOpen}
+                animationType="slide"
+                transparent={true}
+                onRequestClose={() => setIsReturnModalOpen(false)}
+            >
+                <View style={styles.modalOverlay}>
+                    <View style={[styles.modalContent, { backgroundColor: T.card }]}>
+                        <View style={styles.modalHeader}>
+                            <Text style={[styles.modalTitle, { color: T.text }]}>Initiate Return</Text>
+                            <TouchableOpacity onPress={() => setIsReturnModalOpen(false)}>
+                                <Ionicons name="close" size={24} color={T.text} />
+                            </TouchableOpacity>
+                        </View>
+
+                        {order.items?.some(i => i.isReturnable === false) && (
+                            <View style={{ backgroundColor: '#FF444411', padding: 12, marginHorizontal: 20, borderRadius: 10, marginBottom: 15, flexDirection: 'row', alignItems: 'center' }}>
+                                <Ionicons name="warning-outline" size={18} color="#FF4444" />
+                                <Text style={{ color: '#FF4444', fontSize: 10, fontWeight: '800', marginLeft: 8, flex: 1 }}>
+                                    Warning: Some items in this order are non-returnable and will be excluded.
+                                </Text>
+                            </View>
+                        )}
+
+                        <ScrollView style={{ maxHeight: 500 }}>
+                            <Text style={[styles.inputLabel, { color: T.subText }]}>SELECT REASON</Text>
+                            <View style={styles.choiceGrid}>
+                                {['WRONG_FITMENT', 'DAMAGED', 'OTHER'].map(reason => (
+                                    <TouchableOpacity 
+                                        key={reason}
+                                        style={[styles.choiceBtn, { 
+                                            borderColor: returnReason === reason ? '#DF2324' : T.cardBorder,
+                                            backgroundColor: returnReason === reason ? '#DF232411' : 'transparent'
+                                        }]}
+                                        onPress={() => setReturnReason(reason)}
+                                    >
+                                        <Text style={[styles.choiceText, { color: returnReason === reason ? '#DF2324' : T.text }]}>
+                                            {reason.replace('_', ' ')}
+                                        </Text>
+                                    </TouchableOpacity>
+                                ))}
+                            </View>
+
+                            <Text style={[styles.inputLabel, { color: T.subText, marginTop: 20 }]}>SELECT RESOLUTION</Text>
+                            <View style={styles.choiceGrid}>
+                                {['REPLACEMENT', 'REFUND'].map(type => (
+                                    <TouchableOpacity 
+                                        key={type}
+                                        style={[styles.choiceBtn, { 
+                                            borderColor: returnType === type ? '#DF2324' : T.cardBorder,
+                                            backgroundColor: returnType === type ? '#DF232411' : 'transparent'
+                                        }]}
+                                        onPress={() => setReturnType(type)}
+                                    >
+                                        <Text style={[styles.choiceText, { color: returnType === type ? '#DF2324' : T.text }]}>
+                                            {type === 'REPLACEMENT' ? 'REPLACEMENT' : 'FULL REFUND'}
+                                        </Text>
+                                    </TouchableOpacity>
+                                ))}
+                            </View>
+
+                            <Text style={[styles.inputLabel, { color: T.subText, marginTop: 20 }]}>DESCRIPTION</Text>
+                            <TextInput
+                                style={[styles.modalInput, { backgroundColor: T.bg, color: T.text, borderColor: T.cardBorder }]}
+                                placeholder="Describe the issue..."
+                                placeholderTextColor={T.placeholder}
+                                value={returnDescription}
+                                onChangeText={setReturnDescription}
+                                multiline
+                                numberOfLines={4}
+                            />
+                        </ScrollView>
+
+                        <TouchableOpacity 
+                            style={[styles.submitBtn, { opacity: submittingReturn ? 0.7 : 1 }]}
+                            onPress={handleSubmitReturn}
+                            disabled={submittingReturn}
+                        >
+                            {submittingReturn ? <ActivityIndicator color="#FFF" /> : <Text style={styles.submitBtnText}>TRANSMIT REQUEST</Text>}
+                        </TouchableOpacity>
+                    </View>
+                </View>
+            </Modal>
         </View>
     );
 }
@@ -494,6 +702,10 @@ const getStatusColor = (status: string) => {
         case 'PROCESSING': return '#FF9800';
         case 'CANCELLED': return '#F44336';
         case 'SHIPPED': return '#2196F3';
+        case 'RETURN_REQUESTED': return '#E91E63';
+        case 'REFUND_IN_PROGRESS': return '#9C27B0';
+        case 'REFUNDED': return '#673AB7';
+        case 'REPLACEMENT_SHIPPING': return '#FF5722';
         default: return '#888';
     }
 };
@@ -690,4 +902,27 @@ const styles = StyleSheet.create({
         fontWeight: '900',
         letterSpacing: 1,
     },
+    returnBtn: {
+        marginTop: 20,
+        height: 54,
+        borderRadius: 12,
+        borderWidth: 1.5,
+        flexDirection: 'row',
+        alignItems: 'center',
+        justifyContent: 'center',
+        gap: 8,
+    },
+    returnBtnText: { fontSize: 13, fontWeight: '900', color: '#DF2324' },
+    returnInfoRow: { flexDirection: 'row', justifyContent: 'space-between', paddingVertical: 8 },
+    modalOverlay: { flex: 1, backgroundColor: 'rgba(0,0,0,0.7)', justifyContent: 'flex-end' },
+    modalContent: { borderTopLeftRadius: 24, borderTopRightRadius: 24, padding: 24, paddingBottom: 40 },
+    modalHeader: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 20 },
+    modalTitle: { fontSize: 20, fontWeight: '900' },
+    inputLabel: { fontSize: 11, fontWeight: '800', marginBottom: 8, letterSpacing: 0.5 },
+    choiceGrid: { flexDirection: 'row', flexWrap: 'wrap', gap: 10 },
+    choiceBtn: { flex: 1, minWidth: '30%', paddingVertical: 12, borderRadius: 10, borderWidth: 1.5, alignItems: 'center' },
+    choiceText: { fontSize: 11, fontWeight: '800' },
+    modalInput: { borderRadius: 12, borderWidth: 1, padding: 12, fontSize: 14, minHeight: 100, textAlignVertical: 'top', marginTop: 8 },
+    submitBtn: { backgroundColor: '#DF2324', height: 54, borderRadius: 12, justifyContent: 'center', alignItems: 'center', marginTop: 24 },
+    submitBtnText: { color: '#FFF', fontSize: 15, fontWeight: '900', letterSpacing: 1 },
 });

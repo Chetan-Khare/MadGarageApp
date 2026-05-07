@@ -67,6 +67,9 @@ export default function EditProductScreen({ navigation }: Props) {
     const [flagReason, setFlagReason] = useState(product.flagReason || '');
     const [sellerResponse, setSellerResponse] = useState(product.sellerResponse || '');
     const [wholesale, setWholesale] = useState(product.wholesale !== undefined ? product.wholesale : true);
+    const [isReturnable, setIsReturnable] = useState(product.isReturnable !== undefined ? product.isReturnable : true);
+    const [mrp, setMrp] = useState(product.mrp ? String(product.mrp) : (product.price ? String(product.price) : ''));
+    const [discountPercentage, setDiscountPercentage] = useState(product.discountPercentage ? String(product.discountPercentage) : '');
 
     const [selectedFitments, setSelectedFitments] = useState<Vehicle[]>([]);
 
@@ -300,7 +303,10 @@ export default function EditProductScreen({ navigation }: Props) {
                 sellerResponse,
                 flagged,
                 flagReason,
-                wholesale
+                wholesale,
+                isReturnable,
+                mrp: parseFloat(mrp),
+                discountPercentage: parseFloat(discountPercentage) || null
             };
 
             await apiClient.put(`/seller/inventory/${product.id}/base64`, payload);
@@ -421,7 +427,21 @@ export default function EditProductScreen({ navigation }: Props) {
 
                         <View style={styles.row}>
                             <View style={[styles.inputGroup, { flex: 1, marginRight: 12 }]}>
-                                <Text style={[styles.label, { color: T.subText }]}>Price (₹)</Text>
+                                <Text style={[styles.label, { color: T.subText }]}>MRP (₹)</Text>
+                                <TextInput
+                                    style={[styles.input, { backgroundColor: T.inputBg, borderColor: T.inputBorder, color: T.text }]}
+                                    placeholderTextColor={T.placeholder}
+                                    keyboardType="numeric"
+                                    value={mrp}
+                                    onChangeText={(val) => {
+                                        setMrp(val);
+                                        // Auto-calculate discount display if needed? 
+                                        // Actually just store it.
+                                    }}
+                                />
+                            </View>
+                            <View style={[styles.inputGroup, { flex: 1 }]}>
+                                <Text style={[styles.label, { color: T.subText }]}>Selling Price (₹)</Text>
                                 <TextInput
                                     style={[styles.input, { backgroundColor: T.inputBg, borderColor: T.inputBorder, color: T.text }]}
                                     placeholderTextColor={T.placeholder}
@@ -430,20 +450,45 @@ export default function EditProductScreen({ navigation }: Props) {
                                     onChangeText={setPrice}
                                 />
                             </View>
+                        </View>
+
+                        {/* Retail Discount Info */}
+                        {parseFloat(mrp) > parseFloat(price) && (
+                            <View style={{ marginBottom: 16, flexDirection: 'row', alignItems: 'center', gap: 6 }}>
+                                <Ionicons name="trending-down" size={14} color="#2ECC71" />
+                                <Text style={{ color: '#2ECC71', fontSize: 11, fontWeight: '700' }}>
+                                    Retail Discount: {Math.round((1 - parseFloat(price) / parseFloat(mrp)) * 100)}% off MRP
+                                </Text>
+                            </View>
+                        )}
+
+                        <View style={styles.row}>
+                            <View style={[styles.inputGroup, { flex: 1, marginRight: 12 }]}>
+                                <Text style={[styles.label, { color: T.subText }]}>Stock Qty</Text>
+                                <TextInput
+                                    style={[styles.input, { backgroundColor: T.inputBg, borderColor: T.inputBorder, color: T.text }, (condition === 'USED' || condition === 'REFURBISHED') && { opacity: 0.5 }]}
+                                    placeholderTextColor={T.placeholder}
+                                    keyboardType="numeric"
+                                    value={stockQuantity}
+                                    onChangeText={setStockQuantity}
+                                    editable={condition !== 'USED' && condition !== 'REFURBISHED'}
+                                />
+                                {(condition === 'USED' || condition === 'REFURBISHED') && (
+                                    <Text style={{ fontSize: 10, color: '#FF9800', marginTop: 4, fontWeight: '800', textTransform: 'uppercase' }}>Locked to 1 unit</Text>
+                                )}
+                            </View>
                             <View style={{ flex: 1 }}>
                                 <View style={styles.inputGroup}>
-                                    <Text style={[styles.label, { color: T.subText }]}>Stock Qty</Text>
+                                    <Text style={[styles.label, { color: T.subText }]}>Custom Garage Disc %</Text>
                                     <TextInput
-                                        style={[styles.input, { backgroundColor: T.inputBg, borderColor: T.inputBorder, color: T.text }, (condition === 'USED' || condition === 'REFURBISHED') && { opacity: 0.5 }]}
+                                        style={[styles.input, { backgroundColor: T.inputBg, borderColor: T.inputBorder, color: T.text }]}
                                         placeholderTextColor={T.placeholder}
                                         keyboardType="numeric"
-                                        value={stockQuantity}
-                                        onChangeText={setStockQuantity}
-                                        editable={condition !== 'USED' && condition !== 'REFURBISHED'}
+                                        value={discountPercentage}
+                                        onChangeText={setDiscountPercentage}
+                                        placeholder="Optional"
                                     />
-                                    {(condition === 'USED' || condition === 'REFURBISHED') && (
-                                        <Text style={{ fontSize: 10, color: '#FF9800', marginTop: 4, fontWeight: '800', textTransform: 'uppercase' }}>Locked to 1 unit</Text>
-                                    )}
+                                    <Text style={{ fontSize: 8, color: T.placeholder, marginTop: 4 }}>Overrides tiered pricing system</Text>
                                 </View>
                             </View>
                         </View>
@@ -519,6 +564,25 @@ export default function EditProductScreen({ navigation }: Props) {
                                     style={{ width: 48, height: 26, borderRadius: 13, backgroundColor: wholesale ? '#DF2324' : '#444', padding: 2, justifyContent: 'center' }}
                                 >
                                     <View style={{ width: 22, height: 22, borderRadius: 11, backgroundColor: '#FFF', alignSelf: wholesale ? 'flex-end' : 'flex-start' }} />
+                                </TouchableOpacity>
+                            </View>
+                        </View>
+
+                        {/* Return Policy Toggle */}
+                        <View style={styles.inputGroup}>
+                            <Text style={[styles.label, { color: T.subText }]}>Policy Control</Text>
+                            <View style={[styles.wholesaleCard, { backgroundColor: T.inputBg, borderColor: isReturnable ? '#2ECC7166' : T.inputBorder }]}>
+                                <View style={{ flex: 1 }}>
+                                    <Text style={[styles.wholesaleTitle, { color: T.text }]}>10-Day Return Protocol</Text>
+                                    <Text style={{ fontSize: 10, color: T.subText, marginTop: 2 }}>
+                                        {isReturnable ? 'Customers can initiate returns/replacements' : 'Final Sale: Item cannot be returned or replaced'}
+                                    </Text>
+                                </View>
+                                <TouchableOpacity
+                                    onPress={() => setIsReturnable(!isReturnable)}
+                                    style={{ width: 48, height: 26, borderRadius: 13, backgroundColor: isReturnable ? '#2ECC71' : '#444', padding: 2, justifyContent: 'center' }}
+                                >
+                                    <View style={{ width: 22, height: 22, borderRadius: 11, backgroundColor: '#FFF', alignSelf: isReturnable ? 'flex-end' : 'flex-start' }} />
                                 </TouchableOpacity>
                             </View>
                         </View>

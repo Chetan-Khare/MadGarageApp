@@ -33,6 +33,20 @@ export const ProductCard = memo(({ item, onPress, onWishlist, onAddToCart, isWis
                         {item.condition || 'NEW'}
                     </Text>
                 </View>
+                {(() => {
+                    const strikePrice = item.mrp || item.originalPrice;
+                    if (strikePrice && strikePrice > (item.price || 0)) {
+                        const pct = Math.round((1 - (item.price || 0) / strikePrice) * 100);
+                        if (pct > 0) {
+                            return (
+                                <View style={styles.discountBadge}>
+                                    <Text style={styles.discountBadgeText}>{pct}% OFF</Text>
+                                </View>
+                            );
+                        }
+                    }
+                    return null;
+                })()}
                 <View style={[styles.cardBottom, { backgroundColor: T.statBg }]}>
                     <Text style={[styles.cardTitle, { color: T.text }]} numberOfLines={1}>
                         {item.partName || 'Unknown Part'}
@@ -42,7 +56,20 @@ export const ProductCard = memo(({ item, onPress, onWishlist, onAddToCart, isWis
                         <Text style={[styles.ratingText, { color: T.subText }]}>{item.rating || '4.8'}</Text>
                     </View>
                     <View style={styles.cardPriceRow}>
-                        <Text style={styles.cardPrice}>₹{item.price?.toLocaleString()}</Text>
+                        <View>
+                            {(() => {
+                                const strikePrice = item.mrp || item.originalPrice;
+                                if (strikePrice && strikePrice > (item.price || 0)) {
+                                    return (
+                                        <Text style={[styles.cardStrikePrice, { color: T.placeholder }]}>
+                                            ₹{strikePrice.toLocaleString()}
+                                        </Text>
+                                    );
+                                }
+                                return null;
+                            })()}
+                            <Text style={styles.cardPrice}>₹{item.price?.toLocaleString()}</Text>
+                        </View>
                         <View style={styles.cardActions}>
                             <TouchableOpacity
                                 style={[styles.miniWishBtn, isWishlisted && styles.miniWishBtnActive]}
@@ -148,6 +175,11 @@ const styles = StyleSheet.create({
         fontWeight: '900',
         color: '#DF2324',
     },
+    cardStrikePrice: {
+        fontSize: 10,
+        textDecorationLine: 'line-through',
+        marginBottom: -2,
+    },
     cardActions: {
         flexDirection: 'row',
         gap: 6,
@@ -170,5 +202,20 @@ const styles = StyleSheet.create({
         backgroundColor: '#000',
         alignItems: 'center',
         justifyContent: 'center',
+    },
+    discountBadge: {
+        position: 'absolute',
+        bottom: 12,
+        left: 12,
+        backgroundColor: '#2ECC71',
+        paddingHorizontal: 6,
+        paddingVertical: 2,
+        borderRadius: 6,
+    },
+    discountBadgeText: {
+        color: '#FFF',
+        fontSize: 9,
+        fontFamily: 'Outfit_900Black', // Fallback to bold if font not found
+        fontWeight: '900',
     },
 });

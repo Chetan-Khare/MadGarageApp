@@ -32,8 +32,9 @@ export default function ProductDetailsScreen({ route, navigation }: Props) {
     const isInWishlist = wishlistItems.some(w => w.id === product.id);
 
     const isWholesale = !isGuest && !!product.garagePrice;
-    const price: number = isWholesale ? (product.garagePrice || 0) : (product.originalPrice || product.price || 0);
-    const hasDiscount = !!product.originalPrice && !!product.garagePrice && !isGuest;
+    const price: number = isWholesale ? (product.garagePrice || 0) : (product.price || 0);
+    const mrpPrice = product.mrp || product.originalPrice;
+    const hasDiscount = !!mrpPrice && mrpPrice > price;
 
     const handleAddToCart = () => {
         if (isGuest) {
@@ -171,7 +172,7 @@ export default function ProductDetailsScreen({ route, navigation }: Props) {
                     <LinearGradient colors={isDark ? ['#1A0808', '#110505'] : ['#FFF5F5', '#FFEAEA']} style={[styles.priceCard, { borderColor: isDark ? '#DF232422' : '#DF232433' }]}>
                         <Text style={[styles.priceLabel, { color: T.subText }]}>{isGuest ? 'Price' : 'Your Price'}</Text>
                         {hasDiscount && (
-                            <Text style={[styles.strikePrice, { color: T.placeholder }]}>MSRP: ₹{product.originalPrice?.toFixed(2)}</Text>
+                            <Text style={[styles.strikePrice, { color: T.placeholder }]}>MSRP: ₹{mrpPrice?.toFixed(2)}</Text>
                         )}
                         <Text style={styles.price}>₹{price.toLocaleString()}</Text>
                         
@@ -184,7 +185,9 @@ export default function ProductDetailsScreen({ route, navigation }: Props) {
 
                         {hasDiscount && (
                             <View style={styles.savingsBadge}>
-                                <Text style={styles.savingsText}>SPECIAL GARAGE PRICING APPLIED</Text>
+                                <Text style={styles.savingsText}>
+                                    {isWholesale ? 'SPECIAL GARAGE PRICING APPLIED' : `SAVE ${Math.round((1 - price / mrpPrice) * 100)}% TODAY`}
+                                </Text>
                             </View>
                         )}
                     </LinearGradient>
@@ -206,9 +209,13 @@ export default function ProductDetailsScreen({ route, navigation }: Props) {
                             <Text style={[styles.specLabel, { color: T.subText }]}>Category</Text>
                             <Text style={[styles.specValue, { color: T.text }]}>{product.category || 'Standard'}</Text>
                         </View>
-                        <View style={styles.specRow}>
+                        <View style={[styles.specRow, styles.specRowBorder, { borderBottomColor: T.cardBorder }]}>
                             <Text style={[styles.specLabel, { color: T.subText }]}>Fitment</Text>
                             <Text style={[styles.specValue, { color: T.text }]}>{product.fitmentCategory || 'Universal'}</Text>
+                        </View>
+                        <View style={styles.specRow}>
+                            <Text style={[styles.specLabel, { color: T.subText }]}>Return Policy</Text>
+                            <Text style={[styles.specValue, { color: product.isReturnable ? '#00FF00' : '#FF4444' }]}>{product.isReturnable ? 'Returnable' : 'Final Sale'}</Text>
                         </View>
                     </View>
 

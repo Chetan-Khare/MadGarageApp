@@ -14,6 +14,7 @@ import UnifiedProfileScreen from '../screens/UnifiedProfileScreen';
 import AdminSettingsScreen from '../screens/AdminSettingsScreen';
 import AdminPartnerRequestsScreen from '../screens/AdminPartnerRequestsScreen';
 import AdminChatAuditScreen from '../screens/AdminChatAuditScreen';
+import AdminCouponManagementScreen from '../screens/AdminCouponManagementScreen';
 
 // Role-specific dashboards
 import GarageDashboardScreen from '../screens/GarageDashboardScreen';
@@ -88,6 +89,7 @@ const RoleNavigator: React.FC = () => {
           <Stack.Screen name="AdminDashboard" component={AdminDashboardScreen} />
           <Stack.Screen name="AdminSettings" component={AdminSettingsScreen} />
           <Stack.Screen name="AdminChatAudit" component={AdminChatAuditScreen} />
+          <Stack.Screen name="AdminCouponManagement" component={AdminCouponManagementScreen} />
         </>
       )}
 

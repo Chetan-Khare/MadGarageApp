@@ -25,6 +25,9 @@ export interface Product {
     color?: string;
     isManualRating?: boolean;
     fittedVehicles?: Vehicle[];
+    mrp?: number;
+    discountPercentage?: number;
+    isReturnable?: boolean;
 }
 
 export type RootStackParamList = {
@@ -63,6 +66,7 @@ export type RootStackParamList = {
   PartnerRequest: undefined;
   AdminChatAudit: undefined;
   PrivacyPolicy: undefined;
+  AdminCouponManagement: undefined;
 };
 
 export interface Vehicle {

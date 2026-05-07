@@ -88,6 +88,10 @@ export default function OrderHistoryScreen({ navigation }: Props) {
             case 'PROCESSING': return '#FF9800';
             case 'CANCELLED': return '#F44336';
             case 'SHIPPED': return '#2196F3';
+            case 'RETURN_REQUESTED': return '#E91E63';
+            case 'REFUND_IN_PROGRESS': return '#9C27B0';
+            case 'REFUNDED': return '#673AB7';
+            case 'REPLACEMENT_SHIPPING': return '#FF5722';
             default: return '#888';
         }
     };
