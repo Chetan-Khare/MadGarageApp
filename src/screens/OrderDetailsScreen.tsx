@@ -56,6 +56,9 @@ interface Order {
     // Garage details (included in DTO if fitting)
     fittingGarageName?: string;
     fittingGarageAddress?: string;
+    // Discount fields
+    appliedCouponCode?: string;
+    discountAmount?: number;
 }
 
 export default function OrderDetailsScreen({ route, navigation }: Props) {
@@ -111,7 +114,7 @@ export default function OrderDetailsScreen({ route, navigation }: Props) {
     const fetchReturnStatus = async () => {
         try {
             const response = await apiClient.get('/returns/my');
-            const request = response.data.find((r: any) => r.orderId === orderId);
+            const request = response.data.find((r: any) => Number(r.orderId) === Number(orderId));
             if (request) setActiveReturn(request);
         } catch (err) {
             console.error('Failed to fetch return status');
@@ -198,6 +201,23 @@ export default function OrderDetailsScreen({ route, navigation }: Props) {
         } catch (error: any) {
             console.error('Fitting status update failed:', error);
             Alert.alert('Error', 'Failed to update fitting status.');
+        } finally {
+            setUpdating(false);
+        }
+    };
+
+    const handleReturnAction = async (action: 'approve' | 'reject' | 'picked-up' | 'finalize') => {
+        if (!activeReturn) return;
+        setUpdating(true);
+        try {
+            const endpoint = action === 'picked-up' ? 'picked-up' : (action === 'finalize' ? 'finalize' : action);
+            const query = action === 'reject' ? '?note=Policy' : '';
+            await apiClient.put(`/returns/admin/${activeReturn.id}/${endpoint}${query}`);
+            Alert.alert('Success', `Return ${action.replace('-', ' ')} successfully`);
+            fetchOrderDetails();
+        } catch (error: any) {
+            console.error('Return action failed:', error);
+            Alert.alert('Action Failed', 'Could not process return status update.');
         } finally {
             setUpdating(false);
         }
@@ -379,6 +399,15 @@ export default function OrderDetailsScreen({ route, navigation }: Props) {
                         <Text style={[styles.summaryLabel, { color: T.subText }]}>Platform Fee</Text>
                         <Text style={[styles.summaryValue, { color: T.text }]}>₹{(platformFee ?? 0).toLocaleString()}</Text>
                     </View>
+                    {order.appliedCouponCode && (
+                        <View style={styles.summaryRow}>
+                            <View style={{ flexDirection: 'row', alignItems: 'center' }}>
+                                <Ionicons name="pricetag-outline" size={14} color="#4CAF50" style={{ marginRight: 4 }} />
+                                <Text style={[styles.summaryLabel, { color: '#4CAF50' }]}>Coupon ({order.appliedCouponCode})</Text>
+                            </View>
+                            <Text style={[styles.summaryValue, { color: '#4CAF50' }]}>- ₹{(order.discountAmount ?? 0).toLocaleString()}</Text>
+                        </View>
+                    )}
                     <View style={[styles.summaryRow, styles.totalRow]}>
                         <Text style={[styles.totalLabel, { color: T.text }]}>Grand Total</Text>
                         <Text style={[styles.totalValue, { color: '#DF2324' }]}>₹{(grandTotal ?? 0).toLocaleString()}</Text>
@@ -474,6 +503,14 @@ export default function OrderDetailsScreen({ route, navigation }: Props) {
                             <Ionicons name="refresh-circle" size={24} color="#DF2324" />
                             <Text style={[styles.sectionTitle, { color: T.text, marginBottom: 0, marginLeft: 8 }]}>RETURN PROTOCOL ACTIVE</Text>
                         </View>
+
+                        <View style={{ backgroundColor: '#DF232411', padding: 12, borderRadius: 8, marginBottom: 16 }}>
+                            <Text style={{ fontSize: 13, fontWeight: '700', color: T.text, lineHeight: 20 }}>
+                                {activeReturn.requestType === 'REFUND' 
+                                    ? "Refund will be processed automatically after the product is picked up and returned to the seller for verification."
+                                    : "Replacement parts will be dispatched once the original items are collected by our fulfillment agent."}
+                            </Text>
+                        </View>
                         
                         <View style={styles.returnInfoRow}>
                             <View style={{ flex: 1 }}>
@@ -516,8 +553,8 @@ export default function OrderDetailsScreen({ route, navigation }: Props) {
                     </TouchableOpacity>
                 )}
 
-                {/* Return Request Button */}
-                {order.status === 'DELIVERED' && order.isOwner && !activeReturn && (
+                {/* Return Request Button - Show if Delivered OR if Requested but record is missing (Repair Protocol) */}
+                {(order.status === 'DELIVERED' || (order.status === 'RETURN_REQUESTED' && !activeReturn)) && order.isOwner && (
                     <TouchableOpacity 
                         style={[styles.returnBtn, { borderColor: order.items?.some(i => i.isReturnable !== false) ? '#DF2324' : T.cardBorder, opacity: order.items?.some(i => i.isReturnable !== false) ? 1 : 0.5 }]}
                         onPress={() => setIsReturnModalOpen(true)}
@@ -545,11 +582,54 @@ export default function OrderDetailsScreen({ route, navigation }: Props) {
                     )}
                 </TouchableOpacity>
 
-                {/* Seller/Garage Action Center */}
-                {(role === 'ROLE_SELLER' || role === 'ROLE_ADMIN' || role === 'ROLE_GARAGE') && (
+                {/* Seller/Garage/Admin/Worker Action Center */}
+                {(role === 'ROLE_SELLER' || role === 'ROLE_ADMIN' || role === 'ROLE_GARAGE' || role === 'ROLE_WORKER') && (
                     <View style={styles.actionCenter}>
                         <Text style={[styles.sectionTitle, { color: T.text, marginTop: 20 }]}>Status Actions</Text>
                         
+                        {(role === 'ROLE_ADMIN' || role === 'ROLE_WORKER') && order.status === 'RETURN_REQUESTED' && activeReturn && activeReturn.status === 'PENDING' && (
+                            <View style={{ gap: 10, marginTop: 12 }}>
+                                <TouchableOpacity 
+                                    style={[styles.actionBtn, { backgroundColor: '#4CAF50' }]}
+                                    onPress={() => handleReturnAction('approve')}
+                                    disabled={updating}
+                                >
+                                    <Ionicons name="checkmark-circle-outline" size={20} color="#FFF" />
+                                    <Text style={styles.actionBtnText}>APPROVE RETURN PROTOCOL</Text>
+                                </TouchableOpacity>
+                                <TouchableOpacity 
+                                    style={[styles.actionBtn, { backgroundColor: '#F44336' }]}
+                                    onPress={() => handleReturnAction('reject')}
+                                    disabled={updating}
+                                >
+                                    <Ionicons name="close-circle-outline" size={20} color="#FFF" />
+                                    <Text style={styles.actionBtnText}>REJECT RETURN REQUEST</Text>
+                                </TouchableOpacity>
+                            </View>
+                        )}
+
+                        {(role === 'ROLE_ADMIN' || role === 'ROLE_WORKER') && activeReturn && activeReturn.status === 'APPROVED' && (
+                            <TouchableOpacity 
+                                style={[styles.actionBtn, { backgroundColor: '#2196F3', marginTop: 12 }]}
+                                onPress={() => handleReturnAction('picked-up')}
+                                disabled={updating}
+                            >
+                                <Ionicons name="cube-outline" size={20} color="#FFF" />
+                                <Text style={styles.actionBtnText}>MARK AS PICKED UP</Text>
+                            </TouchableOpacity>
+                        )}
+
+                        {(role === 'ROLE_ADMIN' || role === 'ROLE_WORKER') && activeReturn && activeReturn.status === 'PICKED_UP' && activeReturn.requestType === 'REFUND' && (
+                            <TouchableOpacity 
+                                style={[styles.actionBtn, { backgroundColor: '#9C27B0', marginTop: 12 }]}
+                                onPress={() => handleReturnAction('finalize')}
+                                disabled={updating}
+                            >
+                                <Ionicons name="cash-outline" size={20} color="#FFF" />
+                                <Text style={styles.actionBtnText}>FINALIZE REFUND</Text>
+                            </TouchableOpacity>
+                        )}
+
                         {role === 'ROLE_SELLER' && order.status === 'PAID' && (
                             <TouchableOpacity 
                                 style={[styles.actionBtn, { backgroundColor: '#2196F3' }]}

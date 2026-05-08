@@ -245,6 +245,7 @@ export default function AdminDashboardScreen({ navigation }: Props) {
                         { title: 'PARTNERS', subtitle: 'ONBOARDING', icon: 'people', btn: 'AUDIT APPS', route: 'AdminPartnerRequests', colors: isDark ? ['#1A1A1A', '#0F0F05'] : ['#FFF8E1', '#FFECB3'], iconColor: '#FFA000' },
                         { title: 'COUPON', subtitle: 'ENGINE', icon: 'ticket', btn: 'MANAGE CODES', route: 'AdminCouponManagement', colors: isDark ? ['#1A0A0A', '#0F0505'] : ['#E3F2FD', '#BBDEFB'], iconColor: '#2196F3' },
                         { title: 'AI AUDIT', subtitle: 'NEURAL LOGS', icon: 'chatbubbles', btn: 'REVIEW DATA', route: 'AdminChatAudit', colors: isDark ? ['#2A0A1A', '#1A050F'] : ['#FCE4EC', '#F8BBD0'], iconColor: '#E91E63' },
+                        { title: 'RETURN', subtitle: 'RECALLS', icon: 'reload-circle', btn: 'AUDIT RECALLS', route: 'AdminOrderManagement', colors: isDark ? ['#2A0A1A', '#1A050F'] : ['#FCE4EC', '#F8BBD0'], iconColor: '#E91E63' },
                         { title: 'SYSTEM', subtitle: 'CONFIG', icon: 'options', btn: 'OPEN PANEL', route: 'AdminSettings' as any, colors: isDark ? ['#1A0A1A', '#0F050F'] : ['#F3E5F5', '#E1BEE7'], iconColor: '#7A00E6' },
                     ].map((hub: any) => (
                         <TouchableOpacity
