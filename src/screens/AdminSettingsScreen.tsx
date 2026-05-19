@@ -60,6 +60,22 @@ export default function AdminSettingsScreen({ navigation }: any) {
         );
     }
 
+    const getSymbol = (key: string) => {
+        if (key === 'SHIPPING_FEE_FREIGHT_PER_KG') return '₹/kg';
+        if (key.includes('PERCENT')) return '%';
+        if (key.includes('MULTIPLIER')) return 'x';
+        return '₹';
+    };
+
+    const getIconName = (key: string) => {
+        if (key.includes('FREIGHT')) return "bus-outline" as const;
+        if (key.includes('SHIPPING')) return "cube-outline" as const;
+        if (key.includes('THRESHOLD')) return "shield-checkmark-outline" as const;
+        if (key.includes('PLATFORM')) return "shield-checkmark-outline" as const;
+        if (key.includes('DISCOUNT') || key.includes('PERCENT')) return "pricetag-outline" as const;
+        return "settings-outline" as const;
+    };
+
     return (
         <SafeAreaView style={[styles.safe, { backgroundColor: T.bg }]}>
             <View style={[styles.header, { borderBottomColor: T.headerBorder }]}>
@@ -78,9 +94,7 @@ export default function AdminSettingsScreen({ navigation }: any) {
                         <View style={styles.cardHeader}>
                             <View style={styles.iconBox}>
                                 <Ionicons 
-                                    name={setting.configKey.includes('SHIPPING') ? "bus-outline" : 
-                                          setting.configKey.includes('PLATFORM') ? "shield-checkmark-outline" :
-                                          setting.configKey.includes('DISCOUNT') ? "pricetag-outline" : "cube-outline"} 
+                                    name={getIconName(setting.configKey)} 
                                     size={20} 
                                     color="#DF2324" 
                                 />
@@ -93,14 +107,12 @@ export default function AdminSettingsScreen({ navigation }: any) {
 
                         <View style={styles.inputRow}>
                             <View style={[styles.inputWrapper, { backgroundColor: T.inputBg, borderColor: T.inputBorder }]}>
-                                <Text style={styles.currency}>{setting.configKey.includes('PERCENT') ? '%' : '₹'}</Text>
+                                <Text style={styles.currency}>{getSymbol(setting.configKey)}</Text>
                                 <TextInput
                                     style={[styles.input, { color: T.text }]}
                                     defaultValue={setting.configValue}
                                     keyboardType="numeric"
-                                    id={`input-${setting.configKey}`} // We'll use refs instead or just manual value capture
                                     onChangeText={(text) => {
-                                        // Update local state if needed, but for simplicity we'll just read from a ref or use a temporary local object
                                         const newSettings = settings.map(s => s.id === setting.id ? { ...s, configValue: text } : s);
                                         setSettings(newSettings);
                                     }}

@@ -23,7 +23,16 @@ type Props = { navigation: NativeStackNavigationProp<RootStackParamList, 'Checko
 
 export default function CheckoutScreen({ navigation }: Props) {
     const { items, getTotalPrice, clearCart } = useCartStore();
-    const { shippingFee, platformFee, freeShippingThreshold } = useConfigStore();
+    const { 
+        shippingFee, 
+        platformFee, 
+        freeShippingThreshold,
+        fragileSurcharge,
+        freightBaseFee,
+        freightPerKgRate,
+        zoneMultipliers,
+        zoneMultiplierNE
+    } = useConfigStore();
     const { isDark } = useThemeStore();
     const { city: detectedCity, address: detectedAddr, nearbyGarages, detectLocation, isLoading: detectionLoading } = useLocationStore();
     const T = isDark ? DARK_THEME : LIGHT_THEME;
@@ -60,9 +69,75 @@ export default function CheckoutScreen({ navigation }: Props) {
     const [isCouponSheetVisible, setIsCouponSheetVisible] = useState(false);
     const [appliedCoupon, setAppliedCoupon] = useState<any>(null);
 
+    const STATE_ZONES: Record<string, number> = {
+        'delhi': 1, 'haryana': 1, 'punjab': 1, 'rajasthan': 1,
+        'uttar pradesh': 1, 'uttarakhand': 1, 'himachal pradesh': 1,
+        'jammu and kashmir': 1, 'jammu & kashmir': 1, 'ladakh': 1,
+        'maharashtra': 2, 'gujarat': 2, 'goa': 2,
+        'dadra and nagar haveli': 2, 'daman and diu': 2,
+        'karnataka': 3, 'tamil nadu': 3, 'kerala': 3, 'andhra pradesh': 3, 'telangana': 3, 'puducherry': 3, 'lakshadweep': 3,
+        'west bengal': 4, 'bihar': 4, 'jharkhand': 4, 'odisha': 4, 'andaman and nicobar islands': 4, 'andaman & nicobar': 4,
+        'madhya pradesh': 5, 'chhattisgarh': 5,
+        'assam': 6, 'meghalaya': 6, 'manipur': 6, 'nagaland': 6, 'mizoram': 6, 'tripura': 6, 'arunachal pradesh': 6, 'sikkim': 6
+    };
+
+    const getFreightMultiplierLocal = (sellerState: string | null, buyerState: string): number => {
+        const sellerZone = sellerState ? (STATE_ZONES[sellerState.trim().toLowerCase()] ?? 1) : 1;
+        const buyerZone  = STATE_ZONES[buyerState.trim().toLowerCase()] ?? 1;
+        if (buyerZone === 6) return zoneMultiplierNE;
+        const dist = Math.min(Math.abs(sellerZone - buyerZone), 4);
+        return zoneMultipliers[dist];
+    };
+
+    const calculateDynamicShippingLocal = () => {
+        let totalShipping = 0;
+        let hasFragileOrFreight = false;
+
+        const baseStandardFee = shippingFee;
+
+        for (const item of items) {
+            const qty = item.quantity || 1;
+            const sClass = item.shippingClass || 'STANDARD';
+
+            switch (sClass) {
+                case 'CUSTOM_RATE': {
+                    const customFee = item.customShippingCost || 0;
+                    totalShipping += (customFee * qty);
+                    hasFragileOrFreight = true;
+                    break;
+                }
+                case 'HEAVY_FREIGHT': {
+                    const weight = item.weightKg || 1.0;
+                    const freightFee = freightBaseFee + (weight * freightPerKgRate);
+                    const distanceMultiplier = getFreightMultiplierLocal(item.sellerState || null, state || '');
+                    totalShipping += (freightFee * distanceMultiplier * qty);
+                    hasFragileOrFreight = true;
+                    break;
+                }
+                case 'FRAGILE': {
+                    totalShipping += (baseStandardFee + fragileSurcharge) * qty;
+                    hasFragileOrFreight = true;
+                    break;
+                }
+                case 'STANDARD':
+                default: {
+                    totalShipping += baseStandardFee * qty;
+                    break;
+                }
+            }
+        }
+
+        // Apply free threshold only if no fragile/freight/custom parts
+        if (!hasFragileOrFreight && subtotal >= freeShippingThreshold) {
+            totalShipping = 0;
+        }
+
+        return totalShipping;
+    };
+
     const subtotal = getTotalPrice();
     const taxAmount = 0;
-    const delivery = (subtotal > 0 && subtotal < freeShippingThreshold) ? shippingFee : 0;
+    const delivery = calculateDynamicShippingLocal();
     const discountAmount = appliedCoupon ? appliedCoupon.discountAmount : 0;
     const total = subtotal + delivery + (subtotal > 0 ? platformFee : 0) - discountAmount;
 
@@ -232,6 +307,28 @@ export default function CheckoutScreen({ navigation }: Props) {
                                 {delivery === 0 && subtotal > 0 ? 'FREE' : `₹${delivery.toLocaleString()}`}
                             </Text>
                         </View>
+                        {(() => {
+                            const heavyItems = items.filter(item => item.shippingClass === 'HEAVY_FREIGHT');
+                            if (heavyItems.length > 0 && state) {
+                                const buyerZone = STATE_ZONES[state.trim().toLowerCase()] ?? 1;
+                                const firstHeavy = heavyItems.find(item => item.sellerState);
+                                const sellerState = firstHeavy ? firstHeavy.sellerState : null;
+                                const sellerZone = sellerState ? (STATE_ZONES[sellerState.trim().toLowerCase()] ?? 1) : 1;
+                                const mult = buyerZone === 6 ? zoneMultiplierNE : zoneMultipliers[Math.min(Math.abs(sellerZone - buyerZone), 4)];
+                                return (
+                                    <View style={[styles.infoBox, { backgroundColor: isDark ? '#1A0808' : '#FFF0F0', marginTop: 4, marginBottom: 8, padding: 8 }]}>
+                                        <Ionicons name="bus-outline" size={14} color="#DF2324" />
+                                        <Text style={[styles.infoText, { fontSize: 10 }]}>
+                                            {buyerZone === 6 
+                                                ? `Northeast Surcharge (${mult}x) active` 
+                                                : `Zone multiplier (Z${sellerZone} → Z${buyerZone}) of ${mult}x applied`
+                                            }
+                                        </Text>
+                                    </View>
+                                );
+                            }
+                            return null;
+                        })()}
                         
                         {subtotal > 0 && (
                             <View style={styles.summaryRow}>

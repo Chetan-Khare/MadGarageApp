@@ -14,6 +14,7 @@ import * as FileSystem from 'expo-file-system';
 import { useAuthStore } from '../store/authStore';
 import { useThemeStore, DARK_THEME, LIGHT_THEME } from '../store/themeStore';
 import { BASE_SERVER_URL, resolveSingleImageUrl, resolveProductImage } from '../utils/imageUtils';
+import FreightZoneNotice from '../components/FreightZoneNotice';
 
 const PART_CATEGORIES = [
     'Sound Tech',
@@ -607,16 +608,19 @@ export default function EditProductScreen({ navigation }: Props) {
                             />
                             
                             {shippingClass === 'HEAVY_FREIGHT' && (
-                                <View style={[styles.inputGroup, { marginTop: 8 }]}>
-                                    <Text style={[styles.label, { color: T.subText }]}>Item Weight (kg)</Text>
-                                    <TextInput
-                                        style={[styles.input, { backgroundColor: T.inputBg, borderColor: T.inputBorder, color: T.text }]}
-                                        placeholderTextColor={T.placeholder}
-                                        placeholder="e.g. 85.5"
-                                        keyboardType="numeric"
-                                        value={weightKg}
-                                        onChangeText={setWeightKg}
-                                    />
+                                <View style={{ marginTop: 8 }}>
+                                    <View style={styles.inputGroup}>
+                                        <Text style={[styles.label, { color: T.subText }]}>Item Weight (kg)</Text>
+                                        <TextInput
+                                            style={[styles.input, { backgroundColor: T.inputBg, borderColor: T.inputBorder, color: T.text }]}
+                                            placeholderTextColor={T.placeholder}
+                                            placeholder="e.g. 85.5"
+                                            keyboardType="numeric"
+                                            value={weightKg}
+                                            onChangeText={setWeightKg}
+                                        />
+                                    </View>
+                                    <FreightZoneNotice />
                                 </View>
                             )}
 

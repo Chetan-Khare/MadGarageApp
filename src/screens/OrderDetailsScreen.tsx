@@ -405,6 +405,12 @@ export default function OrderDetailsScreen({ route, navigation }: Props) {
                         <Text style={[styles.summaryLabel, { color: T.subText }]}>Shipping Fee</Text>
                         <Text style={[styles.summaryValue, { color: T.text }]}>₹{(shippingFee ?? 0).toLocaleString()}</Text>
                     </View>
+                    {shippingFee > 150 && (
+                        <View style={[styles.summaryRow, { marginTop: -4, paddingLeft: 12 }]}>
+                            <Text style={[styles.summaryLabel, { color: '#FF9800', fontSize: 12 }]}>• Freight / Fragile Surcharge</Text>
+                            <Text style={[styles.summaryValue, { color: '#FF9800', fontSize: 12 }]}>₹{(shippingFee - 150).toLocaleString()}</Text>
+                        </View>
+                    )}
                     <View style={styles.summaryRow}>
                         <Text style={[styles.summaryLabel, { color: T.subText }]}>Platform Fee</Text>
                         <Text style={[styles.summaryValue, { color: T.text }]}>₹{(platformFee ?? 0).toLocaleString()}</Text>

@@ -11,6 +11,10 @@ export interface CartItem {
     quantity: number;
     stockQuantity: number;
     wholesale?: boolean;
+    shippingClass?: 'STANDARD' | 'FRAGILE' | 'HEAVY_FREIGHT' | 'CUSTOM_RATE';
+    weightKg?: number;
+    customShippingCost?: number;
+    sellerState?: string;
 }
 
 interface CartState {

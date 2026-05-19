@@ -61,7 +61,11 @@ export default function ProductDetailsScreen({ route, navigation }: Props) {
             brand: product.brand || 'MAD GARAGE. AI',
             quantity,
             stockQuantity: product.stockQuantity ?? 0,
-            wholesale: product.wholesale
+            wholesale: product.wholesale,
+            shippingClass: product.shippingClass,
+            weightKg: product.weightKg,
+            customShippingCost: product.customShippingCost,
+            sellerState: product.sellerState,
         });
 
         if (success) {
