@@ -59,6 +59,14 @@ interface Order {
     // Discount fields
     appliedCouponCode?: string;
     discountAmount?: number;
+    
+    // Mapped Return Fields
+    activeReturnId?: number;
+    returnStatus?: string;
+    returnReason?: string;
+    returnRequestType?: string;
+    returnDescription?: string;
+    returnAdminNote?: string;
 }
 
 export default function OrderDetailsScreen({ route, navigation }: Props) {
@@ -80,6 +88,8 @@ export default function OrderDetailsScreen({ route, navigation }: Props) {
     const [returnDescription, setReturnDescription] = useState('');
     const [submittingReturn, setSubmittingReturn] = useState(false);
     const [activeReturn, setActiveReturn] = useState<any>(null);
+    const [isRejectModalOpen, setIsRejectModalOpen] = useState(false);
+    const [rejectionNote, setRejectionNote] = useState('');
 
     const { isDark } = useThemeStore();
     const { role, user: currentUser } = useAuthStore();
@@ -111,19 +121,22 @@ export default function OrderDetailsScreen({ route, navigation }: Props) {
         }
     };
 
-    const fetchReturnStatus = async () => {
-        try {
-            const response = await apiClient.get('/returns/my');
-            const request = response.data.find((r: any) => Number(r.orderId) === Number(orderId));
-            if (request) setActiveReturn(request);
-        } catch (err) {
-            console.error('Failed to fetch return status');
-        }
-    };
-
+    // MED-07 FIX: Map activeReturn directly from mapped order details payload rather than performing redundant returns network fetch
     useEffect(() => {
-        if (order?.status === 'DELIVERED' || order?.status === 'RETURN_REQUESTED' || order?.status.includes('REFUND') || order?.status.includes('REPLACEMENT')) {
-            fetchReturnStatus();
+        if (order) {
+            if (order.activeReturnId) {
+                setActiveReturn({
+                    id: order.activeReturnId,
+                    orderId: order.id,
+                    status: order.returnStatus,
+                    reason: order.returnReason,
+                    requestType: order.returnRequestType || 'REFUND',
+                    description: order.returnDescription || '',
+                    adminNote: order.returnAdminNote || ''
+                });
+            } else {
+                setActiveReturn(null);
+            }
         }
     }, [order]);
 
@@ -206,12 +219,12 @@ export default function OrderDetailsScreen({ route, navigation }: Props) {
         }
     };
 
-    const handleReturnAction = async (action: 'approve' | 'reject' | 'picked-up' | 'finalize') => {
+    const handleReturnAction = async (action: 'approve' | 'reject' | 'picked-up' | 'finalize', note?: string) => {
         if (!activeReturn) return;
         setUpdating(true);
         try {
             const endpoint = action === 'picked-up' ? 'picked-up' : (action === 'finalize' ? 'finalize' : action);
-            const query = action === 'reject' ? '?note=Policy' : '';
+            const query = action === 'reject' ? `?note=${encodeURIComponent(note || 'Policy')}` : '';
             await apiClient.put(`/returns/admin/${activeReturn.id}/${endpoint}${query}`);
             Alert.alert('Success', `Return ${action.replace('-', ' ')} successfully`);
             fetchOrderDetails();
@@ -298,9 +311,6 @@ export default function OrderDetailsScreen({ route, navigation }: Props) {
                             <View style={[styles.statusBadge, { backgroundColor: getStatusColor(order.status) + '22' }]}>
                                 <Text style={[styles.statusText, { color: getStatusColor(order.status) }]}>{order.status}</Text>
                             </View>
-                            <Text style={{ fontSize: 8, color: '#999', marginTop: 4 }}>
-                                isOwner={order.isOwner ? 'YES' : 'NO'} | activeRet={activeReturn ? 'YES' : 'NO'}
-                            </Text>
                         </View>
                     </View>
                     
@@ -599,7 +609,10 @@ export default function OrderDetailsScreen({ route, navigation }: Props) {
                                 </TouchableOpacity>
                                 <TouchableOpacity 
                                     style={[styles.actionBtn, { backgroundColor: '#F44336' }]}
-                                    onPress={() => handleReturnAction('reject')}
+                                    onPress={() => {
+                                        setRejectionNote('Request does not meet return policy criteria.');
+                                        setIsRejectModalOpen(true);
+                                    }}
                                     disabled={updating}
                                 >
                                     <Ionicons name="close-circle-outline" size={20} color="#FFF" />
@@ -767,6 +780,50 @@ export default function OrderDetailsScreen({ route, navigation }: Props) {
                             disabled={submittingReturn}
                         >
                             {submittingReturn ? <ActivityIndicator color="#FFF" /> : <Text style={styles.submitBtnText}>TRANSMIT REQUEST</Text>}
+                        </TouchableOpacity>
+                    </View>
+                </View>
+            </Modal>
+
+            {/* Custom Reject Return Modal */}
+            <Modal
+                visible={isRejectModalOpen}
+                animationType="fade"
+                transparent={true}
+                onRequestClose={() => setIsRejectModalOpen(false)}
+            >
+                <View style={styles.modalOverlay}>
+                    <View style={[styles.modalContent, { backgroundColor: T.card }]}>
+                        <View style={styles.modalHeader}>
+                            <Text style={[styles.modalTitle, { color: T.text }]}>Reject Return</Text>
+                            <TouchableOpacity onPress={() => setIsRejectModalOpen(false)}>
+                                <Ionicons name="close" size={24} color={T.text} />
+                            </TouchableOpacity>
+                        </View>
+
+                        <Text style={[styles.inputLabel, { color: T.subText, marginHorizontal: 20 }]}>REJECTION REASON</Text>
+                        <TextInput
+                            style={[styles.modalInput, { backgroundColor: T.bg, color: T.text, borderColor: T.cardBorder, marginHorizontal: 20, marginTop: 8 }]}
+                            placeholder="State reason for rejecting the return..."
+                            placeholderTextColor={T.placeholder}
+                            value={rejectionNote}
+                            onChangeText={setRejectionNote}
+                            multiline
+                            numberOfLines={4}
+                        />
+
+                        <TouchableOpacity 
+                            style={[styles.submitBtn, { backgroundColor: '#F44336', marginTop: 24 }]}
+                            onPress={() => {
+                                if (rejectionNote.trim()) {
+                                    setIsRejectModalOpen(false);
+                                    handleReturnAction('reject', rejectionNote);
+                                } else {
+                                    Alert.alert('Required', 'Please specify a rejection reason.');
+                                }
+                            }}
+                        >
+                            <Text style={styles.submitBtnText}>CONFIRM REJECTION</Text>
                         </TouchableOpacity>
                     </View>
                 </View>

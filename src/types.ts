@@ -28,6 +28,10 @@ export interface Product {
     mrp?: number;
     discountPercentage?: number;
     isReturnable?: boolean;
+    shippingClass?: 'STANDARD' | 'FRAGILE' | 'HEAVY_FREIGHT' | 'CUSTOM_RATE';
+    weightKg?: number;
+    customShippingCost?: number;
+    sellerState?: string;
 }
 
 export type RootStackParamList = {

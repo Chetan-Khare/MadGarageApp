@@ -55,6 +55,9 @@ export default function AddProductScreen({ navigation }: Props) {
     const [isReturnable, setIsReturnable] = useState(true);
     const [mrp, setMrp] = useState('');
     const [discountPercentage, setDiscountPercentage] = useState('');
+    const [shippingClass, setShippingClass] = useState<'STANDARD' | 'FRAGILE' | 'HEAVY_FREIGHT' | 'CUSTOM_RATE'>('STANDARD');
+    const [weightKg, setWeightKg] = useState('1.0');
+    const [customShippingCost, setCustomShippingCost] = useState('');
 
     // Vehicle Selection State
     const [makes, setMakes] = useState<Make[]>([]);
@@ -266,7 +269,10 @@ export default function AddProductScreen({ navigation }: Props) {
                 wholesale,
                 isReturnable,
                 mrp: parseFloat(mrp) || parseFloat(price),
-                discountPercentage: parseFloat(discountPercentage) || null
+                discountPercentage: parseFloat(discountPercentage) || null,
+                shippingClass,
+                weightKg: shippingClass === 'HEAVY_FREIGHT' ? parseFloat(weightKg || '1.0') : 1.0,
+                customShippingCost: shippingClass === 'CUSTOM_RATE' ? parseFloat(customShippingCost || '0.0') : null
             };
 
             await apiClient.post('/seller/inventory/base64', payload);
@@ -505,6 +511,48 @@ export default function AddProductScreen({ navigation }: Props) {
                                         <View style={{ width: 22, height: 22, borderRadius: 11, backgroundColor: '#FFF', alignSelf: isReturnable ? 'flex-end' : 'flex-start' }} />
                                     </TouchableOpacity>
                                 </View>
+                            </View>
+
+                            {/* Shipping Logistics Profile */}
+                            <View style={styles.inputGroup}>
+                                <Text style={[styles.label, { color: T.subText }]}>Shipping Logistics Profile</Text>
+                                <ModernDropdown
+                                    label="Shipping Tier"
+                                    value={shippingClass}
+                                    options={['STANDARD', 'FRAGILE', 'HEAVY_FREIGHT', 'CUSTOM_RATE']}
+                                    onSelect={(val) => {
+                                        setShippingClass(val as any);
+                                    }}
+                                    containerStyle={{ marginBottom: 12 }}
+                                />
+                                
+                                {shippingClass === 'HEAVY_FREIGHT' && (
+                                    <View style={[styles.inputGroup, { marginTop: 8 }]}>
+                                        <Text style={[styles.label, { color: T.subText }]}>Item Weight (kg)</Text>
+                                        <TextInput
+                                            style={[styles.input, { backgroundColor: T.inputBg, borderColor: T.inputBorder, color: T.text }]}
+                                            placeholderTextColor={T.placeholder}
+                                            placeholder="e.g. 85.5"
+                                            keyboardType="numeric"
+                                            value={weightKg}
+                                            onChangeText={setWeightKg}
+                                        />
+                                    </View>
+                                )}
+
+                                {shippingClass === 'CUSTOM_RATE' && (
+                                    <View style={[styles.inputGroup, { marginTop: 8 }]}>
+                                        <Text style={[styles.label, { color: T.subText }]}>Custom Shipping Cost (₹)</Text>
+                                        <TextInput
+                                            style={[styles.input, { backgroundColor: T.inputBg, borderColor: T.inputBorder, color: T.text }]}
+                                            placeholderTextColor={T.placeholder}
+                                            placeholder="e.g. 750"
+                                            keyboardType="numeric"
+                                            value={customShippingCost}
+                                            onChangeText={setCustomShippingCost}
+                                        />
+                                    </View>
+                                )}
                             </View>
 
                             <View style={styles.inputGroup}>
