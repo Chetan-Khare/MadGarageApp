@@ -2,7 +2,7 @@ import React, { useState, useMemo, useCallback, useDeferredValue } from 'react';
 import { useQuery } from '@tanstack/react-query';
 import {
     View, Text, StyleSheet, FlatList, TouchableOpacity, Image,
-    TextInput, ActivityIndicator, StatusBar, ScrollView, Pressable, Platform, RefreshControl, Alert
+    TextInput, ActivityIndicator, StatusBar, ScrollView, Alert
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { LinearGradient } from 'expo-linear-gradient';
@@ -242,21 +242,95 @@ export default function HomeScreen({ navigation }: Props) {
                     </ScrollView>
                 </View>
             )}
+
+            {/* BUILT FOR SPEED Hero Footer */}
+            <View style={styles.heroSection}>
+                <Text style={styles.heroTitle}>BUILT FOR <Text style={{ color: '#DF2324', fontStyle: 'italic' }}>SPEED.</Text></Text>
+                <Text style={styles.heroSubtitle}>Premium performance parts for enthusiasts and professionals. Engineered for the track, built for the road.</Text>
+
+                {/* Trust Badges */}
+                <View style={styles.badgesWrapper}>
+                    {/* --- ROW 1 --- */}
+                    <View style={styles.badgeRow}>
+                        <View style={styles.badgeItem}>
+                            <View style={styles.badgeIconWrap}>
+                                <Ionicons name="shield-checkmark" size={20} color="#DF2324" />
+                            </View>
+                            <View style={{ flex: 1 }}>
+                                <Text style={styles.badgeTitle}>Certified Parts</Text>
+                                <Text style={styles.badgeDesc}>100% Genuine</Text>
+                            </View>
+                        </View>
+
+                        <View style={styles.badgeItem}>
+                            <View style={styles.badgeIconWrap}>
+                                <Ionicons name="scan" size={20} color="#DF2324" />
+                            </View>
+                            <View style={{ flex: 1 }}>
+                                <Text style={styles.badgeTitle}>Precision Fitment</Text>
+                                <Text style={styles.badgeDesc}>AI-matched for you</Text>
+                            </View>
+                        </View>
+                    </View>
+
+                    {/* --- ROW 2 --- */}
+                    <View style={styles.badgeRow}>
+
+                        {/* Easy Returns Button */}
+                        <TouchableOpacity
+                            style={styles.badgeItem}
+                            activeOpacity={0.7} // Gives it a nice button-press feel
+                            onPress={() => {
+                                navigation.navigate('ReturnPolicy')
+                            }}>
+                            <View style={styles.badgeIconWrap}>
+                                <Ionicons name="refresh-circle" size={20} color="#DF2324" />
+                            </View>
+                            <View style={{ flex: 1 }}>
+                                <Text style={styles.badgeTitle} numberOfLines={1} adjustsFontSizeToFit>Return Policy</Text>
+                                <Text style={styles.badgeDesc} numberOfLines={1} adjustsFontSizeToFit>10-Day Easy Returns</Text>
+                            </View>
+                        </TouchableOpacity>
+
+                        {/* Privacy Policy Button */}
+                        <TouchableOpacity
+                            style={styles.badgeItem}
+                            activeOpacity={0.7}
+                            onPress={() => {
+                                navigation.navigate('PrivacyPolicy');
+                            }}>
+                            <View style={styles.badgeIconWrap}>
+                                <Ionicons name="lock-closed" size={20} color="#DF2324" />
+                            </View>
+                            <View style={{ flex: 1 }}>
+                                <Text style={styles.badgeTitle} numberOfLines={1} adjustsFontSizeToFit>Privacy Policy</Text>
+                                <Text style={styles.badgeDesc} numberOfLines={1} adjustsFontSizeToFit>End-To-End Encryption</Text>
+                            </View>
+                        </TouchableOpacity>
+
+                    </View>
+                </View>
+            </View>
         </View>
     );
 
     return (
         <SafeAreaView edges={['top']} style={[styles.root, { backgroundColor: T.bg }]}>
             <StatusBar barStyle={isDark ? 'light-content' : 'dark-content'} />
-            
+
             {/* Header */}
             <View style={styles.clayfulHeaderTop}>
-                <Image source={require('../../assets/app_logo.png')} style={styles.logo} />
-                <View style={{ flex: 1 }}>
+                <View style={{ width: 40 }}>
+                    <Image source={require('../../assets/app_logo.png')} style={styles.logo} />
+                </View>
+                <View style={{ flex: 1, marginLeft: 10, alignItems: 'center' }}>
                     <Text style={styles.clayfulHeaderTitle}>MAD GARAGE</Text>
+                    <Text style={[styles.clayfulHeaderSubtitle, { color: T.subText }]} numberOfLines={1} adjustsFontSizeToFit>
+                        PERFORMANCE {'&'} HIGH-END PARTS
+                    </Text>
                 </View>
                 <View style={styles.headerActions}>
-                    <TouchableOpacity 
+                    <TouchableOpacity
                         onPress={() => {
                             if (isGuest) {
                                 Alert.alert('Log In Required', 'Please log in to access your cart and place orders.', [
@@ -270,7 +344,7 @@ export default function HomeScreen({ navigation }: Props) {
                                 return;
                             }
                             navigation.navigate('Cart');
-                        }} 
+                        }}
                         style={styles.clayfulHeaderBtn}
                     >
                         <Ionicons name="bag-outline" size={22} color={T.text} />
@@ -317,7 +391,6 @@ export default function HomeScreen({ navigation }: Props) {
                     )}
                     ListHeaderComponent={renderHeader}
                     ListFooterComponent={renderFooter}
-                    refreshControl={<RefreshControl refreshing={refreshing} onRefresh={handleRefresh} tintColor="#DF2324" />}
                 />
             )}
 
@@ -353,6 +426,7 @@ const styles = StyleSheet.create({
     clayfulHeaderTop: { flexDirection: 'row', alignItems: 'center', paddingVertical: 12, paddingHorizontal: 20 },
     logo: { width: 32, height: 32, borderRadius: 16 },
     clayfulHeaderTitle: { fontSize: 20, fontWeight: '900', color: '#DF2324', textAlign: 'center', letterSpacing: -1 },
+    clayfulHeaderSubtitle: { fontSize: 9, fontWeight: '900', textAlign: 'center', letterSpacing: 2, textTransform: 'uppercase', marginTop: -2 },
     headerActions: { flexDirection: 'row', alignItems: 'center', gap: 8 },
     clayfulHeaderBtn: { width: 40, height: 40, justifyContent: 'center', alignItems: 'center' },
     clayfulBadge: { position: 'absolute', top: 4, right: 4, backgroundColor: '#DF2324', borderRadius: 7, width: 14, height: 14, justifyContent: 'center', alignItems: 'center', borderWidth: 1, borderColor: '#FFF' },
@@ -387,6 +461,74 @@ const styles = StyleSheet.create({
     },
     menuText: {
         fontSize: 14,
+        fontWeight: '600',
+    },
+    heroSection: {
+        paddingHorizontal: 20,
+        paddingTop: 20,
+        paddingBottom: 10,
+        alignItems: 'center',
+    },
+    heroTitle: {
+        fontSize: 48,
+        fontWeight: '900',
+        fontStyle: 'italic',
+        textTransform: 'uppercase',
+        letterSpacing: -2,
+        color: '#FFF',
+        textAlign: 'center',
+        lineHeight: 52,
+        marginBottom: 12,
+    },
+    heroSubtitle: {
+        fontSize: 14,
+        fontWeight: '600',
+        color: '#AAAAAA',
+        textAlign: 'center',
+        paddingHorizontal: 10,
+        marginBottom: 24,
+        lineHeight: 20,
+    },
+    badgesWrapper: {
+        marginTop: 20,
+        gap: 16,
+        width: '100%',
+    },
+    badgeRow: {
+        flexDirection: 'row',
+        justifyContent: 'space-between',
+        gap: 12,
+    },
+    badgeItem: {
+        flex: 1,
+        flexDirection: 'row',
+        alignItems: 'center',
+        gap: 8,
+        backgroundColor: '#1A1A1A',
+        padding: 12,
+        borderRadius: 16,
+        borderWidth: 1,
+        borderColor: 'rgba(255,255,255,0.05)',
+        flexShrink: 1,
+    },
+    badgeIconWrap: {
+        width: 36,
+        height: 36,
+        borderRadius: 10,
+        backgroundColor: 'rgba(223,35,36,0.1)',
+        justifyContent: 'center',
+        alignItems: 'center',
+    },
+    badgeTitle: {
+        color: '#FFF',
+        fontSize: 10,
+        fontWeight: '900',
+        fontStyle: 'italic',
+        textTransform: 'uppercase',
+    },
+    badgeDesc: {
+        color: '#888',
+        fontSize: 9,
         fontWeight: '600',
     },
 });

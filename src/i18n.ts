@@ -7,7 +7,7 @@ const resources = {
     translation: {
       "login": {
         "title": "SECURE LOGIN",
-        "subtitle": "Enter your credentials to access the terminal.",
+        "subtitle": "Enter your credentials",
         "phone_placeholder": "Phone Number",
         "email_placeholder": "Enterprise Email",
         "password_placeholder": "Secret Key",
@@ -29,7 +29,7 @@ const resources = {
     translation: {
       "login": {
         "title": "सुरक्षित लॉगिन",
-        "subtitle": "टर्मिनल तक पहुँचने के लिए अपने क्रेडेंशियल्स दर्ज करें।",
+        "subtitle": "अपने क्रेडेंशियल्स दर्ज करें",
         "phone_placeholder": "फ़ोन नंबर",
         "email_placeholder": "एंटरप्राइज़ ईमेल",
         "password_placeholder": "सीक्रेट की",

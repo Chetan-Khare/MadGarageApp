@@ -40,6 +40,7 @@ import WishlistScreen from '../screens/WishlistScreen';
 import AddressScreen from '../screens/AddressScreen';
 import PartnerRequestScreen from '../screens/PartnerRequestScreen';
 import PrivacyPolicyScreen from '../screens/PrivacyPolicyScreen';
+import ReturnPolicyScreen from '../screens/ReturnPolicyScreen';
 
 const Stack = createNativeStackNavigator<RootStackParamList>();
 
@@ -131,6 +132,7 @@ const RoleNavigator: React.FC = () => {
       <Stack.Screen name="Address" component={AddressScreen} />
       <Stack.Screen name="PartnerRequest" component={PartnerRequestScreen} />
       <Stack.Screen name="PrivacyPolicy" component={PrivacyPolicyScreen} />
+      <Stack.Screen name="ReturnPolicy" component={ReturnPolicyScreen} />
     </Stack.Navigator>
   );
 };

@@ -4,7 +4,7 @@ import {
     Alert, ActivityIndicator, StatusBar, ImageBackground, Image,
     ScrollView 
 } from 'react-native';
-import { useNavigation } from '@react-navigation/native';
+import { useNavigation, useRoute } from '@react-navigation/native';
 import { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import { RootStackParamList } from '../types';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
@@ -53,6 +53,7 @@ export default function AdminPartnerRequestsScreen() {
     const { isDark } = useThemeStore();
     const theme = isDark ? DARK : LIGHT;
     const navigation = useNavigation<NativeStackNavigationProp<RootStackParamList>>();
+    const route = useRoute<any>();
     const insets = useSafeAreaInsets();
     
     const [requests, setRequests] = useState<PartnerRequest[]>([]);
@@ -60,8 +61,14 @@ export default function AdminPartnerRequestsScreen() {
     const [updatingId, setUpdatingId] = useState<number | null>(null);
     
     // Filter State
-    const [statusFilter, setStatusFilter] = useState('ALL');
+    const [statusFilter, setStatusFilter] = useState(route.params?.initialStatusFilter || 'ALL');
     const STATUSES = ['ALL', 'PENDING', 'CONTACTED', 'APPROVED', 'REJECTED'];
+
+    useEffect(() => {
+        if (route.params?.initialStatusFilter) {
+            setStatusFilter(route.params.initialStatusFilter);
+        }
+    }, [route.params?.initialStatusFilter]);
 
     const BACKGROUND_IMAGE = 'https://images.unsplash.com/photo-1486406146926-c627a92ad1ab?auto=format&fit=crop&q=80';
 

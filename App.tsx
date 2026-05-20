@@ -16,6 +16,7 @@ import './src/i18n';
 import CompleteProfileScreen from './src/screens/CompleteProfileScreen';
 import PartnerRequestScreen from './src/screens/PartnerRequestScreen';
 import PrivacyPolicyScreen from './src/screens/PrivacyPolicyScreen';
+import ReturnPolicyScreen from './src/screens/ReturnPolicyScreen';
 
 import { RootStackParamList } from './src/types';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
@@ -72,6 +73,7 @@ export default function App() {
               <Stack.Screen name="CompleteProfile" component={CompleteProfileScreen} />
               <Stack.Screen name="PartnerRequest" component={PartnerRequestScreen} />
               <Stack.Screen name="PrivacyPolicy" component={PrivacyPolicyScreen} />
+              <Stack.Screen name="ReturnPolicy" component={ReturnPolicyScreen} />
             </Stack.Navigator>
           )}
         </NavigationContainer>

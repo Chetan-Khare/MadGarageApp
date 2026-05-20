@@ -18,6 +18,40 @@ import { ProductImage } from '../components/ProductImage';
 type Props = NativeStackScreenProps<RootStackParamList, 'ProductDetails'>;
 const { width } = Dimensions.get('window');
 
+const cleanDescriptionForPolicy = (desc: string | undefined, isReturnable: boolean | undefined) => {
+    if (!desc) return '';
+    if (isReturnable !== false) return desc;
+    
+    const sentences = desc.split(/([.!?]\s+)/);
+    let cleanedParts: string[] = [];
+    
+    for (let i = 0; i < sentences.length; i++) {
+        const chunk = sentences[i];
+        if (!chunk) continue;
+        
+        const isSeparator = /^[.!?]\s+$/.test(chunk);
+        if (isSeparator) {
+            if (cleanedParts.length > 0 && !cleanedParts[cleanedParts.length - 1].endsWith('.') && !cleanedParts[cleanedParts.length - 1].endsWith('!') && !cleanedParts[cleanedParts.length - 1].endsWith('?')) {
+                cleanedParts.push(chunk);
+            }
+            continue;
+        }
+        
+        const lower = chunk.toLowerCase();
+        const hasReturnMentions = lower.includes('return') || 
+                                  lower.includes('replace') || 
+                                  lower.includes('refund') || 
+                                  lower.includes('exchange');
+                                  
+        if (!hasReturnMentions) {
+            cleanedParts.push(chunk);
+        }
+    }
+    
+    let result = cleanedParts.join('').trim();
+    return result;
+};
+
 export default function ProductDetailsScreen({ route, navigation }: Props) {
     const { product } = route.params;
     const addItem = useCartStore((state) => state.addItem);
@@ -226,8 +260,21 @@ export default function ProductDetailsScreen({ route, navigation }: Props) {
                     {/* Description */}
                     <Text style={[styles.sectionTitle, { color: T.text }]}>About This Part</Text>
                     <Text style={[styles.desc, { color: T.subText }]}>
-                        Engineered for performance enthusiasts, this component replaces your factory part with aerospace-grade materials. Designed to handle the demands of high-horsepower builds while maintaining everyday reliability.
+                        {cleanDescriptionForPolicy(product.description, product.isReturnable) || 
+                         'Engineered for performance enthusiasts, this component replaces your factory part with aerospace-grade materials. Designed to handle the demands of high-horsepower builds while maintaining everyday reliability.'}
                     </Text>
+
+                    {product.isReturnable !== false ? (
+                        <View style={[styles.policyBadge, { backgroundColor: isDark ? '#12251B' : '#E8F5E9', borderColor: '#4CAF5033' }]}>
+                            <Ionicons name="shield-checkmark" size={16} color="#4CAF50" />
+                            <Text style={[styles.policyText, { color: isDark ? '#81C784' : '#2E7D32' }]}>10-Day Easy Return Policy Included</Text>
+                        </View>
+                    ) : (
+                        <View style={[styles.policyBadge, { backgroundColor: isDark ? '#2E1515' : '#FFEBEE', borderColor: '#F4433633' }]}>
+                            <Ionicons name="alert-circle" size={16} color="#F44336" />
+                            <Text style={[styles.policyText, { color: isDark ? '#E57373' : '#C62828' }]}>Non-Returnable Item (Final Sale)</Text>
+                        </View>
+                    )}
 
                     {(role === 'ROLE_SELLER' || role === 'ROLE_WORKER') && (
                         <View style={[styles.sellerNotice, { backgroundColor: isDark ? '#DF232415' : '#FFF5F5' }]}>
@@ -412,6 +459,19 @@ const styles = StyleSheet.create({
     specLabel: { fontSize: 14, fontWeight: '600' },
     specValue: { fontSize: 14, fontWeight: '800', maxWidth: '58%', textAlign: 'right' },
     desc: { fontSize: 15, lineHeight: 24, fontWeight: '500' },
+    policyBadge: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        padding: 12,
+        borderRadius: 8,
+        marginTop: 14,
+        gap: 8,
+        borderWidth: 1,
+    },
+    policyText: {
+        fontSize: 12,
+        fontWeight: '700',
+    },
     footer: {
         flexDirection: 'row',
         alignItems: 'center',

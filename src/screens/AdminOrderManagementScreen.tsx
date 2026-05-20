@@ -7,11 +7,14 @@ import { RootStackParamList } from '../types';
 import { useThemeStore, DARK_THEME, LIGHT_THEME } from '../store/themeStore';
 import apiClient from '../services/apiClient';
 
+import { RouteProp } from '@react-navigation/native';
+
 type Props = {
     navigation: NativeStackNavigationProp<RootStackParamList, 'AdminOrderManagement'>;
+    route: RouteProp<RootStackParamList, 'AdminOrderManagement'>;
 };
 
-export default function AdminOrderManagementScreen({ navigation }: Props) {
+export default function AdminOrderManagementScreen({ navigation, route }: Props) {
     const [orders, setOrders] = useState([]);
     const [loading, setLoading] = useState(true);
     const [searchTerm, setSearchTerm] = useState('');
@@ -71,7 +74,13 @@ export default function AdminOrderManagementScreen({ navigation }: Props) {
         }
     };
 
-    const [activeTab, setActiveTab] = useState<'ALL' | 'RETURNS'>('ALL');
+    const [activeTab, setActiveTab] = useState<'ALL' | 'RETURNS'>(route.params?.initialTab || 'ALL');
+
+    useEffect(() => {
+        if (route.params?.initialTab) {
+            setActiveTab(route.params.initialTab);
+        }
+    }, [route.params?.initialTab]);
 
     const handleReturnAction = async (orderId: number, returnId: number, action: 'approve' | 'reject' | 'picked-up' | 'finalize') => {
         let note = "Request does not meet return policy criteria.";

@@ -657,7 +657,7 @@ export default function LoginScreen({ navigation }: Props) {
                             </View>
 
                             {/* Partner CTA */}
-                            <TouchableOpacity 
+                            <TouchableOpacity
                                 onPress={() => navigation.navigate('PartnerRequest')}
                                 style={{
                                     marginTop: 40,
@@ -682,15 +682,35 @@ export default function LoginScreen({ navigation }: Props) {
                             </TouchableOpacity>
 
                             <View style={styles.indiaFooter}>
-                                <TouchableOpacity onPress={() => navigation.navigate('PrivacyPolicy')} style={{ marginBottom: 16, flexDirection: 'row', alignItems: 'center', gap: 6 }}>
+                                <TouchableOpacity onPress={() => navigation.navigate('PrivacyPolicy')} style={{ marginBottom: 10, flexDirection: 'row', alignItems: 'center', gap: 6 }}>
                                     <Ionicons name="shield-checkmark" size={14} color="#DF2324" />
                                     <Text style={[styles.indiaText, { color: '#DF2324', letterSpacing: 2 }]}>
-                                        DATA PRIVACY & COMPLIANCE
+                                        DATA PRIVACY {'&'} COMPLIANCE
                                     </Text>
                                 </TouchableOpacity>
-                                <Text style={styles.indiaText}>
-                                    {t('login.made_in_india')}
-                                </Text>
+                                <TouchableOpacity onPress={() => navigation.navigate('ReturnPolicy')} style={{ marginBottom: 16, flexDirection: 'row', alignItems: 'center', gap: 6 }}>
+                                    <Ionicons name="refresh-circle-outline" size={14} color="#DF2324" />
+                                    <Text style={[styles.indiaText, { color: '#DF2324', letterSpacing: 2 }]}>
+                                        RETURN {'&'} REFUND POLICY
+                                    </Text>
+                                </TouchableOpacity>
+                                {/* Colorful "Made in India" Text */}
+                                <MaskedView
+                                    style={{ height: 16, width: '100%', alignItems: 'center', marginTop: 4 }}
+                                    maskElement={
+                                        <Text style={[styles.indiaText, { backgroundColor: 'transparent', textAlign: 'center' }]}>
+                                            {t('login.made_in_india')}
+                                        </Text>
+                                    }
+                                >
+                                    <LinearGradient
+                                        // Saffron, Neutral Center (adjusts for light/dark mode), Green
+                                        colors={['#FF9933', isDark ? '#FFFFFF' : '#555555', '#138808']}
+                                        start={{ x: 0, y: 0 }}
+                                        end={{ x: 1, y: 0 }}
+                                        style={{ flex: 1, width: 300 }}
+                                    />
+                                </MaskedView>
                             </View>
 
                         </ScrollView>

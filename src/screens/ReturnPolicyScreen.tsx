@@ -6,7 +6,7 @@ import { useThemeStore } from '../store/themeStore';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useNavigation } from '@react-navigation/native';
 
-export default function PrivacyPolicyScreen() {
+export default function ReturnPolicyScreen() {
   const { isDark } = useThemeStore();
   const insets = useSafeAreaInsets();
   const navigation = useNavigation();
@@ -29,8 +29,8 @@ export default function PrivacyPolicyScreen() {
           <Ionicons name="chevron-back" size={24} color={T.text} />
         </TouchableOpacity>
         <View style={styles.headerTitleContainer}>
-          <Text style={[styles.headerTitle, { color: T.text }]}>PRIVACY POLICY</Text>
-          <Text style={styles.headerSub}>LAST UPDATED: MAY 6, 2026</Text>
+          <Text style={[styles.headerTitle, { color: T.text }]}>RETURN POLICY</Text>
+          <Text style={styles.headerSub}>LAST UPDATED: MAY 20, 2026</Text>
         </View>
         <View style={styles.spacer} />
       </View>
@@ -38,27 +38,33 @@ export default function PrivacyPolicyScreen() {
       <ScrollView contentContainerStyle={[styles.scrollContent, { paddingBottom: Math.max(insets.bottom, 20) }]}>
         {/* Banner */}
         <View style={styles.bannerContainer}>
-          <View style={styles.shieldIconWrapper}>
-            <Ionicons name="shield-checkmark" size={40} color="#DF2324" />
+          <View style={styles.iconWrapper}>
+            <Ionicons name="refresh-circle" size={44} color="#DF2324" />
           </View>
-          <Text style={[styles.bannerTitle, { color: T.text }]}>DATA SECURITY PROTOCOL</Text>
-          <Text style={[styles.bannerSub, { color: T.subText }]}>VERSION 1.0 • SECURE DATA INITIATIVE</Text>
+          <Text style={[styles.bannerTitle, { color: T.text }]}>RETURN {'&'} REFUND ENGINE</Text>
+          <Text style={[styles.bannerSub, { color: T.subText }]}>VERSION 1.1 • HARDENED CLAIMS MANAGEMENT</Text>
         </View>
 
         {/* Content Box */}
         <View style={[styles.contentBox, { backgroundColor: T.card, borderColor: T.border }]}>
           
+          {/* Eligibility section */}
           <View style={styles.section}>
             <View style={styles.sectionHeader}>
-              <Ionicons name="eye" size={20} color="#DF2324" />
-              <Text style={[styles.sectionTitle, { color: T.text }]}>INFORMATION WE COLLECT</Text>
+              <Ionicons name="checkmark-circle" size={20} color="#DF2324" />
+              <Text style={[styles.sectionTitle, { color: T.text }]}>10-DAY EASY RETURN WINDOW</Text>
             </View>
             <Text style={[styles.paragraph, { color: T.subText }]}>
-              At MAD GARAGE, we prioritize the security of your automotive data. To provide precision fitment and AI-driven recommendations, we collect:
+              Eligible parts marked as Returnable can be returned or exchanged within 10 days of delivery if they meet the following:
             </Text>
             
             <View style={styles.bulletList}>
-              {['Vehicle Build Specifications', 'Precise Location (Geo-fencing)', 'Transaction History', 'AI Chat Interactions'].map((item, idx) => (
+              {[
+                'Unused & Uninstalled condition (No mounting bolts or marks)',
+                'Original box packaging with all tags intact',
+                'All brackets, gaskets, seals, and hardware included',
+                'Proof of purchase or receipt summary'
+              ].map((item, idx) => (
                 <View key={idx} style={[styles.bulletItem, { backgroundColor: isDark ? '#111' : '#F8F9FA', borderColor: T.border }]}>
                   <Ionicons name="chevron-forward" size={16} color="#DF2324" />
                   <Text style={[styles.bulletText, { color: T.text }]}>{item}</Text>
@@ -67,31 +73,46 @@ export default function PrivacyPolicyScreen() {
             </View>
           </View>
 
+          {/* Final Sale section */}
           <View style={styles.section}>
             <View style={styles.sectionHeader}>
-              <Ionicons name="lock-closed" size={20} color="#DF2324" />
-              <Text style={[styles.sectionTitle, { color: T.text }]}>DATA SECURITY PROTOCOL</Text>
+              <Ionicons name="alert-circle" size={20} color="#DF2324" />
+              <Text style={[styles.sectionTitle, { color: T.text }]}>NON-RETURNABLE (FINAL SALE)</Text>
             </View>
             <Text style={[styles.paragraph, { color: T.subText }]}>
-              Our infrastructure is hardened with enterprise-grade encryption. Every transmission is secured via TLS 1.3, and personal identifiers are purged from our AI training models to ensure absolute anonymity.
+              Items designated as Non-Returnable are ineligible for returns, refunds, or replacements due to safety or customization reasons.
             </Text>
             
             <View style={[styles.highlightBox, { borderColor: 'rgba(223,35,36,0.3)' }]}>
-              <Ionicons name="shield-half" size={24} color="#DF2324" />
+              <Ionicons name="warning" size={24} color="#DF2324" />
               <View style={{ flex: 1, marginLeft: 15 }}>
-                <Text style={[styles.highlightTitle, { color: T.text }]}>END-TO-END ENCRYPTION</Text>
-                <Text style={[styles.highlightSub, { color: T.subText }]}>YOUR GARAGE TELEMETRY IS PRIVATE.</Text>
+                <Text style={[styles.highlightTitle, { color: T.text }]}>CRITICAL EXCEPTION</Text>
+                <Text style={[styles.highlightSub, { color: T.subText }]}>
+                  ECUs, custom fabricated components, and engine builds once shipped are final sale. Please verify fitment using AI Mechanic before purchasing.
+                </Text>
               </View>
             </View>
           </View>
 
+          {/* Logistics section */}
           <View style={styles.section}>
             <View style={styles.sectionHeader}>
-              <Ionicons name="documents" size={20} color="#DF2324" />
-              <Text style={[styles.sectionTitle, { color: T.text }]}>THIRD-PARTY PARTNERS</Text>
+              <Ionicons name="bus" size={20} color="#DF2324" />
+              <Text style={[styles.sectionTitle, { color: T.text }]}>REVERSE LOGISTICS {'&'} PICKUPS</Text>
             </View>
             <Text style={[styles.paragraph, { color: T.subText }]}>
-              We only share limited telemetry with verified sellers and logistics partners when necessary to fulfill your precision fitment requests or logistics. No data is ever sold for marketing purposes.
+              Once approved by our audit staff, a courier collection is requested. Doorstep pickups are executed within 2-3 business days. Additional time may be required for heavy freight objects.
+            </Text>
+          </View>
+
+          {/* Timelines section */}
+          <View style={styles.section}>
+            <View style={styles.sectionHeader}>
+              <Ionicons name="cash" size={20} color="#DF2324" />
+              <Text style={[styles.sectionTitle, { color: T.text }]}>REFUND TIMELINES</Text>
+            </View>
+            <Text style={[styles.paragraph, { color: T.subText }]}>
+              Refunds are processed to the original bank source within 5-7 business days after the part passes physical inspection at our central garage node.
             </Text>
           </View>
 
@@ -99,12 +120,12 @@ export default function PrivacyPolicyScreen() {
         
         {/* Contact Footer */}
         <View style={styles.footer}>
-          <Text style={[styles.footerText, { color: T.subText }]}>QUESTIONS REGARDING OUR DATA SOVEREIGNTY?</Text>
+          <Text style={[styles.footerText, { color: T.subText }]}>NEED ASSISTANCE WITH REPLACEMENTS?</Text>
           <TouchableOpacity 
             style={styles.contactBtn}
-            onPress={() => Linking.openURL('mailto:support@madgarage.com')}
+            onPress={() => Linking.openURL('mailto:returns@madgarage.com')}
           >
-            <Text style={styles.contactBtnText}>CONTACT SECURITY DESK</Text>
+            <Text style={styles.contactBtnText}>CONTACT RETURNS DESK</Text>
           </TouchableOpacity>
         </View>
 
@@ -152,7 +173,7 @@ const styles = StyleSheet.create({
     marginBottom: 30,
     marginTop: 10,
   },
-  shieldIconWrapper: {
+  iconWrapper: {
     width: 80,
     height: 80,
     borderRadius: 40,
@@ -194,6 +215,7 @@ const styles = StyleSheet.create({
     fontStyle: 'italic',
     letterSpacing: 1,
     marginLeft: 10,
+    flex: 1,
   },
   paragraph: {
     fontSize: 13,
@@ -215,10 +237,11 @@ const styles = StyleSheet.create({
     fontSize: 12,
     fontWeight: '800',
     marginLeft: 10,
+    flex: 1,
   },
   highlightBox: {
     flexDirection: 'row',
-    alignItems: 'center',
+    alignItems: 'flex-start',
     backgroundColor: 'rgba(223,35,36,0.05)',
     padding: 15,
     borderRadius: 12,
@@ -232,8 +255,9 @@ const styles = StyleSheet.create({
   highlightSub: {
     fontSize: 9,
     fontWeight: '800',
-    letterSpacing: 1,
+    letterSpacing: 0.5,
     marginTop: 4,
+    lineHeight: 14,
   },
   footer: {
     marginTop: 30,

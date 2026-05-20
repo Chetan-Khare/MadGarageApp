@@ -205,15 +205,15 @@ export default function AdminDashboardScreen({ navigation }: Props) {
                 <View style={styles.newStatsContainer}>
                     {[
                         { icon: 'people-outline', value: stats?.totalUsers || 0, label: 'USERS', id: '01', route: 'AdminUserManagement', colors: isDark ? ['#0F0F2A', '#080815'] : ['#E8EAF6', '#C5CAE9'], iconColor: isDark ? '#DF2324' : '#1976D2' },
-                        { icon: 'cube-outline', value: stats?.totalProducts || 0, label: 'PARTS', id: '02', route: 'AdminInventoryManagement', colors: isDark ? ['#1A1A1A', '#0F0F0F'] : ['#F5F5F5', '#E0E0E0'], iconColor: isDark ? '#DF2324' : '#424242' },
+                        { icon: 'cube-outline', value: stats?.totalProducts || 0, label: 'PARTS', id: '02', route: 'Home', colors: isDark ? ['#1A1A1A', '#0F0F0F'] : ['#F5F5F5', '#E0E0E0'], iconColor: isDark ? '#DF2324' : '#424242' },
                         { icon: 'cash-outline', value: stats ? formatRevenue(stats.totalRevenue) : '₹0', label: 'INCOME', id: '03', route: 'AdminOrderManagement', colors: isDark ? ['#2A0F0F', '#150808'] : ['#FFEBEE', '#FFCDD2'], iconColor: isDark ? '#DF2324' : '#D32F2F' },
                         { icon: 'documents-outline', value: requestCount.toLocaleString(), label: 'PART REQUEST', id: '04', route: 'AdminRequests', colors: isDark ? ['#0F2022', '#081112'] : ['#E0F2F1', '#B2DFDB'], iconColor: isDark ? '#DF2324' : '#00796B' },
-                        { icon: 'business-outline', value: partnerCount.toLocaleString(), label: 'ONBOARDING', id: '05', route: 'AdminPartnerRequests', colors: isDark ? ['#2A1F0F', '#150F08'] : ['#FFF3E0', '#FFE0B2'], iconColor: isDark ? '#DF2324' : '#F57C00' },
+                        { icon: 'business-outline', value: partnerCount.toLocaleString(), label: 'ONBOARDING', id: '05', route: 'AdminPartnerRequests', params: { initialStatusFilter: 'PENDING' }, colors: isDark ? ['#2A1F0F', '#150F08'] : ['#FFF3E0', '#FFE0B2'], iconColor: isDark ? '#DF2324' : '#F57C00' },
                     ].map((s: any) => (
                         <TouchableOpacity
                             key={s.label}
                             activeOpacity={0.8}
-                            onPress={() => navigation.navigate(s.route as any)}
+                            onPress={() => navigation.navigate(s.route as any, s.params)}
                             style={styles.metricCardWrapper}
                         >
                             <LinearGradient
@@ -239,19 +239,19 @@ export default function AdminDashboardScreen({ navigation }: Props) {
 
                 <View style={styles.newHubContainer}>
                     {[
-                        { title: 'ORDER', subtitle: 'PIPELINE', icon: 'swap-horizontal', btn: 'OPEN MODULE', route: 'AdminOrderManagement', colors: isDark ? ['#2A0A0A', '#1A0505'] : ['#FFEBEE', '#FFCDD2'], iconColor: '#DF2324' },
+                        { title: 'ORDER', subtitle: 'PIPELINE', icon: 'swap-horizontal', btn: 'OPEN MODULE', route: 'AdminOrderManagement', params: { initialTab: 'ALL' }, colors: isDark ? ['#2A0A0A', '#1A0505'] : ['#FFEBEE', '#FFCDD2'], iconColor: '#DF2324' },
                         { title: 'GARAGE', subtitle: 'INVENTORY', icon: 'business', btn: 'AUDIT DATA', route: 'AdminInventoryManagement', colors: isDark ? ['#0A0A2A', '#05051A'] : ['#E8EAF6', '#C5CAE9'], iconColor: '#5B5BFF' },
                         { title: 'VEHICLE', subtitle: 'DB', icon: 'car', btn: 'QUERY MASTER', route: 'AdminVehicleManagement', colors: isDark ? ['#0A1A0A', '#050F05'] : ['#E8F5E9', '#C8E6C9'], iconColor: '#28A745' },
-                        { title: 'PARTNERS', subtitle: 'ONBOARDING', icon: 'people', btn: 'AUDIT APPS', route: 'AdminPartnerRequests', colors: isDark ? ['#1A1A1A', '#0F0F05'] : ['#FFF8E1', '#FFECB3'], iconColor: '#FFA000' },
+                        { title: 'PARTNERS', subtitle: 'ONBOARDING', icon: 'people', btn: 'AUDIT APPS', route: 'AdminPartnerRequests', params: { initialStatusFilter: 'ALL' }, colors: isDark ? ['#1A1A1A', '#0F0F05'] : ['#FFF8E1', '#FFECB3'], iconColor: '#FFA000' },
                         { title: 'COUPON', subtitle: 'ENGINE', icon: 'ticket', btn: 'MANAGE CODES', route: 'AdminCouponManagement', colors: isDark ? ['#1A0A0A', '#0F0505'] : ['#E3F2FD', '#BBDEFB'], iconColor: '#2196F3' },
                         { title: 'AI AUDIT', subtitle: 'NEURAL LOGS', icon: 'chatbubbles', btn: 'REVIEW DATA', route: 'AdminChatAudit', colors: isDark ? ['#2A0A1A', '#1A050F'] : ['#FCE4EC', '#F8BBD0'], iconColor: '#E91E63' },
-                        { title: 'RETURN', subtitle: 'RECALLS', icon: 'reload-circle', btn: 'AUDIT RECALLS', route: 'AdminOrderManagement', colors: isDark ? ['#2A0A1A', '#1A050F'] : ['#FCE4EC', '#F8BBD0'], iconColor: '#E91E63' },
+                        { title: 'RETURN', subtitle: 'RECALLS', icon: 'reload-circle', btn: 'AUDIT RECALLS', route: 'AdminOrderManagement', params: { initialTab: 'RETURNS' }, colors: isDark ? ['#2A0A1A', '#1A050F'] : ['#FCE4EC', '#F8BBD0'], iconColor: '#E91E63' },
                         { title: 'SYSTEM', subtitle: 'CONFIG', icon: 'options', btn: 'OPEN PANEL', route: 'AdminSettings' as any, colors: isDark ? ['#1A0A1A', '#0F050F'] : ['#F3E5F5', '#E1BEE7'], iconColor: '#7A00E6' },
                     ].map((hub: any) => (
                         <TouchableOpacity
                             key={hub.title}
                             activeOpacity={0.8}
-                            onPress={() => navigation.navigate(hub.route as any)}
+                            onPress={() => navigation.navigate(hub.route as any, hub.params)}
                             style={styles.newHubCardWrapper}
                         >
                             <LinearGradient

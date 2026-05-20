@@ -51,7 +51,7 @@ export type RootStackParamList = {
   OrderDetails: { orderId: number };
   CustomerProfile: undefined;
   GarageProfile: undefined;
-  AdminOrderManagement: undefined;
+  AdminOrderManagement: { initialTab?: 'ALL' | 'RETURNS' } | undefined;
   AdminInventoryManagement: undefined;
   AdminVehicleManagement: undefined;
   AdminUserManagement: { roleFilter?: string };
@@ -66,10 +66,11 @@ export type RootStackParamList = {
   Wishlist: undefined;
   Address: undefined;
   CompleteProfile: { registrationToken: string };
-  AdminPartnerRequests: undefined;
+  AdminPartnerRequests: { initialStatusFilter?: string } | undefined;
   PartnerRequest: undefined;
   AdminChatAudit: undefined;
   PrivacyPolicy: undefined;
+  ReturnPolicy: undefined;
   AdminCouponManagement: undefined;
 };
 
