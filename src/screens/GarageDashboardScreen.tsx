@@ -437,13 +437,51 @@ export default function GarageDashboardScreen({ navigation }: Props) {
 
                 {/* Trust Badges */}
                 <View style={styles.badgesWrapper}>
-                    <View style={styles.badgeItem}>
-                        <View style={styles.badgeIconWrap}><Ionicons name="shield-checkmark" size={20} color="#DF2324" /></View>
-                        <View style={{ flex: 1 }}><Text style={styles.badgeTitle}>Certified Parts</Text><Text style={styles.badgeDesc}>100% Genuine</Text></View>
+                    {/* --- ROW 1 --- */}
+                    <View style={styles.badgeRow}>
+                        <View style={styles.badgeItem}>
+                            <View style={styles.badgeIconWrap}><Ionicons name="shield-checkmark" size={20} color="#DF2324" /></View>
+                            <View style={{ flex: 1 }}><Text style={styles.badgeTitle}>Certified Parts</Text><Text style={styles.badgeDesc}>100% Genuine</Text></View>
+                        </View>
+                        <View style={styles.badgeItem}>
+                            <View style={styles.badgeIconWrap}><Ionicons name="scan" size={20} color="#DF2324" /></View>
+                            <View style={{ flex: 1 }}><Text style={styles.badgeTitle}>Precision Fitment</Text><Text style={styles.badgeDesc}>AI-matched for you</Text></View>
+                        </View>
                     </View>
-                    <View style={styles.badgeItem}>
-                        <View style={styles.badgeIconWrap}><Ionicons name="scan" size={20} color="#DF2324" /></View>
-                        <View style={{ flex: 1 }}><Text style={styles.badgeTitle}>Precision Fitment</Text><Text style={styles.badgeDesc}>AI-matched for you</Text></View>
+
+                    {/* --- ROW 2 --- */}
+                    <View style={styles.badgeRow}>
+                        {/* Easy Returns Button */}
+                        <TouchableOpacity
+                            style={styles.badgeItem}
+                            activeOpacity={0.7}
+                            onPress={() => {
+                                navigation.navigate('ReturnPolicy' as any)
+                            }}>
+                            <View style={styles.badgeIconWrap}>
+                                <Ionicons name="refresh-circle" size={20} color="#DF2324" />
+                            </View>
+                            <View style={{ flex: 1 }}>
+                                <Text style={styles.badgeTitle} numberOfLines={1} adjustsFontSizeToFit>Return Policy</Text>
+                                <Text style={styles.badgeDesc} numberOfLines={1} adjustsFontSizeToFit>10-Day Easy Returns</Text>
+                            </View>
+                        </TouchableOpacity>
+
+                        {/* Privacy Policy Button */}
+                        <TouchableOpacity
+                            style={styles.badgeItem}
+                            activeOpacity={0.7}
+                            onPress={() => {
+                                navigation.navigate('PrivacyPolicy' as any);
+                            }}>
+                            <View style={styles.badgeIconWrap}>
+                                <Ionicons name="lock-closed" size={20} color="#DF2324" />
+                            </View>
+                            <View style={{ flex: 1 }}>
+                                <Text style={styles.badgeTitle} numberOfLines={1} adjustsFontSizeToFit>Privacy Policy</Text>
+                                <Text style={styles.badgeDesc} numberOfLines={1} adjustsFontSizeToFit>End-To-End Encryption</Text>
+                            </View>
+                        </TouchableOpacity>
                     </View>
                 </View>
             </View>
@@ -1260,10 +1298,14 @@ const styles = StyleSheet.create({
         lineHeight: 20,
     },
     badgesWrapper: {
-        flexDirection: 'row',
-        gap: 12,
-        justifyContent: 'space-between',
+        marginTop: 20,
+        gap: 16,
         width: '100%',
+    },
+    badgeRow: {
+        flexDirection: 'row',
+        justifyContent: 'space-between',
+        gap: 12,
     },
     badgeItem: {
         flex: 1,
@@ -1275,6 +1317,7 @@ const styles = StyleSheet.create({
         borderRadius: 16,
         borderWidth: 1,
         borderColor: 'rgba(255,255,255,0.05)',
+        flexShrink: 1,
     },
     badgeIconWrap: {
         width: 36,

@@ -41,33 +41,41 @@ export default function ReturnPolicyScreen() {
           <View style={styles.iconWrapper}>
             <Ionicons name="refresh-circle" size={44} color="#DF2324" />
           </View>
-          <Text style={[styles.bannerTitle, { color: T.text }]}>RETURN {'&'} REFUND ENGINE</Text>
+          <Text style={[styles.bannerTitle, { color: T.text }]}>RETURN & REFUND ENGINE</Text>
           <Text style={[styles.bannerSub, { color: T.subText }]}>VERSION 1.1 • HARDENED CLAIMS MANAGEMENT</Text>
         </View>
 
         {/* Content Box */}
         <View style={[styles.contentBox, { backgroundColor: T.card, borderColor: T.border }]}>
           
+          {/* General Overview */}
+          <Text style={[styles.paragraph, { color: T.subText, fontStyle: 'italic', marginBottom: 25 }]}>
+            At MAD GARAGE, we design, build, and source high-performance automotive components. We want to ensure you get the absolute best fitment and engineering quality. Below is our comprehensive guidelines for returns, refunds, and replacements.
+          </Text>
+
           {/* Eligibility section */}
           <View style={styles.section}>
             <View style={styles.sectionHeader}>
               <Ionicons name="checkmark-circle" size={20} color="#DF2324" />
-              <Text style={[styles.sectionTitle, { color: T.text }]}>10-DAY EASY RETURN WINDOW</Text>
+              <Text style={[styles.sectionTitle, { color: T.text }]}>10-DAY EASY RETURN POLICY</Text>
             </View>
             <Text style={[styles.paragraph, { color: T.subText }]}>
-              Eligible parts marked as Returnable can be returned or exchanged within 10 days of delivery if they meet the following:
+              Eligible items marked as Returnable on the product page can be returned or replaced within 10 days from the date of delivery. To qualify:
             </Text>
             
             <View style={styles.bulletList}>
               {[
-                'Unused & Uninstalled condition (No mounting bolts or marks)',
-                'Original box packaging with all tags intact',
-                'All brackets, gaskets, seals, and hardware included',
-                'Proof of purchase or receipt summary'
+                { title: 'Unused & Uninstalled', desc: 'The part must not have been bolted or wired onto a vehicle.' },
+                { title: 'Original Packaging', desc: 'Must include original box, manufacturer materials, and fitment guides.' },
+                { title: 'Complete Hardware', desc: 'Any included brackets, clips, seals, or fasteners must be returned.' },
+                { title: 'Proof of Purchase', desc: 'Receipt or Order lookup summary from the Mad Garage client.' }
               ].map((item, idx) => (
                 <View key={idx} style={[styles.bulletItem, { backgroundColor: isDark ? '#111' : '#F8F9FA', borderColor: T.border }]}>
-                  <Ionicons name="chevron-forward" size={16} color="#DF2324" />
-                  <Text style={[styles.bulletText, { color: T.text }]}>{item}</Text>
+                  <Ionicons name="chevron-forward" size={16} color="#DF2324" style={{ marginTop: 2 }} />
+                  <View style={{ flex: 1, marginLeft: 10 }}>
+                    <Text style={[styles.bulletTitleText, { color: T.text }]}>{item.title}</Text>
+                    <Text style={[styles.bulletDescText, { color: T.subText }]}>{item.desc}</Text>
+                  </View>
                 </View>
               ))}
             </View>
@@ -77,18 +85,18 @@ export default function ReturnPolicyScreen() {
           <View style={styles.section}>
             <View style={styles.sectionHeader}>
               <Ionicons name="alert-circle" size={20} color="#DF2324" />
-              <Text style={[styles.sectionTitle, { color: T.text }]}>NON-RETURNABLE (FINAL SALE)</Text>
+              <Text style={[styles.sectionTitle, { color: T.text }]}>NON-RETURNABLE & FINAL SALE ITEMS</Text>
             </View>
             <Text style={[styles.paragraph, { color: T.subText }]}>
-              Items designated as Non-Returnable are ineligible for returns, refunds, or replacements due to safety or customization reasons.
+              Specific parts are categorized as Non-Returnable (Final Sale) due to manufacturer policy, structural safety concerns, or custom fabrication.
             </Text>
             
             <View style={[styles.highlightBox, { borderColor: 'rgba(223,35,36,0.3)' }]}>
               <Ionicons name="warning" size={24} color="#DF2324" />
               <View style={{ flex: 1, marginLeft: 15 }}>
-                <Text style={[styles.highlightTitle, { color: T.text }]}>CRITICAL EXCEPTION</Text>
+                <Text style={[styles.highlightTitle, { color: T.text }]}>CRITICAL EXCEPTION NOTICE</Text>
                 <Text style={[styles.highlightSub, { color: T.subText }]}>
-                  ECUs, custom fabricated components, and engine builds once shipped are final sale. Please verify fitment using AI Mechanic before purchasing.
+                  Products designated as Final Sale are ineligible for return, refund, or exchange. This includes custom turbocharger configurations, custom tuned ECUs, cut-to-length hoses/wiring harnesses, and pre-used engine assemblies once delivered. Always verify the fitment guide using our AI Chatbot before finalize purchases.
                 </Text>
               </View>
             </View>
@@ -98,11 +106,22 @@ export default function ReturnPolicyScreen() {
           <View style={styles.section}>
             <View style={styles.sectionHeader}>
               <Ionicons name="bus" size={20} color="#DF2324" />
-              <Text style={[styles.sectionTitle, { color: T.text }]}>REVERSE LOGISTICS {'&'} PICKUPS</Text>
+              <Text style={[styles.sectionTitle, { color: T.text }]}>REVERSE LOGISTICS & PICKUP</Text>
             </View>
             <Text style={[styles.paragraph, { color: T.subText }]}>
-              Once approved by our audit staff, a courier collection is requested. Doorstep pickups are executed within 2-3 business days. Additional time may be required for heavy freight objects.
+              Upon submitting a return request via your dashboard, our engineering team audits the claim.
             </Text>
+
+            <View style={styles.logisticsStepsContainer}>
+              <View style={[styles.logisticsStepCard, { backgroundColor: isDark ? '#111' : '#F8F9FA', borderColor: T.border }]}>
+                <Text style={[styles.stepTitle, { color: T.text }]}>1. REQUEST AUDIT</Text>
+                <Text style={[styles.stepDesc, { color: T.subText }]}>Our staff verifies the order history, product serial numbers, and photos. Approvals are typically granted within 24 to 48 hours.</Text>
+              </View>
+              <View style={[styles.logisticsStepCard, { backgroundColor: isDark ? '#111' : '#F8F9FA', borderColor: T.border }]}>
+                <Text style={[styles.stepTitle, { color: T.text }]}>2. DOORSTEP COLLECTION</Text>
+                <Text style={[styles.stepDesc, { color: T.subText }]}>Once approved, our logistics partner will initiate doorstep pickup within 2-3 business days. Heavy freight items may require additional scheduling.</Text>
+              </View>
+            </View>
           </View>
 
           {/* Timelines section */}
@@ -112,8 +131,18 @@ export default function ReturnPolicyScreen() {
               <Text style={[styles.sectionTitle, { color: T.text }]}>REFUND TIMELINES</Text>
             </View>
             <Text style={[styles.paragraph, { color: T.subText }]}>
-              Refunds are processed to the original bank source within 5-7 business days after the part passes physical inspection at our central garage node.
+              Refunds are processed back to the original payment source once the returned item undergoes physical inspection at our central warehouse.
             </Text>
+
+            <View style={[styles.highlightBox, { borderColor: 'rgba(223,35,36,0.3)' }]}>
+              <Ionicons name="time" size={24} color="#DF2324" />
+              <View style={{ flex: 1, marginLeft: 15 }}>
+                <Text style={[styles.highlightTitle, { color: T.text }]}>5-7 BUSINESS DAYS PROCESSING</Text>
+                <Text style={[styles.highlightSub, { color: T.subText }]}>
+                  Dependent on bank clearing times. Store credit options are instant.
+                </Text>
+              </View>
+            </View>
           </View>
 
         </View>
@@ -238,6 +267,36 @@ const styles = StyleSheet.create({
     fontWeight: '800',
     marginLeft: 10,
     flex: 1,
+  },
+  bulletTitleText: {
+    fontSize: 13,
+    fontWeight: '900',
+  },
+  bulletDescText: {
+    fontSize: 11,
+    lineHeight: 16,
+    fontWeight: '600',
+    marginTop: 2,
+  },
+  logisticsStepsContainer: {
+    gap: 12,
+    marginTop: 10,
+  },
+  logisticsStepCard: {
+    padding: 15,
+    borderRadius: 12,
+    borderWidth: 1,
+  },
+  stepTitle: {
+    fontSize: 12,
+    fontWeight: '900',
+    letterSpacing: 1,
+    marginBottom: 5,
+  },
+  stepDesc: {
+    fontSize: 11,
+    lineHeight: 16,
+    fontWeight: '600',
   },
   highlightBox: {
     flexDirection: 'row',
