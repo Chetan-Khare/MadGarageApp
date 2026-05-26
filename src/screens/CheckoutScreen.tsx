@@ -23,9 +23,9 @@ type Props = { navigation: NativeStackNavigationProp<RootStackParamList, 'Checko
 
 export default function CheckoutScreen({ navigation }: Props) {
     const { items, getTotalPrice, clearCart } = useCartStore();
-    const { 
-        shippingFee, 
-        platformFee, 
+    const {
+        shippingFee,
+        platformFee,
         freeShippingThreshold,
         fragileSurcharge,
         freightBaseFee,
@@ -36,7 +36,7 @@ export default function CheckoutScreen({ navigation }: Props) {
     const { isDark } = useThemeStore();
     const { city: detectedCity, address: detectedAddr, nearbyGarages, detectLocation, isLoading: detectionLoading } = useLocationStore();
     const T = isDark ? DARK_THEME : LIGHT_THEME;
-    
+
     const [loading, setLoading] = useState(false);
     const [savedAddresses, setSavedAddresses] = useState<any[]>([]);
 
@@ -52,7 +52,7 @@ export default function CheckoutScreen({ navigation }: Props) {
             console.error('Failed to fetch addresses for checkout:', error);
         }
     };
-    
+
     // Form State
     const [flatNo, setFlatNo] = useState('');
     const [floorNo, setFloorNo] = useState('');
@@ -83,7 +83,7 @@ export default function CheckoutScreen({ navigation }: Props) {
 
     const getFreightMultiplierLocal = (sellerState: string | null, buyerState: string): number => {
         const sellerZone = sellerState ? (STATE_ZONES[sellerState.trim().toLowerCase()] ?? 1) : 1;
-        const buyerZone  = STATE_ZONES[buyerState.trim().toLowerCase()] ?? 1;
+        const buyerZone = STATE_ZONES[buyerState.trim().toLowerCase()] ?? 1;
         if (buyerZone === 6) return zoneMultiplierNE;
         const dist = Math.min(Math.abs(sellerZone - buyerZone), 4);
         return zoneMultipliers[dist];
@@ -235,15 +235,15 @@ export default function CheckoutScreen({ navigation }: Props) {
         try {
             // Verify Payment & Update Status to PAID
             await apiClient.post(`/orders/${dbOrderId}/verify-payment?paymentId=${paymentId}&signature=${signature}`);
-            
+
             clearCart();
             setLoading(false);
-            
+
             Alert.alert('Order Placed! 🏎️', 'Your payment was successful and your order is confirmed.', [
                 {
                     text: 'View My Orders',
                     onPress: () => {
-                        navigation.popToTop(); 
+                        navigation.popToTop();
                         navigation.navigate('OrderHistory');
                     }
                 }
@@ -258,7 +258,7 @@ export default function CheckoutScreen({ navigation }: Props) {
     return (
         <SafeAreaView style={[styles.safe, { backgroundColor: T.bg }]}>
             <StatusBar barStyle={T.statusBar} backgroundColor={T.bg} />
-            
+
             <View style={[styles.header, { borderBottomColor: T.headerBorder }]}>
                 <TouchableOpacity style={[styles.backBtn, { backgroundColor: T.inputBg }]} onPress={() => navigation.goBack()}>
                     <Ionicons name="chevron-back" size={24} color={T.text} />
@@ -267,13 +267,13 @@ export default function CheckoutScreen({ navigation }: Props) {
                 <View style={{ width: 38 }} />
             </View>
 
-            <KeyboardAvoidingView 
-                style={{ flex: 1 }} 
+            <KeyboardAvoidingView
+                style={{ flex: 1 }}
                 behavior={Platform.OS === 'ios' ? 'padding' : undefined}
             >
                 <ScrollView contentContainerStyle={styles.scrollContent}>
-                    
-                    {/* Delivery Option Toggle */}
+
+                    {/* GARAGE FITTING DISABLED: Delivery option toggle hidden until tie-up garages are active. Uncomment to re-enable.
                     <View style={styles.deliveryToggleRow}>
                         <TouchableOpacity 
                             style={[styles.toggleBtn, deliveryType === 'HOME_DELIVERY' && styles.toggleBtnActive, { backgroundColor: T.inputBg }]}
@@ -290,6 +290,7 @@ export default function CheckoutScreen({ navigation }: Props) {
                             <Text style={[styles.toggleText, { color: deliveryType === 'GARAGE_FITTING' ? '#FFF' : T.subText }]}>Garage Fit</Text>
                         </TouchableOpacity>
                     </View>
+                    */}
 
                     {/* Order Summary */}
                     <View style={[styles.card, { backgroundColor: T.card, borderColor: T.cardBorder }]}>
@@ -319,8 +320,8 @@ export default function CheckoutScreen({ navigation }: Props) {
                                     <View style={[styles.infoBox, { backgroundColor: isDark ? '#1A0808' : '#FFF0F0', marginTop: 4, marginBottom: 8, padding: 8 }]}>
                                         <Ionicons name="bus-outline" size={14} color="#DF2324" />
                                         <Text style={[styles.infoText, { fontSize: 10 }]}>
-                                            {buyerZone === 6 
-                                                ? `Northeast Surcharge (${mult}x) active` 
+                                            {buyerZone === 6
+                                                ? `Northeast Surcharge (${mult}x) active`
                                                 : `Zone multiplier (Z${sellerZone} → Z${buyerZone}) of ${mult}x applied`
                                             }
                                         </Text>
@@ -329,7 +330,7 @@ export default function CheckoutScreen({ navigation }: Props) {
                             }
                             return null;
                         })()}
-                        
+
                         {subtotal > 0 && (
                             <View style={styles.summaryRow}>
                                 <Text style={[styles.summaryLabel, { color: T.subText }]}>Platform Fee</Text>
@@ -343,10 +344,10 @@ export default function CheckoutScreen({ navigation }: Props) {
                                 <Text style={[styles.summaryValue, { color: '#4CAF50' }]}>-₹{discountAmount.toLocaleString()}</Text>
                             </View>
                         )}
-                        
+
                         <View style={{ marginVertical: 10 }}>
                             {!appliedCoupon ? (
-                                <TouchableOpacity 
+                                <TouchableOpacity
                                     style={[styles.couponActionRow, { backgroundColor: T.inputBg }]}
                                     onPress={() => setIsCouponSheetVisible(true)}
                                 >
@@ -374,7 +375,7 @@ export default function CheckoutScreen({ navigation }: Props) {
                                 </View>
                             )}
                         </View>
-                        
+
                         {deliveryType === 'GARAGE_FITTING' && (
                             <View style={[styles.infoBox, { backgroundColor: isDark ? '#1A0808' : '#FFF0F0' }]}>
                                 <Ionicons name="information-circle" size={16} color="#DF2324" />
@@ -388,7 +389,7 @@ export default function CheckoutScreen({ navigation }: Props) {
                         </View>
                     </View>
 
-                    {/* Garage Selection (Only if fitting) */}
+                    {/* GARAGE FITTING DISABLED: Garage selection card hidden until tie-up garages are active. Uncomment to re-enable.
                     {deliveryType === 'GARAGE_FITTING' && (
                         <View style={[styles.card, { backgroundColor: T.card, borderColor: T.cardBorder }]}>
                             <View style={styles.cardHeader}>
@@ -417,6 +418,7 @@ export default function CheckoutScreen({ navigation }: Props) {
                             )}
                         </View>
                     )}
+                    */}
 
                     {/* Shipping Address Form */}
                     <View style={[styles.card, { backgroundColor: T.card, borderColor: T.cardBorder }]}>
@@ -429,7 +431,7 @@ export default function CheckoutScreen({ navigation }: Props) {
 
                         <View style={styles.quickFillRow}>
                             {savedAddresses.map(addr => (
-                                <TouchableOpacity 
+                                <TouchableOpacity
                                     key={addr.id}
                                     style={[styles.chip, { backgroundColor: T.inputBg, borderColor: T.inputBorder }]}
                                     onPress={() => {
@@ -439,16 +441,16 @@ export default function CheckoutScreen({ navigation }: Props) {
                                         setPincode(addr.pincode || '');
                                     }}
                                 >
-                                    <Ionicons 
-                                        name={addr.tag === 'HOME' ? 'home-outline' : addr.tag === 'OFFICE' ? 'business-outline' : 'location-outline'} 
-                                        size={14} 
-                                        color={T.subText} 
+                                    <Ionicons
+                                        name={addr.tag === 'HOME' ? 'home-outline' : addr.tag === 'OFFICE' ? 'business-outline' : 'location-outline'}
+                                        size={14}
+                                        color={T.subText}
                                     />
                                     <Text style={[styles.chipText, { color: T.text }]}>{addr.tag}</Text>
                                 </TouchableOpacity>
                             ))}
 
-                            <TouchableOpacity 
+                            <TouchableOpacity
                                 style={[styles.chip, { backgroundColor: T.inputBg, borderColor: T.inputBorder }]}
                                 onPress={detectLocation}
                                 disabled={detectionLoading}
@@ -457,7 +459,7 @@ export default function CheckoutScreen({ navigation }: Props) {
                                 <Text style={[styles.chipText, { color: T.text }]}>{detectionLoading ? 'Detecting...' : 'Detect'}</Text>
                             </TouchableOpacity>
 
-                            <TouchableOpacity 
+                            <TouchableOpacity
                                 style={[styles.chip, { backgroundColor: T.inputBg, borderColor: T.inputBorder }]}
                                 onPress={() => {
                                     setFlatNo('');
@@ -529,7 +531,7 @@ export default function CheckoutScreen({ navigation }: Props) {
                                 </TouchableOpacity>
                             </View>
                         </View>
-                        
+
                         <View style={styles.inputGroup}>
                             <Text style={[styles.label, { color: T.subText }]}>City</Text>
                             <TextInput
@@ -552,7 +554,7 @@ export default function CheckoutScreen({ navigation }: Props) {
                                     onChangeText={setState}
                                 />
                             </View>
-                            
+
                             <View style={[styles.inputGroup, { flex: 1 }]}>
                                 <Text style={[styles.label, { color: T.subText }]}>Pincode</Text>
                                 <TextInput
@@ -570,7 +572,7 @@ export default function CheckoutScreen({ navigation }: Props) {
                 </ScrollView>
             </KeyboardAvoidingView>
 
-            <CouponBottomSheet 
+            <CouponBottomSheet
                 visible={isCouponSheetVisible}
                 onClose={() => setIsCouponSheetVisible(false)}
                 onApply={(coupon) => setAppliedCoupon(coupon)}
@@ -616,7 +618,7 @@ const styles = StyleSheet.create({
     backBtn: { width: 38, height: 38, borderRadius: 19, justifyContent: 'center', alignItems: 'center' },
     headerTitle: { fontSize: 18, fontWeight: '800' },
     scrollContent: { padding: 16, gap: 16, paddingBottom: 40 },
-    
+
     card: {
         borderRadius: 12,
         padding: 16,
@@ -637,7 +639,7 @@ const styles = StyleSheet.create({
         fontSize: 16,
         fontWeight: '800',
     },
-    
+
     // Summary Styles
     summaryRow: { flexDirection: 'row', justifyContent: 'space-between', marginBottom: 10 },
     summaryLabel: { fontSize: 14, fontWeight: '500' },
@@ -727,7 +729,7 @@ const styles = StyleSheet.create({
         color: '#DF2324',
         flex: 1,
     },
-    
+
     // Garage Picker Styles
     garageSelectItem: {
         flexDirection: 'row',

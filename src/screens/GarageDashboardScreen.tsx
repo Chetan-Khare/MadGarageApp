@@ -1,5 +1,5 @@
 import React, { useEffect, useState, useCallback } from 'react';
-import { View, Text, StyleSheet, TouchableOpacity, ScrollView, Dimensions, ActivityIndicator, TextInput, Alert, StatusBar, Image, FlatList, Platform } from 'react-native';
+import { View, Text, StyleSheet, TouchableOpacity, ScrollView, Dimensions, ActivityIndicator, TextInput, Alert, StatusBar, Image, FlatList, Platform, TouchableWithoutFeedback } from 'react-native';
 import { useSafeAreaInsets, SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
 import { LinearGradient } from 'expo-linear-gradient';
@@ -847,48 +847,53 @@ export default function GarageDashboardScreen({ navigation }: Props) {
             </View>
 
             {showProfileMenu && (
-                <View style={[styles.profileMenu, { backgroundColor: T.statBg, borderColor: T.statBorder, top: 60, right: 16 }]}>
-                    <TouchableOpacity
-                        style={styles.profileMenuItem}
-                        onPress={() => { setShowProfileMenu(false); navigation.navigate('GarageProfile' as any); }}
-                    >
-                        <Ionicons name="person-circle-outline" size={18} color={T.text} />
-                        <Text style={[styles.profileMenuText, { color: T.text }]}>Garage Profile</Text>
-                    </TouchableOpacity>
-                    <View style={styles.profileMenuDivider} />
+                <>
+                    <TouchableWithoutFeedback onPress={() => setShowProfileMenu(false)}>
+                        <View style={styles.backdrop} />
+                    </TouchableWithoutFeedback>
+                    <View style={[styles.profileMenu, { backgroundColor: T.statBg, borderColor: T.statBorder, top: 60, right: 16 }]}>
+                        <TouchableOpacity
+                            style={styles.profileMenuItem}
+                            onPress={() => { setShowProfileMenu(false); navigation.navigate('GarageProfile' as any); }}
+                        >
+                            <Ionicons name="person-circle-outline" size={18} color={T.text} />
+                            <Text style={[styles.profileMenuText, { color: T.text }]}>Garage Profile</Text>
+                        </TouchableOpacity>
+                        <View style={styles.profileMenuDivider} />
 
-                    <TouchableOpacity style={styles.profileMenuItem} onPress={() => { setShowProfileMenu(false); navigation.navigate('Address' as any); }}>
-                        <Ionicons name="map-outline" size={18} color={T.text} />
-                        <Text style={[styles.profileMenuText, { color: T.text }]}>Manage Addresses</Text>
-                    </TouchableOpacity>
-                    <View style={styles.profileMenuDivider} />
+                        <TouchableOpacity style={styles.profileMenuItem} onPress={() => { setShowProfileMenu(false); navigation.navigate('Address' as any); }}>
+                            <Ionicons name="map-outline" size={18} color={T.text} />
+                            <Text style={[styles.profileMenuText, { color: T.text }]}>Manage Addresses</Text>
+                        </TouchableOpacity>
+                        <View style={styles.profileMenuDivider} />
 
-                    <TouchableOpacity
-                        style={styles.profileMenuItem}
-                        onPress={() => { setShowProfileMenu(false); navigation.navigate('OrderHistory' as any); }}
-                    >
-                        <Ionicons name="receipt-outline" size={18} color={T.text} />
-                        <Text style={[styles.profileMenuText, { color: T.text }]}>Order History</Text>
-                    </TouchableOpacity>
-                    <View style={styles.profileMenuDivider} />
-                    <TouchableOpacity
-                        style={styles.profileMenuItem}
-                        onPress={() => { setShowProfileMenu(false); navigation.navigate('Wishlist' as any); }}
-                    >
-                        <Ionicons name="heart-outline" size={18} color={T.text} />
-                        <Text style={[styles.profileMenuText, { color: T.text }]}>
-                            My Wishlist{wishlistItems.length > 0 ? ` (${wishlistItems.length})` : ''}
-                        </Text>
-                    </TouchableOpacity>
-                    <View style={styles.profileMenuDivider} />
-                    <TouchableOpacity
-                        style={styles.profileMenuItem}
-                        onPress={() => { setShowProfileMenu(false); handleLogout(); }}
-                    >
-                        <Ionicons name="log-out-outline" size={18} color="#DF2324" />
-                        <Text style={[styles.profileMenuText, { color: '#DF2324' }]}>Log Out</Text>
-                    </TouchableOpacity>
-                </View>
+                        <TouchableOpacity
+                            style={styles.profileMenuItem}
+                            onPress={() => { setShowProfileMenu(false); navigation.navigate('OrderHistory' as any); }}
+                        >
+                            <Ionicons name="receipt-outline" size={18} color={T.text} />
+                            <Text style={[styles.profileMenuText, { color: T.text }]}>Order History</Text>
+                        </TouchableOpacity>
+                        <View style={styles.profileMenuDivider} />
+                        <TouchableOpacity
+                            style={styles.profileMenuItem}
+                            onPress={() => { setShowProfileMenu(false); navigation.navigate('Wishlist' as any); }}
+                        >
+                            <Ionicons name="heart-outline" size={18} color={T.text} />
+                            <Text style={[styles.profileMenuText, { color: T.text }]}>
+                                My Wishlist{wishlistItems.length > 0 ? ` (${wishlistItems.length})` : ''}
+                            </Text>
+                        </TouchableOpacity>
+                        <View style={styles.profileMenuDivider} />
+                        <TouchableOpacity
+                            style={styles.profileMenuItem}
+                            onPress={() => { setShowProfileMenu(false); handleLogout(); }}
+                        >
+                            <Ionicons name="log-out-outline" size={18} color="#DF2324" />
+                            <Text style={[styles.profileMenuText, { color: '#DF2324' }]}>Log Out</Text>
+                        </TouchableOpacity>
+                    </View>
+                </>
             )}
 
             {loading ? (
@@ -937,6 +942,15 @@ export default function GarageDashboardScreen({ navigation }: Props) {
 
 const styles = StyleSheet.create({
     container: { flex: 1 },
+    backdrop: {
+        position: 'absolute',
+        top: -500,
+        left: -500,
+        right: -500,
+        bottom: -2000,
+        backgroundColor: 'transparent',
+        zIndex: 999,
+    },
     profileMenu: {
         position: 'absolute',
         top: 50,

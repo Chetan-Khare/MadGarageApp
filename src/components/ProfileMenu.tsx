@@ -1,5 +1,5 @@
 import React from 'react';
-import { View, Text, TouchableOpacity, StyleSheet, Alert } from 'react-native';
+import { View, Text, TouchableOpacity, StyleSheet, Alert, TouchableWithoutFeedback } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 
 interface Props {
@@ -52,27 +52,41 @@ export const ProfileMenu: React.FC<Props> = ({
     const items = allItems.filter(item => (!isGuest || !item.authRequired) && !item.hidden);
 
     return (
-        <View style={[styles.menu, { backgroundColor: T.statBg, borderColor: T.statBorder }]}>
-            {items.map((item, index) => (
-                <React.Fragment key={item.label}>
-                    <TouchableOpacity 
-                        style={styles.item} 
-                        onPress={() => {
-                            onClose();
-                            item.action();
-                        }}
-                    >
-                        <Ionicons name={item.icon as any} size={18} color={item.color || T.text} />
-                        <Text style={[styles.text, { color: item.color || T.text }]}>{item.label}</Text>
-                    </TouchableOpacity>
-                    {index < items.length - 1 && <View style={[styles.divider, { backgroundColor: T.statBorder }]} />}
-                </React.Fragment>
-            ))}
-        </View>
+        <>
+            <TouchableWithoutFeedback onPress={onClose}>
+                <View style={styles.backdrop} />
+            </TouchableWithoutFeedback>
+            <View style={[styles.menu, { backgroundColor: T.statBg, borderColor: T.statBorder }]}>
+                {items.map((item, index) => (
+                    <React.Fragment key={item.label}>
+                        <TouchableOpacity 
+                            style={styles.item} 
+                            onPress={() => {
+                                onClose();
+                                item.action();
+                            }}
+                        >
+                            <Ionicons name={item.icon as any} size={18} color={item.color || T.text} />
+                            <Text style={[styles.text, { color: item.color || T.text }]}>{item.label}</Text>
+                        </TouchableOpacity>
+                        {index < items.length - 1 && <View style={[styles.divider, { backgroundColor: T.statBorder }]} />}
+                    </React.Fragment>
+                ))}
+            </View>
+        </>
     );
 };
 
 const styles = StyleSheet.create({
+    backdrop: {
+        position: 'absolute',
+        top: -500,
+        left: -500,
+        right: -500,
+        bottom: -2000,
+        backgroundColor: 'transparent',
+        zIndex: 999,
+    },
     menu: {
         position: 'absolute',
         top: 60,

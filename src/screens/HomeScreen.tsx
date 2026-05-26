@@ -15,7 +15,8 @@ import { useCartStore } from '../store/cartStore';
 import { useAuthStore } from '../store/authStore';
 import { useThemeStore, DARK_THEME, LIGHT_THEME } from '../store/themeStore';
 import { useWishlistStore } from '../store/wishlistStore';
-import { GarageSection } from '../components/GarageSection';
+// GARAGE FITTING DISABLED: No tie-up garages available yet.
+// import { GarageSection } from '../components/GarageSection';
 import { Toast } from '../components/Toast';
 
 // Modular Components
@@ -179,7 +180,7 @@ export default function HomeScreen({ navigation }: Props) {
                 )}
             </View>
 
-            <GarageSection />
+            {/* GARAGE FITTING DISABLED: <GarageSection /> */}
 
             <View style={{ paddingHorizontal: 20 }}>
                 <VehicleFilterBar

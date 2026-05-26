@@ -1,5 +1,5 @@
-import React, { useState, useEffect } from 'react';
-import { View, Text, StyleSheet, FlatList, TouchableOpacity, StatusBar, ActivityIndicator, Alert, Modal, TextInput } from 'react-native';
+import React, { useState, useEffect, useCallback } from 'react';
+import { View, Text, StyleSheet, FlatList, TouchableOpacity, StatusBar, ActivityIndicator, Alert, Modal, TextInput, RefreshControl } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
 import { NativeStackNavigationProp } from '@react-navigation/native-stack';
@@ -7,7 +7,7 @@ import { RootStackParamList } from '../types';
 import { useThemeStore, DARK_THEME, LIGHT_THEME } from '../store/themeStore';
 import apiClient from '../services/apiClient';
 
-import { RouteProp } from '@react-navigation/native';
+import { RouteProp, useFocusEffect } from '@react-navigation/native';
 
 type Props = {
     navigation: NativeStackNavigationProp<RootStackParamList, 'AdminOrderManagement'>;
@@ -26,8 +26,18 @@ export default function AdminOrderManagementScreen({ navigation, route }: Props)
     const T = isDark ? DARK_THEME : LIGHT_THEME;
     const insets = useSafeAreaInsets();
 
-    useEffect(() => {
-        fetchOrders();
+    const [refreshing, setRefreshing] = useState(false);
+
+    useFocusEffect(
+        useCallback(() => {
+            fetchOrders();
+        }, [])
+    );
+
+    const onRefresh = useCallback(async () => {
+        setRefreshing(true);
+        await fetchOrders();
+        setRefreshing(false);
     }, []);
 
     const fetchOrders = async () => {
@@ -307,6 +317,14 @@ export default function AdminOrderManagementScreen({ navigation, route }: Props)
                     keyExtractor={(item: any) => item.id.toString()}
                     renderItem={renderOrderItem}
                     contentContainerStyle={styles.list}
+                    refreshControl={
+                        <RefreshControl
+                            refreshing={refreshing}
+                            onRefresh={onRefresh}
+                            colors={['#DF2324']}
+                            tintColor="#DF2324"
+                        />
+                    }
                     ListEmptyComponent={
                         <View style={styles.emptyContainer}>
                             <Ionicons name="receipt-outline" size={64} color={T.subText} />

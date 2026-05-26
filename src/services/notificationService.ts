@@ -18,6 +18,11 @@ export async function registerForPushNotifications(): Promise<void> {
         return;
     }
 
+    // Skip initializing expo-notifications in Expo Go client (SDK 53 compatibility)
+    if (Constants.appOwnership === 'expo') {
+        return;
+    }
+
     try {
         // Dynamic import — the module is only loaded here, not at file parse time.
         // This prevents the Expo Go SDK 53 error from firing on app startup.

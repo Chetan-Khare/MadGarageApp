@@ -1,7 +1,7 @@
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useState, useCallback } from 'react';
 import {
     View, Text, StyleSheet, ScrollView, TouchableOpacity,
-    ActivityIndicator, StatusBar, Alert, Platform, TextInput, Modal
+    ActivityIndicator, StatusBar, Alert, Platform, TextInput, Modal, RefreshControl
 } from 'react-native';
 import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
@@ -97,6 +97,13 @@ export default function OrderDetailsScreen({ route, navigation }: Props) {
     const insets = useSafeAreaInsets();
 
     const [updating, setUpdating] = useState(false);
+    const [refreshing, setRefreshing] = useState(false);
+
+    const onRefresh = useCallback(async () => {
+        setRefreshing(true);
+        await fetchOrderDetails();
+        setRefreshing(false);
+    }, []);
 
     useEffect(() => {
         fetchOrderDetails();
@@ -299,7 +306,17 @@ export default function OrderDetailsScreen({ route, navigation }: Props) {
                 <View style={{ width: 40 }} />
             </View>
 
-            <ScrollView contentContainerStyle={styles.scrollContent}>
+            <ScrollView 
+                contentContainerStyle={styles.scrollContent}
+                refreshControl={
+                    <RefreshControl
+                        refreshing={refreshing}
+                        onRefresh={onRefresh}
+                        colors={['#DF2324']}
+                        tintColor="#DF2324"
+                    />
+                }
+            >
                 {/* Status Card */}
                 <View style={[styles.statusCard, { backgroundColor: T.card, borderColor: T.cardBorder }]}>
                     <View style={styles.receiptHeader}>
@@ -572,13 +589,13 @@ export default function OrderDetailsScreen({ route, navigation }: Props) {
                 {/* Return Request Button - Show if Delivered OR if Requested but record is missing (Repair Protocol) */}
                 {(order.status === 'DELIVERED' || (order.status === 'RETURN_REQUESTED' && !activeReturn)) && order.isOwner && (
                     <TouchableOpacity 
-                        style={[styles.returnBtn, { borderColor: order.items?.some(i => i.isReturnable !== false) ? '#DF2324' : T.cardBorder, opacity: order.items?.some(i => i.isReturnable !== false) ? 1 : 0.5 }]}
+                        style={[styles.returnBtn, { borderColor: order.items?.some(i => i.isReturnable === true) ? '#DF2324' : T.cardBorder, opacity: order.items?.some(i => i.isReturnable === true) ? 1 : 0.5 }]}
                         onPress={() => setIsReturnModalOpen(true)}
-                        disabled={!order.items?.some(i => i.isReturnable !== false)}
+                        disabled={!order.items?.some(i => i.isReturnable === true)}
                     >
-                        <Ionicons name="reload-outline" size={18} color={order.items?.some(i => i.isReturnable !== false) ? '#DF2324' : T.subText} />
-                        <Text style={[styles.returnBtnText, { color: order.items?.some(i => i.isReturnable !== false) ? '#DF2324' : T.subText }]}>
-                            {order.items?.some(i => i.isReturnable !== false) ? 'INITIATE RETURN / REPLACEMENT' : 'RETURNS UNAVAILABLE (FINAL SALE)'}
+                        <Ionicons name="reload-outline" size={18} color={order.items?.some(i => i.isReturnable === true) ? '#DF2324' : T.subText} />
+                        <Text style={[styles.returnBtnText, { color: order.items?.some(i => i.isReturnable === true) ? '#DF2324' : T.subText }]}>
+                            {order.items?.some(i => i.isReturnable === true) ? 'INITIATE RETURN / REPLACEMENT' : 'RETURNS UNAVAILABLE (FINAL SALE)'}
                         </Text>
                     </TouchableOpacity>
                 )}

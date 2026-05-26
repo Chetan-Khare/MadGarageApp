@@ -1,7 +1,7 @@
-import React, { useEffect, useState } from 'react';
+import React, { useState, useCallback } from 'react';
 import {
     View, Text, StyleSheet, FlatList, ActivityIndicator,
-    TouchableOpacity, StatusBar
+    TouchableOpacity, StatusBar, RefreshControl
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
@@ -10,6 +10,7 @@ import { RootStackParamList } from '../types';
 import { useThemeStore, DARK_THEME, LIGHT_THEME } from '../store/themeStore';
 import { useAuthStore } from '../store/authStore';
 import apiClient from '../services/apiClient';
+import { useFocusEffect } from '@react-navigation/native';
 
 type Props = {
     navigation: NativeStackNavigationProp<RootStackParamList, 'OrderHistory'>;
@@ -30,8 +31,18 @@ export default function OrderHistoryScreen({ navigation }: Props) {
     const T = isDark ? DARK_THEME : LIGHT_THEME;
     const insets = useSafeAreaInsets();
 
-    useEffect(() => {
-        fetchOrders();
+    const [refreshing, setRefreshing] = useState(false);
+
+    useFocusEffect(
+        useCallback(() => {
+            fetchOrders();
+        }, [])
+    );
+
+    const onRefresh = useCallback(async () => {
+        setRefreshing(true);
+        await fetchOrders();
+        setRefreshing(false);
     }, []);
 
     const fetchOrders = async () => {
@@ -127,6 +138,14 @@ export default function OrderHistoryScreen({ navigation }: Props) {
                 keyExtractor={(item) => item.id.toString()}
                 renderItem={renderOrderItem}
                 contentContainerStyle={styles.listContent}
+                refreshControl={
+                    <RefreshControl
+                        refreshing={refreshing}
+                        onRefresh={onRefresh}
+                        colors={['#DF2324']}
+                        tintColor="#DF2324"
+                    />
+                }
                 ListEmptyComponent={
                     <View style={styles.emptyBox}>
                         <Ionicons name="receipt-outline" size={64} color={T.statBorder} />
