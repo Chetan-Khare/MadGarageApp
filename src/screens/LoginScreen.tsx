@@ -234,7 +234,9 @@ export default function LoginScreen({ navigation }: Props) {
         setErrorText('');
         try {
             const res = await apiClient.post('/auth/send-otp', { phone });
-            Alert.alert("Development SMS", typeof res.data === 'string' ? res.data : JSON.stringify(res.data));
+            if (__DEV__) {
+                Alert.alert("Development SMS", typeof res.data === 'string' ? res.data : JSON.stringify(res.data));
+            }
             setShowOtpInput(true);
             setResendTimer(60);
         } catch (error: any) {
