@@ -2,9 +2,9 @@ import React, { useState, useEffect } from 'react';
 import {
     View, Text, StyleSheet, TextInput, TouchableOpacity,
     ActivityIndicator, Alert, StatusBar, ScrollView,
-    KeyboardAvoidingView, Platform
+    KeyboardAvoidingView, Platform, NativeModules
 } from 'react-native';
-import { SafeAreaView } from 'react-native-safe-area-context';
+import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
 import { LinearGradient } from 'expo-linear-gradient';
 import { Ionicons } from '@expo/vector-icons';
 import { NativeStackNavigationProp } from '@react-navigation/native-stack';
@@ -36,6 +36,8 @@ export default function CheckoutScreen({ navigation }: Props) {
     const { isDark } = useThemeStore();
     const { city: detectedCity, address: detectedAddr, nearbyGarages, detectLocation, isLoading: detectionLoading } = useLocationStore();
     const T = isDark ? DARK_THEME : LIGHT_THEME;
+    const insets = useSafeAreaInsets();
+    const footerHeight = 80 + Math.max(insets.bottom, 16);
 
     const [loading, setLoading] = useState(false);
     const [savedAddresses, setSavedAddresses] = useState<any[]>([]);
@@ -167,6 +169,7 @@ export default function CheckoutScreen({ navigation }: Props) {
             landmark && `Near ${landmark}`
         ].filter(Boolean).join(', ');
 
+        let dbOrderId: number | null = null;
         try {
             // 1. Create Order in Database (Status: PENDING_PAYMENT)
             const checkoutResponse = await apiClient.post('/orders/checkout', {
@@ -180,7 +183,7 @@ export default function CheckoutScreen({ navigation }: Props) {
                 fittingGarageId: selectedGarageId
             });
 
-            const dbOrderId = checkoutResponse.data.id;
+            dbOrderId = checkoutResponse.data.id;
 
             // 2. Create Razorpay Order on Backend (Now uses orderId for server-side validation)
             const rzpOrderResponse = await apiClient.post('/payments/create-order', {
@@ -197,7 +200,51 @@ export default function CheckoutScreen({ navigation }: Props) {
                 RazorpayCheckout = require('react-native-razorpay').default;
             } catch (e) {
                 Alert.alert('Payment Error', 'Razorpay module not found.');
+                if (dbOrderId) {
+                    await apiClient.put(`/orders/${dbOrderId}/status?status=CANCELLED`);
+                }
                 setLoading(false);
+                return;
+            }
+
+            if (!NativeModules.RazorpayCheckout) {
+                Alert.alert(
+                    'Expo Go Detected',
+                    'Razorpay native module is not loaded in this environment.\n\nWould you like to simulate a successful payment to test the checkout & order flow?',
+                    [
+                        {
+                            text: 'Simulate Payment',
+                            onPress: async () => {
+                                try {
+                                    const timestamp = Date.now();
+                                    const mockPaymentId = `pay_mock_${timestamp}`;
+                                    const mockSignature = `mock_signature_${timestamp}`;
+                                    
+                                    await finalizeOrder(dbOrderId!, mockPaymentId, mockSignature);
+                                } catch (err) {
+                                    console.error('Failed to finalize mock order:', err);
+                                    Alert.alert('Error', 'Failed to complete checkout simulation.');
+                                    setLoading(false);
+                                }
+                            }
+                        },
+                        {
+                            text: 'Cancel',
+                            onPress: async () => {
+                                if (dbOrderId) {
+                                    try {
+                                        await apiClient.put(`/orders/${dbOrderId}/status?status=CANCELLED`);
+                                    } catch (cancelErr) {
+                                        console.error('Failed to cancel order:', cancelErr);
+                                    }
+                                }
+                                setLoading(false);
+                            },
+                            style: 'cancel'
+                        }
+                    ],
+                    { cancelable: false }
+                );
                 return;
             }
 
@@ -218,15 +265,36 @@ export default function CheckoutScreen({ navigation }: Props) {
 
             RazorpayCheckout.open(options).then(async (data: any) => {
                 // 4. Verify & Finalize
-                await finalizeOrder(dbOrderId, data.razorpay_payment_id, data.razorpay_signature);
-            }).catch((error: any) => {
-                Alert.alert('Payment Failed', `Code: ${error.code} | ${error.description}`);
+                if (dbOrderId) {
+                    await finalizeOrder(dbOrderId, data.razorpay_payment_id, data.razorpay_signature);
+                }
+            }).catch(async (error: any) => {
+                console.error('Razorpay payment failed:', error);
+                
+                const errorCode = error?.code || 'CANCELLED';
+                const errorDesc = error?.description || error?.message || 'Payment was cancelled or could not be completed.';
+                
+                Alert.alert('Payment Failed', `Code: ${errorCode} | ${errorDesc}`);
+                if (dbOrderId) {
+                    try {
+                        await apiClient.put(`/orders/${dbOrderId}/status?status=CANCELLED`);
+                    } catch (cancelErr) {
+                        console.error('Failed to cancel order after payment failure:', cancelErr);
+                    }
+                }
                 setLoading(false);
             });
 
         } catch (error: any) {
             console.error('Payment initiation failed:', error);
             Alert.alert('Error', 'Could not initiate payment. Please try again.');
+            if (dbOrderId) {
+                try {
+                    await apiClient.put(`/orders/${dbOrderId}/status?status=CANCELLED`);
+                } catch (cancelErr) {
+                    console.error('Failed to cancel order after initiation failure:', cancelErr);
+                }
+            }
             setLoading(false);
         }
     };
@@ -239,7 +307,7 @@ export default function CheckoutScreen({ navigation }: Props) {
             clearCart();
             setLoading(false);
 
-            Alert.alert('Order Placed! 🏎️', 'Your payment was successful and your order is confirmed.', [
+            Alert.alert('Order Placed!', 'Your payment was successful and your order is confirmed.', [
                 {
                     text: 'View My Orders',
                     onPress: () => {
@@ -269,9 +337,13 @@ export default function CheckoutScreen({ navigation }: Props) {
 
             <KeyboardAvoidingView
                 style={{ flex: 1 }}
-                behavior={Platform.OS === 'ios' ? 'padding' : undefined}
+                behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
+                keyboardVerticalOffset={Platform.OS === 'ios' ? 0 : 0}
             >
-                <ScrollView contentContainerStyle={styles.scrollContent}>
+                <ScrollView
+                    contentContainerStyle={[styles.scrollContent, { paddingBottom: footerHeight + 16 }]}
+                    keyboardShouldPersistTaps="handled"
+                >
 
                     {/* GARAGE FITTING DISABLED: Delivery option toggle hidden until tie-up garages are active. Uncomment to re-enable.
                     <View style={styles.deliveryToggleRow}>
@@ -570,6 +642,36 @@ export default function CheckoutScreen({ navigation }: Props) {
                     </View>
 
                 </ScrollView>
+
+                {/* Sticky Pay Button - inside KeyboardAvoidingView so it moves with keyboard */}
+                <View style={[{
+                    backgroundColor: T.bg,
+                    borderTopWidth: 1,
+                    borderTopColor: T.headerBorder,
+                    padding: 16,
+                    paddingBottom: Math.max(insets.bottom, 16),
+                }]}>
+                    <TouchableOpacity
+                        style={[styles.payBtn, loading && { opacity: 0.7 }]}
+                        onPress={handlePayment}
+                        disabled={loading}
+                        activeOpacity={0.85}
+                    >
+                        <View style={styles.payBtnContent}>
+                            {loading ? (
+                                <View style={styles.loadingRow}>
+                                    <ActivityIndicator color="#FFF" style={{ marginRight: 10 }} />
+                                    <Text style={styles.payBtnText}>Processing...</Text>
+                                </View>
+                            ) : (
+                                <>
+                                    <Ionicons name="lock-closed-outline" size={20} color="#FFF" />
+                                    <Text style={styles.payBtnText}>{'Pay \u20b9' + total.toLocaleString()}</Text>
+                                </>
+                            )}
+                        </View>
+                    </TouchableOpacity>
+                </View>
             </KeyboardAvoidingView>
 
             <CouponBottomSheet
@@ -578,30 +680,6 @@ export default function CheckoutScreen({ navigation }: Props) {
                 onApply={(coupon) => setAppliedCoupon(coupon)}
                 orderAmount={subtotal}
             />
-
-            {/* Sticky Pay Button */}
-            <View style={[styles.footer, { backgroundColor: T.bg, borderTopColor: T.headerBorder }]}>
-                <TouchableOpacity
-                    style={[styles.payBtn, loading && { opacity: 0.7 }]}
-                    onPress={handlePayment}
-                    disabled={loading}
-                    activeOpacity={0.85}
-                >
-                    <View style={styles.payBtnContent}>
-                        {loading ? (
-                            <View style={styles.loadingRow}>
-                                <ActivityIndicator color="#FFF" style={{ marginRight: 10 }} />
-                                <Text style={styles.payBtnText}>Processing...</Text>
-                            </View>
-                        ) : (
-                            <>
-                                <Ionicons name="lock-closed-outline" size={20} color="#FFF" />
-                                <Text style={styles.payBtnText}>Pay ₹{total.toLocaleString()}</Text>
-                            </>
-                        )}
-                    </View>
-                </TouchableOpacity>
-            </View>
         </SafeAreaView>
     );
 }

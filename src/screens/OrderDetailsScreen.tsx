@@ -447,6 +447,22 @@ export default function OrderDetailsScreen({ route, navigation }: Props) {
                     </View>
                 </View>
 
+                {/* Download PDF Invoice - always available */}
+                <TouchableOpacity 
+                    style={[styles.downloadBtn, { opacity: downloading ? 0.7 : 1 }]}
+                    onPress={handleDownloadInvoice}
+                    disabled={downloading}
+                >
+                    {downloading ? (
+                        <ActivityIndicator color="#FFF" />
+                    ) : (
+                        <>
+                            <Ionicons name="cloud-download-outline" size={20} color="#FFF" style={{ marginRight: 8 }} />
+                            <Text style={styles.downloadBtnText}>Download PDF Invoice</Text>
+                        </>
+                    )}
+                </TouchableOpacity>
+
                 {/* Rating Section - Only visible to the purchaser */}
                 {(order.status === 'PAID' || order.status === 'DELIVERED') && order.isOwner ? (
                     <View style={[styles.summaryBox, { marginTop: 20, backgroundColor: T.card, borderColor: T.cardBorder }]}>
@@ -507,8 +523,8 @@ export default function OrderDetailsScreen({ route, navigation }: Props) {
                                     />
                                 </View>
                                 <TouchableOpacity 
-                                    style={[styles.submitRatingBtn, { opacity: (tempPartRating && tempDeliveryRating) ? 1 : 0.5 }]}
-                                    disabled={!tempPartRating || !tempDeliveryRating || submittingRating}
+                                    style={styles.submitRatingBtn}
+                                    disabled={submittingRating}
                                     onPress={handleSubmitRating}
                                 >
                                     {submittingRating ? (
@@ -599,21 +615,6 @@ export default function OrderDetailsScreen({ route, navigation }: Props) {
                         </Text>
                     </TouchableOpacity>
                 )}
-
-                <TouchableOpacity 
-                    style={[styles.downloadBtn, { opacity: downloading ? 0.7 : 1 }]}
-                    onPress={handleDownloadInvoice}
-                    disabled={downloading}
-                >
-                    {downloading ? (
-                        <ActivityIndicator color="#FFF" />
-                    ) : (
-                        <>
-                            <Ionicons name="cloud-download-outline" size={20} color="#FFF" style={{ marginRight: 8 }} />
-                            <Text style={styles.downloadBtnText}>Download PDF Invoice</Text>
-                        </>
-                    )}
-                </TouchableOpacity>
 
                 {/* Seller/Garage/Admin/Worker Action Center */}
                 {(role === 'ROLE_SELLER' || role === 'ROLE_ADMIN' || role === 'ROLE_GARAGE' || role === 'ROLE_WORKER') && (
@@ -887,7 +888,7 @@ const styles = StyleSheet.create({
         alignItems: 'center',
     },
     headerTitle: { fontSize: 18, fontWeight: '800' },
-    scrollContent: { padding: 16 },
+    scrollContent: { padding: 16, paddingBottom: 60 },
     statusCard: {
         borderRadius: 12,
         padding: 16,
@@ -995,8 +996,9 @@ const styles = StyleSheet.create({
         borderWidth: 1,
         padding: 12,
         minHeight: 80,
+        overflow: 'hidden',
     },
-    commentInput: { fontSize: 13, fontWeight: '600', height: '100%', textAlignVertical: 'top' },
+    commentInput: { fontSize: 13, fontWeight: '600', minHeight: 60, textAlignVertical: 'top' },
     submitRatingBtn: {
         backgroundColor: '#DF2324',
         marginTop: 16,

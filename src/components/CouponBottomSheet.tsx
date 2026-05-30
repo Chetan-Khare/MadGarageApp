@@ -30,6 +30,7 @@ const CouponBottomSheet: React.FC<CouponBottomSheetProps> = ({ visible, onClose,
     const [manualCode, setManualCode] = useState('');
     const [loading, setLoading] = useState(false);
     const [error, setError] = useState<string | null>(null);
+    const [fetchError, setFetchError] = useState<string | null>(null);
     const [slideAnim] = useState(new Animated.Value(SCREEN_HEIGHT));
 
     useEffect(() => {
@@ -53,9 +54,12 @@ const CouponBottomSheet: React.FC<CouponBottomSheetProps> = ({ visible, onClose,
     const fetchAvailableCoupons = async () => {
         try {
             setLoading(true);
+            setFetchError(null);
             const response = await apiClient.get('/coupons/available');
             setCoupons(response.data);
-        } catch (err) {
+        } catch (err: any) {
+            const msg = err.response?.data?.message || err.message || 'Could not load coupons. Please try again.';
+            setFetchError(msg);
             console.error('Failed to fetch coupons:', err);
         } finally {
             setLoading(false);
@@ -147,6 +151,17 @@ const CouponBottomSheet: React.FC<CouponBottomSheetProps> = ({ visible, onClose,
                         
                         {loading && coupons.length === 0 ? (
                             <ActivityIndicator size="large" color="#DF2324" style={{ marginTop: 40 }} />
+                        ) : fetchError ? (
+                            <View style={styles.emptyState}>
+                                <Ionicons name="alert-circle-outline" size={48} color="#DF2324" />
+                                <Text style={styles.emptyText}>{fetchError}</Text>
+                                <TouchableOpacity
+                                    onPress={fetchAvailableCoupons}
+                                    style={{ marginTop: 16, backgroundColor: '#DF2324', paddingHorizontal: 24, paddingVertical: 10, borderRadius: 20 }}
+                                >
+                                    <Text style={{ color: '#FFF', fontWeight: '900', fontSize: 11, textTransform: 'uppercase' }}>Try Again</Text>
+                                </TouchableOpacity>
+                            </View>
                         ) : (
                             <FlatList
                                 data={coupons}
@@ -175,8 +190,8 @@ const CouponBottomSheet: React.FC<CouponBottomSheetProps> = ({ visible, onClose,
                                 )}
                                 ListEmptyComponent={
                                     <View style={styles.emptyState}>
-                                        <Ionicons name="pricetag" size={48} color="#22" />
-                                        <Text style={styles.emptyText}>No active coupons for this order</Text>
+                                        <Ionicons name="pricetag" size={48} color="#444" />
+                                        <Text style={styles.emptyText}>No active coupons available</Text>
                                     </View>
                                 }
                             />
@@ -207,7 +222,7 @@ const styles = StyleSheet.create({
         borderTopLeftRadius: 40,
         borderTopRightRadius: 40,
         paddingTop: 15,
-        maxHeight: SCREEN_HEIGHT * 0.85,
+        height: SCREEN_HEIGHT * 0.75,
         borderTopWidth: 1,
         borderLeftWidth: 1,
         borderRightWidth: 1,

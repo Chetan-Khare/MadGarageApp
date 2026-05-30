@@ -3,7 +3,7 @@ import {
     View, Text, StyleSheet, FlatList, TouchableOpacity,
     Image, ActivityIndicator, Alert, StatusBar, Platform
 } from 'react-native';
-import { SafeAreaView } from 'react-native-safe-area-context';
+import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
 
 import { NativeStackNavigationProp } from '@react-navigation/native-stack';
@@ -23,6 +23,7 @@ export default function CartScreen({ navigation }: Props) {
     const { isDark } = useThemeStore();
     const { role } = useAuthStore();
     const T = isDark ? DARK_THEME : LIGHT_THEME;
+    const insets = useSafeAreaInsets();
 
     const [loading, setLoading] = useState(false);
 
@@ -137,7 +138,7 @@ export default function CartScreen({ navigation }: Props) {
             />
 
             {items.length > 0 && (
-                <View style={[styles.footer, { backgroundColor: T.headerBg, borderTopColor: T.headerBorder, paddingBottom: 16 }]}>
+                <View style={[styles.footer, { backgroundColor: T.headerBg, borderTopColor: T.headerBorder, paddingBottom: Math.max(insets.bottom, 16) }]}>
                     {/* Glassmorphism Summary */}
                     <View style={[styles.summaryCard, { backgroundColor: isDark ? 'rgba(30,30,30,0.6)' : '#FFF', borderColor: T.cardBorder }]}>
                         <View style={styles.summaryRow}>
