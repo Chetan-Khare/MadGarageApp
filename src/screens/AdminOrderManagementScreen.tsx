@@ -42,8 +42,29 @@ export default function AdminOrderManagementScreen({ navigation, route }: Props)
 
     const fetchOrders = async () => {
         try {
-            const response = await apiClient.get('/admin/orders');
-            setOrders(response.data);
+            const [ordersRes, returnsRes] = await Promise.all([
+                apiClient.get('/admin/orders'),
+                apiClient.get('/returns/admin').catch(() => ({ data: [] }))
+            ]);
+            
+            const ordersData = ordersRes.data;
+            const returnsData = returnsRes.data;
+
+            const enrichedOrders = ordersData.map((o: any) => {
+                if (o.activeReturnId) {
+                    const matchedReturn = returnsData.find((r: any) => r.id === o.activeReturnId);
+                    if (matchedReturn) {
+                        return {
+                            ...o,
+                            returnItems: matchedReturn.items,
+                            returnRefundAmount: matchedReturn.refundAmount
+                        };
+                    }
+                }
+                return o;
+            });
+
+            setOrders(enrichedOrders);
         } catch (error) {
             console.error('Failed to fetch orders:', error);
         } finally {
@@ -92,7 +113,7 @@ export default function AdminOrderManagementScreen({ navigation, route }: Props)
         }
     }, [route.params?.initialTab]);
 
-    const handleReturnAction = async (orderId: number, returnId: number, action: 'approve' | 'reject' | 'picked-up' | 'finalize') => {
+    const handleReturnAction = async (orderId: number, returnId: number, action: 'approve' | 'reject' | 'picked-up' | 'finalize' | 'retry-refund') => {
         let note = "Request does not meet return policy criteria.";
         if (action === 'reject') {
             // ... existing reject logic ...
@@ -117,9 +138,9 @@ export default function AdminOrderManagementScreen({ navigation, route }: Props)
             return;
         }
 
-        const actionText = action === 'approve' ? 'Approve Return' : (action === 'picked-up' ? 'Mark Picked Up' : 'Finalize Refund');
-        const actionLabel = action === 'approve' ? 'Authorize this return protocol?' : (action === 'picked-up' ? 'Confirm item has been collected?' : 'Confirm refund has been processed?');
-        const endpoint = action === 'picked-up' ? 'picked-up' : (action === 'finalize' ? 'finalize' : 'approve');
+        const actionText = action === 'approve' ? 'Approve Return' : (action === 'picked-up' ? 'Mark Picked Up' : (action === 'retry-refund' ? 'Retry Refund' : 'Finalize Refund'));
+        const actionLabel = action === 'approve' ? 'Authorize this return protocol?' : (action === 'picked-up' ? 'Confirm item has been collected?' : (action === 'retry-refund' ? 'Retry failed refund transmission?' : 'Confirm refund has been processed?'));
+        const endpoint = action === 'picked-up' ? 'picked-up' : (action === 'finalize' ? 'finalize' : (action === 'retry-refund' ? 'retry-refund' : 'approve'));
 
         Alert.alert(actionText, actionLabel, [
             { text: "Cancel", style: "cancel" },
@@ -128,8 +149,24 @@ export default function AdminOrderManagementScreen({ navigation, route }: Props)
                 onPress: async () => {
                     try {
                         setLoading(true);
-                        await apiClient.put(`/returns/admin/${returnId}/${endpoint}`);
-                        Alert.alert("Success", `${actionText} completed.`);
+                        if (action === 'finalize') {
+                            const res = await apiClient.put(`/returns/admin/${returnId}/finalize`);
+                            if (res.data && res.data.status === 'REFUND_FAILED') {
+                                Alert.alert('Razorpay Refund Failed', 'Check admin notes and try again using Retry Refund.');
+                            } else {
+                                Alert.alert('Success', 'Refund Finalized successfully.');
+                            }
+                        } else if (action === 'retry-refund') {
+                            const res = await apiClient.put(`/returns/admin/${returnId}/retry-refund`);
+                            if (res.data && res.data.status === 'REFUND_FAILED') {
+                                Alert.alert('Razorpay Refund Failed', 'Retry failed. Please check gateway configuration.');
+                            } else {
+                                Alert.alert('Success', 'Refund Retry successful.');
+                            }
+                        } else {
+                            await apiClient.put(`/returns/admin/${returnId}/${endpoint}`);
+                            Alert.alert("Success", `${actionText} completed.`);
+                        }
                         fetchOrders();
                     } catch (error: any) {
                         Alert.alert("Error", error.response?.data || "Action failed.");
@@ -188,9 +225,26 @@ export default function AdminOrderManagementScreen({ navigation, route }: Props)
 
             {activeTab === 'RETURNS' && (item.returnReason || item.returnDescription) && (
                 <View style={styles.returnInfoBox}>
-                    <Text style={styles.returnInfoLabel}>RETURN REASON: {item.returnReason?.replace(/_/g, ' ')}</Text>
+                    <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'flex-start' }}>
+                        <Text style={styles.returnInfoLabel}>RETURN REASON: {item.returnReason?.replace(/_/g, ' ')}</Text>
+                        {item.returnRefundAmount != null && (
+                            <Text style={[styles.returnInfoLabel, { color: '#4CAF50' }]}>REFUND: ₹{item.returnRefundAmount.toLocaleString()}</Text>
+                        )}
+                    </View>
                     {item.returnDescription && (
                         <Text style={styles.returnInfoText} numberOfLines={2}>{item.returnDescription}</Text>
+                    )}
+                    
+                    {item.returnItems && item.returnItems.length > 0 && (
+                        <View style={{ marginTop: 10, paddingTop: 10, borderTopWidth: 1, borderTopColor: 'rgba(233, 30, 99, 0.1)' }}>
+                            <Text style={[styles.returnInfoLabel, { fontSize: 8 }]}>ITEMIZED BREAKDOWN</Text>
+                            {item.returnItems.map((retItem: any, idx: number) => (
+                                <View key={idx} style={{ flexDirection: 'row', justifyContent: 'space-between', marginTop: 4 }}>
+                                    <Text style={{ fontSize: 10, color: T.text, fontWeight: '700' }}>{retItem.partName}</Text>
+                                    <Text style={{ fontSize: 10, color: '#E91E63', fontWeight: '900' }}>x{retItem.quantity}</Text>
+                                </View>
+                            ))}
+                        </View>
                     )}
                 </View>
             )}
@@ -233,6 +287,15 @@ export default function AdminOrderManagementScreen({ navigation, route }: Props)
                             <Text style={styles.controlBtnText}>FINALIZE REFUND</Text>
                         </TouchableOpacity>
                     )}
+                    {item.returnStatus === 'REFUND_FAILED' && (
+                        <TouchableOpacity 
+                            style={[styles.controlBtn, { backgroundColor: '#F44336', flex: 1 }]}
+                            onPress={() => handleReturnAction(item.id, item.activeReturnId, 'retry-refund')}
+                        >
+                            <Ionicons name="refresh-outline" size={16} color="#FFF" />
+                            <Text style={styles.controlBtnText}>RETRY REFUND</Text>
+                        </TouchableOpacity>
+                    )}
                     {/* View Details button is always useful */}
                     <TouchableOpacity 
                         style={[styles.controlBtn, { backgroundColor: T.inputBg, borderColor: T.inputBorder, borderWidth: 1 }]}
@@ -268,9 +331,9 @@ export default function AdminOrderManagementScreen({ navigation, route }: Props)
                     onPress={() => setActiveTab('RETURNS')}
                 >
                     <Text style={[styles.tabText, { color: activeTab === 'RETURNS' ? '#FFF' : T.subText }]}>RETURNS</Text>
-                    {orders.filter((o: any) => o.activeReturnId !== null && o.returnStatus !== 'REFUNDED' && o.returnStatus !== 'REJECTED' && o.status !== 'REFUNDED').length > 0 && (
+                    {orders.filter((o: any) => o.activeReturnId !== null).length > 0 && (
                         <View style={styles.notifBadge}>
-                            <Text style={styles.notifText}>{orders.filter((o: any) => o.activeReturnId !== null && o.returnStatus !== 'REFUNDED' && o.returnStatus !== 'REJECTED' && o.status !== 'REFUNDED').length}</Text>
+                            <Text style={styles.notifText}>{orders.filter((o: any) => o.activeReturnId !== null).length}</Text>
                         </View>
                     )}
                 </TouchableOpacity>
@@ -302,7 +365,6 @@ export default function AdminOrderManagementScreen({ navigation, route }: Props)
                     data={orders.filter((o: any) => {
                         // First apply tab filter
                         if (activeTab === 'RETURNS' && o.activeReturnId === null) return false;
-                        if (activeTab === 'RETURNS' && (o.returnStatus === 'REFUNDED' || o.returnStatus === 'REJECTED')) return false;
                         
                         if (!searchTerm.trim()) return true;
                         const q = searchTerm.toLowerCase();

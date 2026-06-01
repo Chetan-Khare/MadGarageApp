@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import {
     View, Text, StyleSheet, FlatList, TouchableOpacity,
     Image, ActivityIndicator, Alert, StatusBar, Platform
@@ -9,7 +9,7 @@ import { Ionicons } from '@expo/vector-icons';
 import { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import { RootStackParamList } from '../types';
 import { useCartStore } from '../store/cartStore';
-import { BASE_SERVER_URL } from '../services/apiClient';
+import apiClient, { BASE_SERVER_URL } from '../services/apiClient';
 import { useThemeStore, DARK_THEME, LIGHT_THEME } from '../store/themeStore';
 import { useConfigStore } from '../store/configStore';
 import { useAuthStore } from '../store/authStore';
@@ -26,6 +26,38 @@ export default function CartScreen({ navigation }: Props) {
     const insets = useSafeAreaInsets();
 
     const [loading, setLoading] = useState(false);
+
+    useEffect(() => {
+        const validateCart = async () => {
+            try {
+                const productIds = items.map(i => i.id).join(',');
+                const res = await apiClient.get(`/products/bulk?ids=${productIds}`);
+                const latestProducts = res.data;
+                
+                let removedParts: string[] = [];
+                items.forEach(item => {
+                    const latest = latestProducts.find((p: any) => String(p.id) === String(item.id));
+                    const isProductActive = latest.active === true || latest.isActive === true;
+                    if (!latest || latest.stockQuantity === 0 || !isProductActive) {
+                        removeItem(item.id);
+                        removedParts.push(item.partName);
+                    }
+                });
+                
+                if (removedParts.length > 0) {
+                    Alert.alert(
+                        'Removed from Cart',
+                        `The following items are now out of stock and have been removed:\n${removedParts.map(name => `"${name}"`).join('\n')}`
+                    );
+                }
+            } catch (e) {
+                console.error('Failed to validate mobile cart stock:', e);
+            }
+        };
+        if (items.length > 0) {
+            validateCart();
+        }
+    }, []);
 
     const handleCheckout = () => {
         if (items.length === 0) return;

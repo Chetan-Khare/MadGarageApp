@@ -1,4 +1,6 @@
 import { create } from 'zustand';
+import { persist, createJSONStorage } from 'zustand/middleware';
+import AsyncStorage from '@react-native-async-storage/async-storage';
 import { useAuthStore } from './authStore';
 import { PRICING } from '../constants/pricing';
 
@@ -28,8 +30,10 @@ interface CartState {
     getTotalPrice: () => number;
 }
 
-export const useCartStore = create<CartState>((set, get) => ({
-    items: [],
+export const useCartStore = create<CartState>()(
+    persist(
+        (set, get) => ({
+            items: [],
 
     addItem: (newItem) => {
         const role = useAuthStore.getState().role;
@@ -111,4 +115,10 @@ export const useCartStore = create<CartState>((set, get) => ({
     getTotalPrice: () => {
         return get().getBaseTotal() - get().getDiscountAmount();
     },
-}));
+        }),
+        {
+            name: 'madgarage-cart-storage',
+            storage: createJSONStorage(() => AsyncStorage),
+        }
+    )
+);

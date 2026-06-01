@@ -86,6 +86,7 @@ export default function OrderDetailsScreen({ route, navigation }: Props) {
     const [returnReason, setReturnReason] = useState('WRONG_FITMENT');
     const [returnType, setReturnType] = useState('REPLACEMENT');
     const [returnDescription, setReturnDescription] = useState('');
+    const [returnItems, setReturnItems] = useState<{orderItemId: number, quantity: number, maxQuantity: number, partName: string, price: number}[]>([]);
     const [submittingReturn, setSubmittingReturn] = useState(false);
     const [activeReturn, setActiveReturn] = useState<any>(null);
     const [isRejectModalOpen, setIsRejectModalOpen] = useState(false);
@@ -128,30 +129,71 @@ export default function OrderDetailsScreen({ route, navigation }: Props) {
         }
     };
 
-    // MED-07 FIX: Map activeReturn directly from mapped order details payload rather than performing redundant returns network fetch
+    const fetchActiveReturn = async () => {
+        if (!order?.activeReturnId) return;
+        try {
+            const response = await apiClient.get('/returns/my');
+            const request = response.data.find((r: any) => Number(r.orderId) === Number(order.id));
+            if (request) {
+                setActiveReturn(request);
+            }
+        } catch (error) {
+            console.error('Failed to fetch detailed active return:', error);
+            // Fallback to minimal mapped data
+            setActiveReturn({
+                id: order.activeReturnId,
+                orderId: order.id,
+                status: order.returnStatus,
+                reason: order.returnReason,
+                requestType: order.returnRequestType || 'REFUND',
+                description: order.returnDescription || '',
+                adminNote: order.returnAdminNote || ''
+            });
+        }
+    };
+
     useEffect(() => {
         if (order) {
             if (order.activeReturnId) {
-                setActiveReturn({
-                    id: order.activeReturnId,
-                    orderId: order.id,
-                    status: order.returnStatus,
-                    reason: order.returnReason,
-                    requestType: order.returnRequestType || 'REFUND',
-                    description: order.returnDescription || '',
-                    adminNote: order.returnAdminNote || ''
-                });
+                fetchActiveReturn();
             } else {
                 setActiveReturn(null);
             }
         }
     }, [order]);
 
+    const openReturnModal = () => {
+        if (order?.items) {
+            const initialItems = order.items
+                .filter((item: any) => item.isReturnable)
+                .map((item: any) => ({
+                    orderItemId: item.id,
+                    quantity: 0,
+                    maxQuantity: item.quantity,
+                    partName: item.productName || 'Unknown Product',
+                    price: item.priceAtPurchase || 0
+                }));
+            setReturnItems(initialItems);
+        }
+        setIsReturnModalOpen(true);
+    };
+
     const handleSubmitReturn = async () => {
         if (!returnDescription.trim()) {
             Alert.alert('Required', 'Please provide a description for the return.');
             return;
         }
+
+        const selectedItems = returnItems.filter(item => item.quantity > 0).map(item => ({
+            orderItemId: item.orderItemId,
+            quantity: item.quantity
+        }));
+
+        if (selectedItems.length === 0) {
+            Alert.alert('Selection Required', 'Please select at least one item to return and specify the quantity.');
+            return;
+        }
+
         setSubmittingReturn(true);
         try {
             await apiClient.post('/returns', {
@@ -159,10 +201,11 @@ export default function OrderDetailsScreen({ route, navigation }: Props) {
                 reason: returnReason,
                 requestType: returnType,
                 description: returnDescription,
-                imageUrls: []
+                imageUrls: [],
+                items: selectedItems
             });
             setIsReturnModalOpen(false);
-            Alert.alert('Success', 'Return request has been transmitted successfully.');
+            Alert.alert('Success', 'Return protocol has been transmitted successfully.');
             fetchOrderDetails();
         } catch (error) {
             console.error('Return submission failed:', error);
@@ -577,6 +620,30 @@ export default function OrderDetailsScreen({ route, navigation }: Props) {
                             <Text style={[styles.feedbackComment, { color: T.text, fontSize: 12, marginTop: 4 }]}>"{activeReturn.description}"</Text>
                         </View>
 
+                        {activeReturn.items && activeReturn.items.length > 0 && (
+                            <View style={{ marginTop: 16, borderTopWidth: 1, borderTopColor: T.cardBorder, paddingTop: 16 }}>
+                                <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'flex-end', marginBottom: 12 }}>
+                                    <Text style={[styles.infoLabel, { color: '#DF2324', marginBottom: 0 }]}>ITEMIZED RECEIPT</Text>
+                                    {activeReturn.refundAmount != null && (
+                                        <View style={{ alignItems: 'flex-end' }}>
+                                            <Text style={[styles.infoLabel, { color: T.subText, fontSize: 8 }]}>TOTAL REFUND</Text>
+                                            <Text style={{ fontSize: 16, fontWeight: '900', color: T.text, fontStyle: 'italic' }}>₹{activeReturn.refundAmount.toLocaleString()}</Text>
+                                        </View>
+                                    )}
+                                </View>
+                                <View style={{ gap: 8 }}>
+                                    {activeReturn.items.map((item: any, idx: number) => (
+                                        <View key={idx} style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', backgroundColor: T.inputBg, padding: 10, borderRadius: 8 }}>
+                                            <Text style={{ flex: 1, fontSize: 11, fontWeight: '800', color: T.text, textTransform: 'uppercase' }}>{item.partName}</Text>
+                                            <View style={{ backgroundColor: '#DF232411', paddingHorizontal: 8, paddingVertical: 4, borderRadius: 6, borderWidth: 1, borderColor: '#DF232422' }}>
+                                                <Text style={{ fontSize: 10, fontWeight: '900', color: '#DF2324' }}>QTY: {item.quantity}</Text>
+                                            </View>
+                                        </View>
+                                    ))}
+                                </View>
+                            </View>
+                        )}
+
                         {activeReturn.adminNote && (
                             <View style={{ marginTop: 12, borderTopWidth: 1, borderTopColor: T.cardBorder, paddingTop: 12 }}>
                                 <Text style={[styles.infoLabel, { color: '#DF2324' }]}>ADMIN MESSAGE</Text>
@@ -606,7 +673,7 @@ export default function OrderDetailsScreen({ route, navigation }: Props) {
                 {(order.status === 'DELIVERED' || (order.status === 'RETURN_REQUESTED' && !activeReturn)) && order.isOwner && (
                     <TouchableOpacity 
                         style={[styles.returnBtn, { borderColor: order.items?.some(i => i.isReturnable === true) ? '#DF2324' : T.cardBorder, opacity: order.items?.some(i => i.isReturnable === true) ? 1 : 0.5 }]}
-                        onPress={() => setIsReturnModalOpen(true)}
+                        onPress={openReturnModal}
                         disabled={!order.items?.some(i => i.isReturnable === true)}
                     >
                         <Ionicons name="reload-outline" size={18} color={order.items?.some(i => i.isReturnable === true) ? '#DF2324' : T.subText} />
@@ -750,6 +817,46 @@ export default function OrderDetailsScreen({ route, navigation }: Props) {
                         )}
 
                         <ScrollView style={{ maxHeight: 500 }}>
+                            <Text style={[styles.inputLabel, { color: T.subText }]}>SELECT ITEMS TO RETURN</Text>
+                            <View style={{ marginHorizontal: 20, marginBottom: 20, gap: 10 }}>
+                                {returnItems.map((item, idx) => (
+                                    <View key={item.orderItemId} style={[{ padding: 12, borderRadius: 12, borderWidth: 1, flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' }, item.quantity > 0 ? { borderColor: '#DF2324', backgroundColor: '#DF232405' } : { borderColor: T.cardBorder, backgroundColor: T.inputBg }]}>
+                                        <View style={{ flex: 1, marginRight: 10 }}>
+                                            <Text style={[{ fontSize: 11, fontWeight: '800', textTransform: 'uppercase', marginBottom: 4 }, item.quantity > 0 ? { color: '#DF2324' } : { color: T.subText }]}>{item.partName}</Text>
+                                            <Text style={{ fontSize: 9, fontWeight: '700', color: T.subText }}>Purchased: {item.maxQuantity} • ₹{(item.price || 0).toLocaleString()}/ea</Text>
+                                        </View>
+                                        <View style={{ flexDirection: 'row', alignItems: 'center', backgroundColor: T.bg, padding: 4, borderRadius: 8, borderWidth: 1, borderColor: T.cardBorder }}>
+                                            <TouchableOpacity 
+                                                style={{ width: 28, height: 28, borderRadius: 6, backgroundColor: T.inputBg, justifyContent: 'center', alignItems: 'center' }}
+                                                onPress={() => {
+                                                    const newItems = [...returnItems];
+                                                    if (newItems[idx].quantity > 0) newItems[idx].quantity -= 1;
+                                                    setReturnItems(newItems);
+                                                }}
+                                            >
+                                                <Text style={{ fontSize: 16, fontWeight: '900', color: T.text }}>-</Text>
+                                            </TouchableOpacity>
+                                            <Text style={{ width: 24, textAlign: 'center', fontSize: 12, fontWeight: '900', color: T.text }}>{item.quantity}</Text>
+                                            <TouchableOpacity 
+                                                style={{ width: 28, height: 28, borderRadius: 6, backgroundColor: T.inputBg, justifyContent: 'center', alignItems: 'center' }}
+                                                onPress={() => {
+                                                    const newItems = [...returnItems];
+                                                    if (newItems[idx].quantity < newItems[idx].maxQuantity) newItems[idx].quantity += 1;
+                                                    setReturnItems(newItems);
+                                                }}
+                                            >
+                                                <Text style={{ fontSize: 16, fontWeight: '900', color: T.text }}>+</Text>
+                                            </TouchableOpacity>
+                                        </View>
+                                    </View>
+                                ))}
+                                {returnItems.length === 0 && (
+                                    <View style={{ padding: 16, backgroundColor: T.inputBg, borderRadius: 12, alignItems: 'center' }}>
+                                        <Text style={{ fontSize: 10, fontWeight: '800', color: T.subText, textTransform: 'uppercase' }}>No returnable items</Text>
+                                    </View>
+                                )}
+                            </View>
+
                             <Text style={[styles.inputLabel, { color: T.subText }]}>SELECT REASON</Text>
                             <View style={styles.choiceGrid}>
                                 {['WRONG_FITMENT', 'DAMAGED', 'OTHER'].map(reason => (
