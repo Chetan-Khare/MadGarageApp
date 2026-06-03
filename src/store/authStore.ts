@@ -41,7 +41,7 @@ export const useAuthStore = create<AuthState>((set) => ({
     },
 
     setGuest: (isGuest) => {
-        set({ isGuest, role: isGuest ? 'ROLE_CUSTOMER' : null });
+        set({ isGuest, role: null });
     },
 
     logout: async () => {

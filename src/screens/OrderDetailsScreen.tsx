@@ -180,6 +180,7 @@ export default function OrderDetailsScreen({ route, navigation }: Props) {
     };
 
     const handleSubmitReturn = async () => {
+        if (submittingReturn) return;
         if (!returnDescription.trim()) {
             Alert.alert('Required', 'Please provide a description for the return.');
             return;
@@ -246,11 +247,11 @@ export default function OrderDetailsScreen({ route, navigation }: Props) {
         setUpdating(true);
         try {
             await apiClient.put(`/orders/${orderId}/status?status=${status}`);
-            Alert.alert('Success', `Order status updated to ${status.replace('_', ' ')}.`);
+            Alert.alert('Success', `Order status updated to ${status.replace(/_/g, ' ')}.`);
             fetchOrderDetails();
         } catch (error: any) {
             console.error('Status update failed:', error);
-            Alert.alert('Error', 'Failed to update order status.');
+            Alert.alert('Error', error.response?.data?.message || 'Failed to update order status.');
         } finally {
             setUpdating(false);
         }
@@ -260,11 +261,11 @@ export default function OrderDetailsScreen({ route, navigation }: Props) {
         setUpdating(true);
         try {
             await apiClient.patch(`/orders/${orderId}/fitting-status?status=${status}`);
-            Alert.alert('Success', `Fitting stage updated: ${status.replace('_', ' ')}.`);
+            Alert.alert('Success', `Fitting stage updated: ${status.replace(/_/g, ' ')}.`);
             fetchOrderDetails();
         } catch (error: any) {
             console.error('Fitting status update failed:', error);
-            Alert.alert('Error', 'Failed to update fitting status.');
+            Alert.alert('Error', error.response?.data?.message || 'Failed to update fitting status.');
         } finally {
             setUpdating(false);
         }
@@ -277,11 +278,11 @@ export default function OrderDetailsScreen({ route, navigation }: Props) {
             const endpoint = action === 'picked-up' ? 'picked-up' : (action === 'finalize' ? 'finalize' : action);
             const query = action === 'reject' ? `?note=${encodeURIComponent(note || 'Policy')}` : '';
             await apiClient.put(`/returns/admin/${activeReturn.id}/${endpoint}${query}`);
-            Alert.alert('Success', `Return ${action.replace('-', ' ')} successfully`);
+            Alert.alert('Success', `Return ${action.replace(/-/g, ' ')} successfully`);
             fetchOrderDetails();
         } catch (error: any) {
             console.error('Return action failed:', error);
-            Alert.alert('Action Failed', 'Could not process return status update.');
+            Alert.alert('Action Failed', error.response?.data?.message || 'Could not process return status update.');
         } finally {
             setUpdating(false);
         }
@@ -408,7 +409,7 @@ export default function OrderDetailsScreen({ route, navigation }: Props) {
                             <View style={styles.fittingStatusRow}>
                                 <Ionicons name="cog-outline" size={14} color="#DF2324" />
                                 <Text style={[styles.fittingStatusLabel, { color: T.subText }]}>FITTING STATUS: </Text>
-                                <Text style={[styles.fittingStatusValue, { color: '#DF2324' }]}>{order.fittingStatus?.replace('_', ' ') || 'PENDING'}</Text>
+                                <Text style={[styles.fittingStatusValue, { color: '#DF2324' }]}>{order.fittingStatus?.replace(/_/g, ' ') || 'PENDING'}</Text>
                             </View>
                             <Text style={[styles.receiptSub, { color: T.subText, marginTop: 8, lineHeight: 18 }]}>
                                 {order.fittingGarageAddress || order.city + ', ' + order.state}
@@ -626,7 +627,7 @@ export default function OrderDetailsScreen({ route, navigation }: Props) {
                         </View>
 
                         <View style={{ marginTop: 12, padding: 12, backgroundColor: T.bg, borderRadius: 8 }}>
-                            <Text style={[styles.infoLabel, { color: T.subText }]}>REASON: {activeReturn.reason?.replace('_', ' ')}</Text>
+                            <Text style={[styles.infoLabel, { color: T.subText }]}>REASON: {activeReturn.reason?.replace(/_/g, ' ')}</Text>
                             <Text style={[styles.feedbackComment, { color: T.text, fontSize: 12, marginTop: 4 }]}>"{activeReturn.description}"</Text>
                         </View>
 

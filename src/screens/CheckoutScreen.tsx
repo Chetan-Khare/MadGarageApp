@@ -97,8 +97,6 @@ export default function CheckoutScreen({ navigation }: Props) {
 
         const baseStandardFee = shippingFee;
 
-        let maxStandardFee = 0;
-
         for (const item of items) {
             const qty = item.quantity || 1;
             const sClass = item.shippingClass || 'STANDARD';
@@ -119,20 +117,17 @@ export default function CheckoutScreen({ navigation }: Props) {
                     break;
                 }
                 case 'FRAGILE': {
-                    maxStandardFee = baseStandardFee;
-                    totalShipping += (fragileSurcharge * qty);
+                    totalShipping += (baseStandardFee * qty) + (fragileSurcharge * qty);
                     hasFragileOrFreight = true;
                     break;
                 }
                 case 'STANDARD':
                 default: {
-                    maxStandardFee = baseStandardFee;
+                    totalShipping += baseStandardFee * qty;
                     break;
                 }
             }
         }
-        
-        totalShipping += maxStandardFee;
 
         // Apply free threshold only if no fragile/freight/custom parts
         if (!hasFragileOrFreight && subtotal >= freeShippingThreshold) {
@@ -310,7 +305,10 @@ export default function CheckoutScreen({ navigation }: Props) {
     const finalizeOrder = async (dbOrderId: number, paymentId: string, signature: string) => {
         try {
             // Verify Payment & Update Status to PAID
-            await apiClient.post(`/orders/${dbOrderId}/verify-payment?paymentId=${paymentId}&signature=${signature}`);
+            await apiClient.post(`/orders/${dbOrderId}/verify-payment`, {
+                paymentId,
+                signature
+            });
 
             clearCart();
             setLoading(false);

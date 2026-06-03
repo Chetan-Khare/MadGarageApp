@@ -3,6 +3,7 @@ import { persist, createJSONStorage } from 'zustand/middleware';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { useAuthStore } from './authStore';
 import { PRICING } from '../constants/pricing';
+import apiClient from '../services/apiClient';
 
 export interface CartItem {
     id: string;
@@ -30,6 +31,7 @@ interface CartState {
     getDiscountAmount: () => number;
     getRetailDiscountAmount: () => number;
     getTotalPrice: () => number;
+    validateAndRefreshCart: () => Promise<void>;
 }
 
 export const useCartStore = create<CartState>()(
@@ -98,6 +100,44 @@ export const useCartStore = create<CartState>()(
 
     clearCart: () => {
         set({ items: [] });
+    },
+
+    validateAndRefreshCart: async () => {
+        const { items, removeItem } = get();
+        if (items.length === 0) return;
+        const role = useAuthStore.getState().role;
+        const isGuest = useAuthStore.getState().isGuest;
+        const isWholesale = !isGuest && role === 'ROLE_GARAGE';
+
+        try {
+            const productIds = items.map(i => i.id).join(',');
+            const res = await apiClient.get(`/products/bulk?ids=${productIds}`);
+            const latestProducts = res.data;
+
+            set((state) => {
+                const newItems = [...state.items];
+                for (let i = newItems.length - 1; i >= 0; i--) {
+                    const item = newItems[i];
+                    const latest = latestProducts.find((p: any) => String(p.id) === String(item.id));
+                    const isProductActive = latest && (latest.active === true || latest.isActive === true);
+
+                    if (!latest || latest.stockQuantity === 0 || !isProductActive) {
+                        newItems.splice(i, 1);
+                    } else {
+                        newItems[i].stockQuantity = latest.stockQuantity;
+                        const latestPrice = isWholesale ? (latest.garagePrice || latest.price) : latest.price;
+                        newItems[i].price = latestPrice;
+                        newItems[i].mrp = latest.mrp || latest.originalPrice;
+                        if (newItems[i].quantity > latest.stockQuantity) {
+                            newItems[i].quantity = latest.stockQuantity;
+                        }
+                    }
+                }
+                return { items: newItems };
+            });
+        } catch (e) {
+            console.error('Failed to validate mobile cart stock:', e);
+        }
     },
 
     getBaseTotal: () => {

@@ -267,7 +267,7 @@ export default function ProductDetailsScreen({ route, navigation }: Props) {
                     {product.isReturnable !== false ? (
                         <View style={[styles.policyBadge, { backgroundColor: isDark ? '#12251B' : '#E8F5E9', borderColor: '#4CAF5033' }]}>
                             <Ionicons name="shield-checkmark" size={16} color="#4CAF50" />
-                            <Text style={[styles.policyText, { color: isDark ? '#81C784' : '#2E7D32' }]}>10-Day Easy Return Policy Included</Text>
+                            <Text style={[styles.policyText, { color: isDark ? '#81C784' : '#2E7D32' }]}>7-Day Easy Return Policy Included</Text>
                         </View>
                     ) : (
                         <View style={[styles.policyBadge, { backgroundColor: isDark ? '#2E1515' : '#FFEBEE', borderColor: '#F4433633' }]}>

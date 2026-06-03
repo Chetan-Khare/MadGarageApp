@@ -18,8 +18,8 @@ import { PRICING } from '../constants/pricing';
 type Props = { navigation: NativeStackNavigationProp<RootStackParamList, 'Cart'>; };
 
 export default function CartScreen({ navigation }: Props) {
-    const { items, removeItem, updateQuantity, clearCart, getTotalPrice, getBaseTotal, getDiscountAmount, getRetailDiscountAmount } = useCartStore();
-    const { shippingFee, platformFee, freeShippingThreshold } = useConfigStore();
+    const { items, removeItem, updateQuantity, clearCart, getTotalPrice, getBaseTotal, getDiscountAmount, getRetailDiscountAmount, validateAndRefreshCart } = useCartStore();
+    const { shippingFee, platformFee, freeShippingThreshold, freightBaseFee, freightPerKgRate, fragileSurcharge } = useConfigStore();
     const { isDark } = useThemeStore();
     const { role } = useAuthStore();
     const T = isDark ? DARK_THEME : LIGHT_THEME;
@@ -28,34 +28,8 @@ export default function CartScreen({ navigation }: Props) {
     const [loading, setLoading] = useState(false);
 
     useEffect(() => {
-        const validateCart = async () => {
-            try {
-                const productIds = items.map(i => i.id).join(',');
-                const res = await apiClient.get(`/products/bulk?ids=${productIds}`);
-                const latestProducts = res.data;
-                
-                let removedParts: string[] = [];
-                items.forEach(item => {
-                    const latest = latestProducts.find((p: any) => String(p.id) === String(item.id));
-                    const isProductActive = latest.active === true || latest.isActive === true;
-                    if (!latest || latest.stockQuantity === 0 || !isProductActive) {
-                        removeItem(item.id);
-                        removedParts.push(item.partName);
-                    }
-                });
-                
-                if (removedParts.length > 0) {
-                    Alert.alert(
-                        'Removed from Cart',
-                        `The following items are now out of stock and have been removed:\n${removedParts.map(name => `"${name}"`).join('\n')}`
-                    );
-                }
-            } catch (e) {
-                console.error('Failed to validate mobile cart stock:', e);
-            }
-        };
         if (items.length > 0) {
-            validateCart();
+            validateAndRefreshCart();
         }
     }, []);
 
@@ -121,7 +95,52 @@ export default function CartScreen({ navigation }: Props) {
     const discount = getDiscountAmount();
     const retailDiscount = getRetailDiscountAmount();
     const subtotal = baseTotal - discount;
-    const delivery = (subtotal > 0 && subtotal < freeShippingThreshold) ? shippingFee : 0;
+    const calculateDynamicShippingPreview = () => {
+        let totalShipping = 0;
+        let hasFragileOrFreight = false;
+        const baseStandardFee = shippingFee;
+
+        for (const item of items) {
+            const qty = item.quantity || 1;
+            const sClass = item.shippingClass || 'STANDARD';
+
+            switch (sClass) {
+                case 'CUSTOM_RATE': {
+                    const customFee = item.customShippingCost || 0;
+                    totalShipping += (customFee * qty);
+                    hasFragileOrFreight = true;
+                    break;
+                }
+                case 'HEAVY_FREIGHT': {
+                    const weight = item.weightKg || 1.0;
+                    // Assume base zone (1) multiplier for preview since buyer state isn't known yet
+                    const distanceMultiplier = 1.0; 
+                    const freightFee = freightBaseFee + (weight * freightPerKgRate);
+                    totalShipping += (freightFee * distanceMultiplier * qty);
+                    hasFragileOrFreight = true;
+                    break;
+                }
+                case 'FRAGILE': {
+                    totalShipping += (baseStandardFee * qty) + (fragileSurcharge * qty);
+                    hasFragileOrFreight = true;
+                    break;
+                }
+                case 'STANDARD':
+                default: {
+                    totalShipping += baseStandardFee * qty;
+                    break;
+                }
+            }
+        }
+        
+        if (!hasFragileOrFreight && subtotal >= freeShippingThreshold) {
+            totalShipping = 0;
+        }
+
+        return totalShipping;
+    };
+
+    const delivery = calculateDynamicShippingPreview();
     const total = subtotal + delivery + (subtotal > 0 ? platformFee : 0);
 
     return (
