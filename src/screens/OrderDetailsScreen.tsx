@@ -59,6 +59,7 @@ interface Order {
     // Discount fields
     appliedCouponCode?: string;
     discountAmount?: number;
+    totalSavings?: number;
     
     // Mapped Return Fields
     activeReturnId?: number;
@@ -475,6 +476,15 @@ export default function OrderDetailsScreen({ route, navigation }: Props) {
                         <Text style={[styles.summaryLabel, { color: T.subText }]}>Platform Fee</Text>
                         <Text style={[styles.summaryValue, { color: T.text }]}>₹{(platformFee ?? 0).toLocaleString()}</Text>
                     </View>
+                    {(order.totalSavings ?? 0) > 0 && (
+                        <View style={styles.summaryRow}>
+                            <View style={{ flexDirection: 'row', alignItems: 'center' }}>
+                                <Ionicons name="trending-down" size={14} color="#00FF00" style={{ marginRight: 4 }} />
+                                <Text style={[styles.summaryLabel, { color: '#00FF00', fontWeight: '900' }]}>Retail Discount</Text>
+                            </View>
+                            <Text style={[styles.summaryValue, { color: '#00FF00', fontWeight: '900' }]}>- ₹{order.totalSavings?.toLocaleString()}</Text>
+                        </View>
+                    )}
                     {order.appliedCouponCode && (
                         <View style={styles.summaryRow}>
                             <View style={{ flexDirection: 'row', alignItems: 'center' }}>

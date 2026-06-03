@@ -177,6 +177,12 @@ export default function CartScreen({ navigation }: Props) {
                             <Text style={[styles.summaryLabel, { color: T.subText }]}>Subtotal ({items.reduce((a, i) => a + i.quantity, 0)} items)</Text>
                             <Text style={[styles.summaryValue, { color: T.text }]}>₹{baseTotal.toLocaleString()}</Text>
                         </View>
+                        {retailDiscount > 0 && (
+                            <View style={styles.summaryRow}>
+                                <Text style={[styles.summaryLabel, { color: '#00FF00', fontWeight: '900' }]}>Retail Discount</Text>
+                                <Text style={[styles.summaryValue, { color: '#00FF00' }]}>-₹{retailDiscount.toLocaleString()}</Text>
+                            </View>
+                        )}
                         {discount > 0 && (
                             <View style={styles.summaryRow}>
                                 <Text style={[styles.summaryLabel, { color: '#00FF00', fontWeight: '900' }]}>Wholesale Discount (5%)</Text>

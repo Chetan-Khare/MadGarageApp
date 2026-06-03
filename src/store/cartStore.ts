@@ -12,6 +12,7 @@ export interface CartItem {
     brand: string;
     quantity: number;
     stockQuantity: number;
+    mrp?: number;
     wholesale?: boolean;
     shippingClass?: 'STANDARD' | 'FRAGILE' | 'HEAVY_FREIGHT' | 'CUSTOM_RATE';
     weightKg?: number;
@@ -27,6 +28,7 @@ interface CartState {
     clearCart: () => void;
     getBaseTotal: () => number;
     getDiscountAmount: () => number;
+    getRetailDiscountAmount: () => number;
     getTotalPrice: () => number;
 }
 
@@ -108,6 +110,14 @@ export const useCartStore = create<CartState>()(
         return get().items.reduce((total, item) => {
             if (item.wholesale) {
                 return total + (item.price * item.quantity * (1 - PRICING.GARAGE_DISCOUNT_MULTIPLIER));
+            }
+            return total;
+        }, 0);
+    },
+    getRetailDiscountAmount: () => {
+        return get().items.reduce((total, item) => {
+            if (item.mrp && item.mrp > item.price) {
+                return total + ((item.mrp - item.price) * item.quantity);
             }
             return total;
         }, 0);

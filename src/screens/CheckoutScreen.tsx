@@ -22,7 +22,7 @@ import { useLocationStore } from '../store/locationStore';
 type Props = { navigation: NativeStackNavigationProp<RootStackParamList, 'Checkout'>; };
 
 export default function CheckoutScreen({ navigation }: Props) {
-    const { items, getTotalPrice, clearCart } = useCartStore();
+    const { items, getTotalPrice, getBaseTotal, getDiscountAmount, getRetailDiscountAmount, clearCart } = useCartStore();
     const {
         shippingFee,
         platformFee,
@@ -97,6 +97,8 @@ export default function CheckoutScreen({ navigation }: Props) {
 
         const baseStandardFee = shippingFee;
 
+        let maxStandardFee = 0;
+
         for (const item of items) {
             const qty = item.quantity || 1;
             const sClass = item.shippingClass || 'STANDARD';
@@ -117,17 +119,20 @@ export default function CheckoutScreen({ navigation }: Props) {
                     break;
                 }
                 case 'FRAGILE': {
-                    totalShipping += (baseStandardFee + fragileSurcharge) * qty;
+                    maxStandardFee = baseStandardFee;
+                    totalShipping += (fragileSurcharge * qty);
                     hasFragileOrFreight = true;
                     break;
                 }
                 case 'STANDARD':
                 default: {
-                    totalShipping += baseStandardFee * qty;
+                    maxStandardFee = baseStandardFee;
                     break;
                 }
             }
         }
+        
+        totalShipping += maxStandardFee;
 
         // Apply free threshold only if no fragile/freight/custom parts
         if (!hasFragileOrFreight && subtotal >= freeShippingThreshold) {
@@ -137,11 +142,14 @@ export default function CheckoutScreen({ navigation }: Props) {
         return totalShipping;
     };
 
+    const baseTotal = getBaseTotal();
     const subtotal = getTotalPrice();
+    const retailDiscount = getRetailDiscountAmount();
+    const wholesaleDiscount = getDiscountAmount();
     const taxAmount = 0;
     const delivery = calculateDynamicShippingLocal();
-    const discountAmount = appliedCoupon ? appliedCoupon.discountAmount : 0;
-    const total = subtotal + delivery + (subtotal > 0 ? platformFee : 0) - discountAmount;
+    const couponDiscountAmount = appliedCoupon ? appliedCoupon.discountAmount : 0;
+    const total = subtotal + delivery + (subtotal > 0 ? platformFee : 0) - couponDiscountAmount;
 
     const handlePayment = async () => {
         if (!streetAddress.trim() || !city.trim() || !state.trim() || !pincode.trim()) {
@@ -372,8 +380,20 @@ export default function CheckoutScreen({ navigation }: Props) {
                         </View>
                         <View style={styles.summaryRow}>
                             <Text style={[styles.summaryLabel, { color: T.subText }]}>Subtotal ({items.reduce((a, i) => a + i.quantity, 0)} items)</Text>
-                            <Text style={[styles.summaryValue, { color: T.text }]}>₹{subtotal.toLocaleString()}</Text>
+                            <Text style={[styles.summaryValue, { color: T.text }]}>₹{baseTotal.toLocaleString()}</Text>
                         </View>
+                        {retailDiscount > 0 && (
+                            <View style={styles.summaryRow}>
+                                <Text style={[styles.summaryLabel, { color: '#00FF00', fontWeight: '900' }]}>Retail Discount</Text>
+                                <Text style={[styles.summaryValue, { color: '#00FF00' }]}>-₹{retailDiscount.toLocaleString()}</Text>
+                            </View>
+                        )}
+                        {wholesaleDiscount > 0 && (
+                            <View style={styles.summaryRow}>
+                                <Text style={[styles.summaryLabel, { color: '#00FF00', fontWeight: '900' }]}>Wholesale Discount (5%)</Text>
+                                <Text style={[styles.summaryValue, { color: '#00FF00' }]}>-₹{wholesaleDiscount.toLocaleString()}</Text>
+                            </View>
+                        )}
                         <View style={styles.summaryRow}>
                             <Text style={[styles.summaryLabel, { color: T.subText }]}>Delivery Fee</Text>
                             <Text style={[styles.summaryValue, { color: delivery === 0 && subtotal > 0 ? '#00FF00' : T.text }]}>
@@ -410,10 +430,10 @@ export default function CheckoutScreen({ navigation }: Props) {
                             </View>
                         )}
 
-                        {discountAmount > 0 && (
+                        {couponDiscountAmount > 0 && (
                             <View style={styles.summaryRow}>
                                 <Text style={[styles.summaryLabel, { color: '#4CAF50' }]}>Coupon Discount</Text>
-                                <Text style={[styles.summaryValue, { color: '#4CAF50' }]}>-₹{discountAmount.toLocaleString()}</Text>
+                                <Text style={[styles.summaryValue, { color: '#4CAF50' }]}>-₹{couponDiscountAmount.toLocaleString()}</Text>
                             </View>
                         )}
 
