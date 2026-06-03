@@ -18,7 +18,7 @@ import { PRICING } from '../constants/pricing';
 type Props = { navigation: NativeStackNavigationProp<RootStackParamList, 'Cart'>; };
 
 export default function CartScreen({ navigation }: Props) {
-    const { items, removeItem, updateQuantity, clearCart, getTotalPrice, getBaseTotal, getDiscountAmount } = useCartStore();
+    const { items, removeItem, updateQuantity, clearCart, getTotalPrice, getBaseTotal, getDiscountAmount, getRetailDiscountAmount } = useCartStore();
     const { shippingFee, platformFee, freeShippingThreshold } = useConfigStore();
     const { isDark } = useThemeStore();
     const { role } = useAuthStore();
@@ -119,6 +119,7 @@ export default function CartScreen({ navigation }: Props) {
 
     const baseTotal = getBaseTotal();
     const discount = getDiscountAmount();
+    const retailDiscount = getRetailDiscountAmount();
     const subtotal = baseTotal - discount;
     const delivery = (subtotal > 0 && subtotal < freeShippingThreshold) ? shippingFee : 0;
     const total = subtotal + delivery + (subtotal > 0 ? platformFee : 0);
