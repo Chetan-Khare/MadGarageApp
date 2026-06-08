@@ -1,5 +1,6 @@
 import { create } from 'zustand';
 import * as SecureStore from 'expo-secure-store';
+import { webSocketService } from '../services/webSocketService';
 
 export type UserRole = 'ROLE_ADMIN' | 'ROLE_SELLER' | 'ROLE_CUSTOMER' | 'ROLE_GARAGE' | 'ROLE_WORKER';
 
@@ -34,6 +35,7 @@ export const useAuthStore = create<AuthState>((set) => ({
             if (user) {
                 await SecureStore.setItemAsync('userData', JSON.stringify(user));
             }
+            webSocketService.connect(token);
             set({ token, role, user });
         } catch (error) {
             // Handle error silently or via crash reporter
@@ -49,6 +51,7 @@ export const useAuthStore = create<AuthState>((set) => ({
             await SecureStore.deleteItemAsync('jwtToken');
             await SecureStore.deleteItemAsync('userRole');
             await SecureStore.deleteItemAsync('userData');
+            webSocketService.disconnect();
             set({ token: null, role: null, user: null, isGuest: false });
         } catch (error) {
             // Error clearing auth state
@@ -63,6 +66,7 @@ export const useAuthStore = create<AuthState>((set) => ({
             const user = userDataStr ? JSON.parse(userDataStr) : null;
 
             if (token && role) {
+                webSocketService.connect(token);
                 set({ token, role, user });
             } else {
                 // If partial data exists but not enough to authenticate, clear it

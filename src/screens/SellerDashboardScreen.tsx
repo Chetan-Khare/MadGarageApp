@@ -1,5 +1,5 @@
 import React, { useEffect, useState } from 'react';
-import { View, Text, StyleSheet, TouchableOpacity, ScrollView, StatusBar, ActivityIndicator, Image, TextInput } from 'react-native';
+import { View, Text, StyleSheet, TouchableOpacity, ScrollView, StatusBar, ActivityIndicator, Image, TextInput, Alert } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
 import { LinearGradient } from 'expo-linear-gradient';
@@ -8,6 +8,7 @@ import { RootStackParamList } from '../types';
 import { useAuthStore } from '../store/authStore';
 import { useThemeStore } from '../store/themeStore';
 import apiClient from '../services/apiClient';
+import { useSellerOrderFeed } from '../hooks/useSellerOrderFeed';
 
 type Props = {
     navigation: NativeStackNavigationProp<RootStackParamList, 'SellerDashboard'>;
@@ -42,6 +43,11 @@ export default function SellerDashboardScreen({ navigation }: Props) {
         fetchAnalytics();
         fetchOrders();
     }, []);
+
+    useSellerOrderFeed((newOrder) => {
+        setOrders(prev => [newOrder, ...prev]);
+        Alert.alert("New Order Received!", `Order #${newOrder.id} has been placed.`);
+    });
 
     const fetchAnalytics = async () => {
         try {
@@ -249,7 +255,13 @@ export default function SellerDashboardScreen({ navigation }: Props) {
 
                 {/* ── Orders Board ── */}
                 <View style={[styles.boardHeader, { zIndex: 50 }]}>
-                    <Text style={[styles.boardTitle, { color: textPrimary }]}>RECENT ORDERS</Text>
+                    <View style={{ flexDirection: 'row', alignItems: 'center', gap: 10 }}>
+                        <Text style={[styles.boardTitle, { color: textPrimary }]}>RECENT ORDERS</Text>
+                        <View style={{ flexDirection: 'row', alignItems: 'center', backgroundColor: 'rgba(223,35,36,0.1)', paddingHorizontal: 6, paddingVertical: 2, borderRadius: 6, borderWidth: 1, borderColor: 'rgba(223,35,36,0.3)' }}>
+                            <View style={{ width: 6, height: 6, borderRadius: 3, backgroundColor: '#DF2324', marginRight: 4 }} />
+                            <Text style={{ fontSize: 9, fontWeight: '900', color: '#DF2324', letterSpacing: 1 }}>LIVE</Text>
+                        </View>
+                    </View>
                     
                     <View style={{ zIndex: 100 }}>
                         <TouchableOpacity 

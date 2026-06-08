@@ -13,6 +13,7 @@ import { BlurView } from 'expo-blur';
 import { LinearGradient } from 'expo-linear-gradient';
 import { useThemeStore } from '../store/themeStore';
 import apiClient from '../services/apiClient';
+import { usePartnerRequestUpdates } from '../hooks/usePartnerRequestUpdates';
 
 interface PartnerRequest {
     id: number;
@@ -75,7 +76,6 @@ export default function AdminPartnerRequestsScreen() {
     const fetchRequests = async () => {
         try {
             const response = await apiClient.get('/admin/partner-requests');
-            // Backend now returns PartnerRequestsSummaryResponse { requests: [], totalActivePartners: X }
             setRequests(response.data.requests || []);
         } catch (error) {
             console.error('Failed to fetch partner requests:', error);
@@ -88,6 +88,20 @@ export default function AdminPartnerRequestsScreen() {
     useEffect(() => {
         fetchRequests();
     }, []);
+
+    usePartnerRequestUpdates((update) => {
+        if (update.type === 'NEW') {
+            setRequests((prev: PartnerRequest[]) => {
+                if (prev.some(r => r.id === update.payload.id)) return prev;
+                return [update.payload as PartnerRequest, ...prev];
+            });
+        } else if (update.type === 'STATUS_UPDATE') {
+            setRequests((prev: PartnerRequest[]) =>
+                prev.map(r => r.id === update.payload.id ? { ...r, status: update.payload.status } : r)
+            );
+        }
+    });
+
 
     const handleUpdateStatus = (id: number, nextStatus: string) => {
         const title = nextStatus === 'CONTACTED' ? 'Mark as Contacted?' : 

@@ -10,6 +10,7 @@ import { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import { RootStackParamList } from '../types';
 import { useThemeStore, DARK_THEME, LIGHT_THEME } from '../store/themeStore';
 import apiClient from '../services/apiClient';
+import { useVehicleUpdates } from '../hooks/useVehicleUpdates';
 
 type Props = {
     navigation: NativeStackNavigationProp<RootStackParamList, 'AdminVehicleManagement'>;
@@ -35,6 +36,7 @@ export default function AdminVehicleManagementScreen({ navigation }: Props) {
     const [vehicles, setVehicles] = useState<VehicleItem[]>([]);
     const [loading, setLoading] = useState(true);
     const [submitting, setSubmitting] = useState(false);
+    const [editId, setEditId] = useState<number | null>(null);
     const [searchQuery, setSearchQuery] = useState('');
     const [showAddForm, setShowAddForm] = useState(false);
 
@@ -60,9 +62,37 @@ export default function AdminVehicleManagementScreen({ navigation }: Props) {
 
     useEffect(() => { fetchVehicles(); }, [fetchVehicles]);
 
+    useVehicleUpdates((update) => {
+        if (update.type === 'ADD') {
+            setVehicles(prev => {
+                const index = prev.findIndex(v => v.id === update.payload.id);
+                if (index !== -1) {
+                    const copy = [...prev];
+                    copy[index] = update.payload;
+                    return copy;
+                }
+                return [update.payload, ...prev];
+            });
+        } else if (update.type === 'DELETE') {
+            setVehicles(prev => prev.filter(v => v.id !== update.payload));
+        }
+    });
+
     const resetForm = () => {
         setMake(''); setModel(''); setTrim(''); setYear('');
         setEngineType(''); setFuelType('Petrol');
+        setEditId(null);
+    };
+
+    const openEdit = (vehicle: VehicleItem) => {
+        setMake(vehicle.make);
+        setModel(vehicle.model);
+        setTrim(vehicle.trim || '');
+        setYear(vehicle.year.toString());
+        setEngineType(vehicle.engineType || '');
+        setFuelType(vehicle.fuelType || 'Petrol');
+        setEditId(vehicle.id);
+        setShowAddForm(true);
     };
 
     const handleAdd = async () => {
@@ -70,30 +100,40 @@ export default function AdminVehicleManagementScreen({ navigation }: Props) {
             Alert.alert('Validation', 'Make, Model, and Year are required.');
             return;
         }
-        const parsedYear = parseInt(year);
-        if (isNaN(parsedYear) || parsedYear < 2000 || parsedYear > 2030) {
-            Alert.alert('Validation', 'Please enter a valid year between 2000 and 2030.');
+        const yearParts = year.split(',').map(y => parseInt(y.trim()));
+        if (yearParts.some(y => isNaN(y) || y < 1990 || y > 2030)) {
+            Alert.alert('Validation', 'Please enter valid years between 1990 and 2030, separated by commas.');
             return;
         }
 
         setSubmitting(true);
         try {
             await apiClient.post('/vehicles/admin', {
+                ...(editId ? { id: editId } : {}),
                 make: make.trim(),
                 model: model.trim(),
                 trim: trim.trim(),
-                year: parsedYear,
+                year: year.trim(),
                 engineType: engineType.trim(),
                 fuelType,
             });
-            Alert.alert('Success', `${make} ${model} ${parsedYear} added to the database!`);
+            Alert.alert('Success', `Vehicle record ${editId ? 'updated' : 'added'}!`);
             resetForm();
             setShowAddForm(false);
-            fetchVehicles();
         } catch (e: any) {
-            Alert.alert('Error', e.response?.data?.message || 'Could not add vehicle.');
+            Alert.alert('Error', e.response?.data?.error || e.response?.data?.message || 'Transaction failed.');
         } finally {
             setSubmitting(false);
+        }
+    };
+
+    const runCleanup = async () => {
+        try {
+            const res = await apiClient.get('/vehicles/admin/cleanup');
+            Alert.alert('Cleanup Result', res.data);
+            // WebSocket will trigger fetchVehicles if changes were made
+        } catch (err: any) {
+            Alert.alert('Cleanup Failed', err.response?.data?.error || err.response?.data?.message || 'An error occurred.');
         }
     };
 
@@ -157,12 +197,14 @@ export default function AdminVehicleManagementScreen({ navigation }: Props) {
                             </Text>
                         </View>
                     ) : null}
-                    <TouchableOpacity
-                        style={styles.deleteBtn}
-                        onPress={() => handleDelete(item)}
-                    >
-                        <Ionicons name="trash-outline" size={18} color="#DF2324" />
-                    </TouchableOpacity>
+                    <View style={styles.cardActions}>
+                        <TouchableOpacity style={styles.actionBtn} onPress={() => openEdit(item)}>
+                            <Ionicons name="pencil" size={18} color={T.text} />
+                        </TouchableOpacity>
+                        <TouchableOpacity style={styles.actionBtn} onPress={() => handleDelete(item)}>
+                            <Ionicons name="trash-outline" size={18} color="#DF2324" />
+                        </TouchableOpacity>
+                    </View>
                 </View>
             </View>
         </View>
@@ -181,15 +223,23 @@ export default function AdminVehicleManagementScreen({ navigation }: Props) {
                     <Text style={[styles.headerTitle, { color: T.text }]}>Vehicle Database</Text>
                     <Text style={[styles.headerSub, { color: T.subText }]}>{vehicles.length} records</Text>
                 </View>
-                <TouchableOpacity
-                    style={[styles.addToggleBtn, { backgroundColor: showAddForm ? '#DF232422' : '#DF2324' }]}
-                    onPress={() => { setShowAddForm(!showAddForm); resetForm(); }}
-                >
-                    <Ionicons name={showAddForm ? 'close' : 'add'} size={20} color={showAddForm ? '#DF2324' : '#FFF'} />
-                    <Text style={[styles.addToggleTxt, { color: showAddForm ? '#DF2324' : '#FFF' }]}>
-                        {showAddForm ? 'Cancel' : 'Add Car'}
-                    </Text>
-                </TouchableOpacity>
+                <View style={{ flexDirection: 'row', gap: 8, alignItems: 'center' }}>
+                    <TouchableOpacity
+                        style={[styles.addToggleBtn, { backgroundColor: '#FF980022', paddingHorizontal: 12 }]}
+                        onPress={runCleanup}
+                    >
+                        <Ionicons name="warning" size={18} color="#FF9800" />
+                    </TouchableOpacity>
+                    <TouchableOpacity
+                        style={[styles.addToggleBtn, { backgroundColor: showAddForm ? '#DF232422' : '#DF2324' }]}
+                        onPress={() => { setShowAddForm(!showAddForm); resetForm(); }}
+                    >
+                        <Ionicons name={showAddForm ? 'close' : 'add'} size={20} color={showAddForm ? '#DF2324' : '#FFF'} />
+                        <Text style={[styles.addToggleTxt, { color: showAddForm ? '#DF2324' : '#FFF' }]}>
+                            {showAddForm ? 'Cancel' : 'Add Car'}
+                        </Text>
+                    </TouchableOpacity>
+                </View>
             </View>
 
             <KeyboardAvoidingView behavior={Platform.OS === 'ios' ? 'padding' : 'height'} style={{ flex: 1 }}>
@@ -199,7 +249,9 @@ export default function AdminVehicleManagementScreen({ navigation }: Props) {
                         contentContainerStyle={{ padding: 16 }}
                         nestedScrollEnabled
                     >
-                        <Text style={[styles.formTitle, { color: T.text }]}>➕ Add New Vehicle</Text>
+                        <Text style={[styles.formTitle, { color: T.text }]}>
+                            {editId ? '✏️ Edit Vehicle Record' : '➕ Add New Vehicle'}
+                        </Text>
 
                         <View style={styles.formRow}>
                             <View style={{ flex: 1 }}>
@@ -218,22 +270,23 @@ export default function AdminVehicleManagementScreen({ navigation }: Props) {
 
                         <View style={styles.formRow}>
                             <View style={{ flex: 1 }}>
-                                <Text style={[styles.label, { color: T.subText }]}>TRIM</Text>
+                                <Text style={[styles.label, { color: T.subText }]}>TRIM(S)</Text>
                                 <TextInput style={[styles.input, { color: T.text, backgroundColor: T.inputBg, borderColor: T.inputBorder }]}
-                                    placeholder="e.g. XZA+" placeholderTextColor={T.subText}
+                                    placeholder="e.g. XZA, XZA+" placeholderTextColor={T.subText}
                                     value={trim} onChangeText={setTrim} />
                             </View>
                             <View style={{ flex: 1 }}>
-                                <Text style={[styles.label, { color: T.subText }]}>YEAR *</Text>
+                                <Text style={[styles.label, { color: T.subText }]}>YEAR(S) *</Text>
                                 <TextInput style={[styles.input, { color: T.text, backgroundColor: T.inputBg, borderColor: T.inputBorder }]}
-                                    placeholder="e.g. 2024" placeholderTextColor={T.subText}
-                                    value={year} onChangeText={setYear} keyboardType="numeric" maxLength={4} />
+                                    placeholder="e.g. 2024, 2025" placeholderTextColor={T.subText}
+                                    keyboardType="default"
+                                    value={year} onChangeText={setYear} />
                             </View>
                         </View>
 
                         <Text style={[styles.label, { color: T.subText }]}>ENGINE TYPE</Text>
                         <TextInput style={[styles.input, { color: T.text, backgroundColor: T.inputBg, borderColor: T.inputBorder }]}
-                            placeholder="e.g. 1.2L Turbo Petrol" placeholderTextColor={T.subText}
+                            placeholder="e.g. 1.2L Turbo" placeholderTextColor={T.subText}
                             value={engineType} onChangeText={setEngineType} />
 
                         <Text style={[styles.label, { color: T.subText }]}>FUEL TYPE</Text>
@@ -325,7 +378,7 @@ const styles = StyleSheet.create({
         borderRadius: 10,
     },
     addToggleTxt: { fontSize: 13, fontWeight: '800' },
-    formContainer: { borderBottomWidth: 1, maxHeight: 420 },
+    formContainer: { borderBottomWidth: 1, maxHeight: 450 },
     formTitle: { fontSize: 15, fontWeight: '900', marginBottom: 16, letterSpacing: 0.5 },
     formRow: { flexDirection: 'row', gap: 12, marginBottom: 12 },
     label: { fontSize: 11, fontWeight: '800', letterSpacing: 0.5, marginBottom: 6, textTransform: 'uppercase' },
@@ -369,8 +422,11 @@ const styles = StyleSheet.create({
     carEngine: { fontSize: 11, marginTop: 3 },
     fuelBadge: { paddingHorizontal: 10, paddingVertical: 4, borderRadius: 20 },
     fuelBadgeText: { fontSize: 10, fontWeight: '800' },
-    deleteBtn: {
+    cardActions: {
+        alignItems: 'center', gap: 6,
+    },
+    actionBtn: {
         padding: 8, borderRadius: 8,
-        backgroundColor: 'rgba(223,35,36,0.1)',
+        backgroundColor: 'rgba(150,150,150,0.1)',
     },
 });

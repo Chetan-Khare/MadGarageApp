@@ -14,6 +14,7 @@ import { RootStackParamList } from '../types';
 import { useAuthStore } from '../store/authStore';
 import { useThemeStore, DARK_THEME, LIGHT_THEME } from '../store/themeStore';
 import apiClient from '../services/apiClient';
+import { useOrderUpdates } from '../hooks/useOrderUpdates';
 
 type Props = NativeStackScreenProps<RootStackParamList, 'OrderDetails'>;
 
@@ -97,6 +98,22 @@ export default function OrderDetailsScreen({ route, navigation }: Props) {
     const { role, user: currentUser } = useAuthStore();
     const T = isDark ? DARK_THEME : LIGHT_THEME;
     const insets = useSafeAreaInsets();
+
+    useOrderUpdates(orderId, (updatedOrder) => {
+        setOrder(updatedOrder);
+        if (updatedOrder.activeReturnId) {
+            setActiveReturn({
+                id: updatedOrder.activeReturnId,
+                status: updatedOrder.returnStatus,
+                reason: updatedOrder.returnReason,
+                description: updatedOrder.returnDescription,
+                requestType: updatedOrder.returnRequestType,
+                orderId: updatedOrder.id,
+                requestedAt: updatedOrder.orderDate,
+                adminNote: updatedOrder.adminNote
+            });
+        }
+    });
 
     const [updating, setUpdating] = useState(false);
     const [refreshing, setRefreshing] = useState(false);

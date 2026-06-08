@@ -14,6 +14,7 @@ import apiClient, { BASE_SERVER_URL } from '../services/apiClient';
 import { useCartStore } from '../store/cartStore';
 import { useThemeStore } from '../store/themeStore';
 import { useAuthStore } from '../store/authStore';
+import { useAIChatStream } from '../hooks/useAIChatStream';
 import Animated, {
     useSharedValue,
     useAnimatedStyle,
@@ -63,13 +64,14 @@ const LIGHT = {
 export default function ChatScreen() {
     const [messages, setMessages] = useState<ChatMessage[]>([]);
     const [inputText, setInputText] = useState('');
-    const [isThinking, setIsThinking] = useState(false);
+    const [isThinking, setIsThinking] = useState(false); // kept for legacy UI fallback only
     const [pickedImages, setPickedImages] = useState<string[]>([]);
     const flatListRef = useRef<FlatList>(null);
     const insets = useSafeAreaInsets();
     const addItem = useCartStore((state) => state.addItem);
     const { isDark } = useThemeStore();
     const { role } = useAuthStore();
+    const { isStreaming, streamingText, sendMessage: sendStreamMessage } = useAIChatStream();
     const theme = isDark ? DARK : LIGHT;
     const navigation = useNavigation();
 
@@ -179,7 +181,7 @@ export default function ChatScreen() {
     // ── Logic ─────────────────────────────────────────────────────────────────
     const sendMessage = useCallback(async () => {
         const text = inputText.trim();
-        if ((!text && pickedImages.length === 0) || isThinking) return;
+        if ((!text && pickedImages.length === 0) || isStreaming) return;
 
         const userMsg: ChatMessage = {
             id: Date.now().toString(),
@@ -190,50 +192,42 @@ export default function ChatScreen() {
 
         setMessages(prev => [...prev, userMsg]);
         setInputText('');
-        const imagesToSend = [...pickedImages];
+        const imagesToSend = pickedImages.map((uri, index) => {
+            const filename = uri.split('/').pop() || `photo_${index}.jpg`;
+            const match = /\.(\w+)$/.exec(filename);
+            const type = match ? `image/${match[1]}` : 'image/jpeg';
+            return { uri, type, name: filename };
+        });
+        
         setPickedImages([]);
-        setIsThinking(true);
 
-        try {
-            const formData = new FormData();
-            if (text) formData.append('message', text);
-
-            if (imagesToSend.length > 0) {
-                imagesToSend.forEach((uri, index) => {
-                    const filename = uri.split('/').pop() || `photo_${index}.jpg`;
-                    const match = /\.(\w+)$/.exec(filename);
-                    const type = match ? `image/${match[1]}` : 'image/jpeg';
-                    formData.append('images', { uri, name: filename, type } as any);
-                });
+        sendStreamMessage(
+            text,
+            imagesToSend,
+            (result) => {
+                const aiMsg: ChatMessage = {
+                    id: (Date.now() + 1).toString(),
+                    role: 'ai',
+                    text: result.message || "Here are the best matches for your vehicle.",
+                    products: result.products || [],
+                    showRequestButton: result.showRequestButton || false,
+                };
+                setMessages(prev => [...prev, aiMsg]);
+            },
+            (error) => {
+                console.error('Chat API error:', error);
+                const is413 = error?.response?.status === 413;
+                const fallbackMsg: ChatMessage = {
+                    id: (Date.now() + 1).toString(),
+                    role: 'ai',
+                    text: is413
+                        ? "That image is too large (max 5MB). Please compress it or take a lower-resolution photo and try again! 📸"
+                        : `Connection Failure: ${error.message}`,
+                };
+                setMessages(prev => [...prev, fallbackMsg]);
             }
-
-            const response = await apiClient.post('/assistant/chat', formData);
-
-            const result = response.data;
-            const aiMsg: ChatMessage = {
-                id: (Date.now() + 1).toString(),
-                role: 'ai',
-                text: result.message || "Here are the best matches for your vehicle.",
-                products: result.products || [],
-                showRequestButton: result.showRequestButton || false,
-            };
-            setMessages(prev => [...prev, aiMsg]);
-        } catch (error: any) {
-            console.error('Chat API error:', error);
-            const is413 = error?.response?.status === 413;
-            const fallbackMsg: ChatMessage = {
-                id: (Date.now() + 1).toString(),
-                role: 'ai',
-                text: is413
-                    ? "That image is too large (max 5MB). Please compress it or take a lower-resolution photo and try again! 📸"
-                    : `Connection Failure: ${error.message}`,
-            };
-            setMessages(prev => [...prev, fallbackMsg]);
-        } finally {
-            setIsThinking(false);
-        }
-
-    }, [inputText, isThinking, pickedImages]);
+        );
+    }, [inputText, isStreaming, pickedImages]);
 
     // ── Render Message Bubble ─────────────────────────────────────────────────
     const renderMessage = ({ item }: { item: ChatMessage }) => {
@@ -371,20 +365,43 @@ export default function ChatScreen() {
                         showsVerticalScrollIndicator={false}
                     />
 
-                    {isThinking && (
-                        <Animated.View entering={FadeInDown} style={styles.thinkingRow}>
-                            <View style={styles.avatarContainer}>
-                                <Animated.View style={[styles.avatarGlow, animatedAvatarStyle]} />
-                                <View style={[styles.avatar, { backgroundColor: isDark ? '#1A0B0B' : '#FFF0F0', borderColor: 'rgba(223, 35, 36, 0.4)' }]}>
-                                    <Ionicons name="hardware-chip-outline" size={14} color="#DF2324" />
-                                </View>
+
+                {isStreaming && (
+                    <Animated.View
+                        entering={FadeInUp}
+                        style={[styles.msgRow, styles.msgRowLeft, { paddingHorizontal: 16, marginTop: 10 }]}
+                    >
+                        <View style={styles.avatarContainer}>
+                            <Animated.View style={[styles.avatarGlow, animatedAvatarStyle]} />
+                            <View style={[styles.avatar, { backgroundColor: isDark ? '#1A0B0B' : '#FFF0F0', borderColor: 'rgba(223, 35, 36, 0.4)' }]}>
+                                <Ionicons name="hardware-chip-outline" size={14} color="#DF2324" />
                             </View>
-                            <BlurView intensity={isDark ? 30 : 60} tint={theme.blurTint} style={[styles.thinkingBubble, { borderColor: theme.cardBorder }]}>
-                                <ActivityIndicator size="small" color="#DF2324" />
-                                <Text style={[styles.thinkingText, { color: theme.subText }]}>Searching Inventory...</Text>
-                            </BlurView>
-                        </Animated.View>
-                    )}
+                        </View>
+                        <View style={{ maxWidth: '88%' }}>
+                            <View style={[styles.bubble, styles.bubbleAi, { backgroundColor: theme.card, borderColor: theme.cardBorder }]}>
+                                <Text style={[styles.bubbleTextAi, { color: theme.text }]}>
+                                    {streamingText}
+                                    <Text style={{ color: '#DF2324' }}> ▎</Text>
+                                </Text>
+                            </View>
+                        </View>
+                    </Animated.View>
+                )}
+
+                {isThinking && !isStreaming && (
+                    <Animated.View entering={FadeInDown} style={styles.thinkingRow}>
+                        <View style={styles.avatarContainer}>
+                            <Animated.View style={[styles.avatarGlow, animatedAvatarStyle]} />
+                            <View style={[styles.avatar, { backgroundColor: isDark ? '#1A0B0B' : '#FFF0F0', borderColor: 'rgba(223, 35, 36, 0.4)' }]}>
+                                <Ionicons name="hardware-chip-outline" size={14} color="#DF2324" />
+                            </View>
+                        </View>
+                        <BlurView intensity={isDark ? 30 : 60} tint={theme.blurTint} style={[styles.thinkingBubble, { borderColor: theme.cardBorder }]}>
+                            <ActivityIndicator size="small" color="#DF2324" />
+                            <Text style={[styles.thinkingText, { color: theme.subText }]}>Searching Inventory...</Text>
+                        </BlurView>
+                    </Animated.View>
+                )}
 
                     {/* Input Area */}
                     <View style={[styles.inputContainer, { paddingBottom: Math.max(insets.bottom, 12) }]}>
@@ -420,7 +437,7 @@ export default function ChatScreen() {
                         )}
 
                         <BlurView intensity={isDark ? 50 : 80} tint={theme.blurTint} style={[styles.floatingInput, { borderColor: theme.cardBorder }]}>
-                            <TouchableOpacity style={styles.attachBtn} onPress={showImageOptions} disabled={isThinking || pickedImages.length >= 5}>
+                            <TouchableOpacity style={styles.attachBtn} onPress={showImageOptions} disabled={isStreaming || pickedImages.length >= 5}>
                                 <Ionicons name="add-circle" size={28} color={pickedImages.length > 0 ? '#DF2324' : theme.icon} />
                             </TouchableOpacity>
 
@@ -437,7 +454,7 @@ export default function ChatScreen() {
                             <TouchableOpacity
                                 style={[styles.sendBtn, (!inputText.trim() && pickedImages.length === 0) && { backgroundColor: theme.inputBg }]}
                                 onPress={sendMessage}
-                                disabled={isThinking || (!inputText.trim() && pickedImages.length === 0)}
+                                disabled={isStreaming || (!inputText.trim() && pickedImages.length === 0)}
                             >
                                 <Ionicons name="arrow-up" size={18} color={(!inputText.trim() && pickedImages.length === 0) ? theme.icon : '#FFF'} />
                             </TouchableOpacity>

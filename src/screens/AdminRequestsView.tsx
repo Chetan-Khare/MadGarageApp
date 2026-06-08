@@ -11,6 +11,7 @@ import { BlurView } from 'expo-blur';
 import { LinearGradient } from 'expo-linear-gradient';
 import { useThemeStore } from '../store/themeStore';
 import apiClient from '../services/apiClient';
+import { usePartRequestUpdates } from '../hooks/usePartRequestUpdates';
 
 interface RequestItem {
     id: number;
@@ -82,6 +83,19 @@ export default function AdminRequestsView() {
     useEffect(() => {
         fetchRequests();
     }, []);
+
+    usePartRequestUpdates((update) => {
+        if (update.type === 'NEW') {
+            setRequests(prev => {
+                if (prev.some(r => r.id === update.payload.id)) return prev;
+                return [update.payload, ...prev];
+            });
+        } else if (update.type === 'STATUS_UPDATE') {
+            setRequests(prev => prev.map(r => 
+                r.id === update.payload.id ? { ...r, status: update.payload.status } : r
+            ));
+        }
+    });
 
     const handleUpdateStatus = (id: number, currentStatus: string, nextStatus: string) => {
         Alert.alert(
