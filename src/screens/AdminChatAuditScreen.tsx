@@ -2,8 +2,9 @@ import React, { useState, useEffect, useRef } from 'react';
 import { 
   View, Text, StyleSheet, TouchableOpacity, ScrollView, 
   ActivityIndicator, TextInput, FlatList, Image, 
-  Dimensions, StatusBar, SafeAreaView, Platform
+  Dimensions, StatusBar, Platform
 } from 'react-native';
+import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
 import { useThemeStore } from '../store/themeStore';
 import apiClient, { BASE_SERVER_URL } from '../services/apiClient';
@@ -71,9 +72,12 @@ export default function AdminChatAuditScreen({ navigation }: any) {
     setChatLoading(true);
     try {
       const response = await apiClient.get(`/assistant/admin/history/${user.id}`);
-      setMessages(response.data);
+      // Handle Spring Page DTO ({ content: [...] }) or plain array
+      const data = response.data?.content ?? response.data;
+      setMessages(Array.isArray(data) ? data : []);
     } catch (error) {
       console.error("Failed to fetch user history:", error);
+      setMessages([]);
     } finally {
       setChatLoading(false);
     }
@@ -211,7 +215,12 @@ export default function AdminChatAuditScreen({ navigation }: any) {
                       styles.messageTime, 
                       { color: msg.sender === 'USER' ? 'rgba(255,255,255,0.5)' : textMuted }
                     ]}>
-                      {new Date(msg.createdAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
+                      {(() => {
+                        const d = Array.isArray(msg.createdAt)
+                          ? new Date((msg.createdAt as any)[0], (msg.createdAt as any)[1] - 1, (msg.createdAt as any)[2], (msg.createdAt as any)[3] || 0, (msg.createdAt as any)[4] || 0)
+                          : new Date(msg.createdAt);
+                        return d.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+                      })()}
                     </Text>
                   </View>
                 </View>

@@ -1,31 +1,10 @@
 import axios from 'axios';
 import * as SecureStore from 'expo-secure-store';
-import Constants from 'expo-constants';
+import { BASE_SERVER_URL } from './config';
 
-// P3 FIX: API URL is now driven by an environment variable for flexibility
-// across local dev, staging, and production environments.
-// Set EXPO_PUBLIC_API_URL in your .env.development file (see .env.example).
-// For Expo Go local development, falls back to dynamic IP detection from hostUri.
-const getBaseServerUrl = (): string => {
-  if (process.env.EXPO_PUBLIC_API_URL) {
-    return process.env.EXPO_PUBLIC_API_URL;
-  }
-  // Fallback: derive from Expo's hostUri (works for Expo Go on local network)
-  const hostUri = Constants.expoConfig?.hostUri;
-  
-  let localIp = 'localhost';
-  if (hostUri) {
-    localIp = hostUri.split(':')[0];
-  }
+// BASE_SERVER_URL is re-exported so existing imports from apiClient still work
+export { BASE_SERVER_URL };
 
-  // If auto-detection fails to reach your machine, you can hardcode your IP here:
-  // const localIp = '192.168.x.x';
-
-  const url = `http://${localIp}:8080`;
-  return url;
-};
-
-export const BASE_SERVER_URL = getBaseServerUrl();
 const BASE_URL = `${BASE_SERVER_URL}/api`;
 
 const apiClient = axios.create({

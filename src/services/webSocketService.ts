@@ -1,5 +1,5 @@
 import { Client, StompSubscription } from '@stomp/stompjs';
-import { BASE_SERVER_URL } from './apiClient';
+import { BASE_SERVER_URL } from './config';
 
 type SubscribeCallback = (message: any) => void;
 
